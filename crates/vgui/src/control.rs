@@ -1,4 +1,4 @@
-use gpui::{IntoElement, ParentElement};
+use gpui::{Display, IntoElement, ParentElement, Styled};
 
 pub fn show(
     when: bool,
@@ -16,7 +16,9 @@ pub fn show_when(when: bool, then: impl IntoElement) -> gpui::AnyElement {
     if when {
         then.into_any_element()
     } else {
-        gpui::Empty.into_any_element()
+        let mut el = gpui::div();
+        el.style().display = Some(Display::None);
+        el.into_any_element()
     }
 }
 
