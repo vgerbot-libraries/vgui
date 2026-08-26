@@ -35,6 +35,16 @@ fn app() -> impl gpui::IntoElement {
             >
                 {"Increment"}
             </button>
+            <button
+                style={css! { padding: 8px; background: #FF0000; }}
+                hover={css! { background: #880000; }}
+                on:click={click({
+                    let set_count = set_count.clone();
+                    move |cx| set_count.update(cx, |n| *n -= 1)
+                })}
+            >
+                {"Decrement"}
+            </button>
         </div>
     }
 }

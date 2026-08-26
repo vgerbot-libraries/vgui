@@ -3,6 +3,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Ident, Span, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, ToTokens};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static AUTO_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[proc_macro]
 pub fn view(input: TokenStream) -> TokenStream {
@@ -521,7 +524,10 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         };
         ctor = quote! { #ctor.id(#v) };
     } else if needs_id {
-        ctor = quote! { #ctor.id(::core::concat!(::core::file!(), ":", ::core::line!(), ":", ::core::column!())) };
+        let id = AUTO_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let id_str = format!("{}:{}", name, id);
+        let id_lit = syn::LitStr::new(&id_str, el.tag.span());
+        ctor = quote! { #ctor.id(#id_lit) };
     }
     let _ = needs_stateful;
 
