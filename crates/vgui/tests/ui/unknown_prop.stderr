@@ -1,0 +1,5 @@
+error: unknown CSS property 'florb'
+ --> tests/ui/unknown_prop.rs:4:20
+  |
+4 |     let _ = css! { florb: 1px; };
+  |                    ^^^^^

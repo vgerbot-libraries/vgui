@@ -44,6 +44,7 @@ enum AttrKind {
     Focus,
     Id,
     Src,
+    Class,
 }
 
 enum AttrValue {
@@ -208,6 +209,7 @@ fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Attr> {
                 "focus" => AttrKind::Focus,
                 "id" => AttrKind::Id,
                 "src" => AttrKind::Src,
+                "class" => AttrKind::Class,
                 "on" => {
                     if *i >= tokens.len() || !is_punct(&tokens[*i], ':') {
                         return Err(syn::Error::new(span, "expected `on:event`"));
@@ -437,6 +439,7 @@ fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Hover => fields.push(quote! { hover: #value }),
             AttrKind::Active => fields.push(quote! { active: #value }),
             AttrKind::Focus => fields.push(quote! { focus: #value }),
+            AttrKind::Class => fields.push(quote! { class: #value }),
             AttrKind::On(ev) => {
                 let name = Ident::new(&format!("on_{ev}"), ev.span());
                 fields.push(quote! { #name: #value });
@@ -458,6 +461,7 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut hover = None;
     let mut active = None;
     let mut focus = None;
+    let mut class = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     for attr in &el.attrs {
@@ -468,6 +472,7 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Hover => hover = Some(attr),
             AttrKind::Active => active = Some(attr),
             AttrKind::Focus => focus = Some(attr),
+            AttrKind::Class => class = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => unknown.push(id.clone()),
         }
@@ -499,10 +504,21 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         }
     }
 
+    // Check if class string contains focus: or active: variants (requires id)
+    let class_needs_id = class.as_ref().and_then(|c| {
+        if let Some(lit) = string_lit_static(&c.value) {
+            let s = lit.to_string();
+            Some(s.contains("focus:") || s.contains("active:"))
+        } else {
+            None
+        }
+    }).unwrap_or(false);
+
     let needs_stateful = !events.is_empty()
         || hover.is_some()
         || active.is_some()
         || focus.is_some()
+        || class.is_some()
         || events.iter().any(|(ev, _, _)| {
             matches!(
                 ev.to_string().as_str(),
@@ -512,6 +528,9 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     // hover is on InteractiveElement, not Stateful. active/on_click/on_hover need Stateful.
     let needs_id = id.is_none()
         && (active.is_some()
+            || focus.is_some()
+            || class.is_some()
+            || class_needs_id
             || events.iter().any(|(ev, _, _)| {
                 matches!(ev.to_string().as_str(), "click" | "hover")
             }));
@@ -534,6 +553,24 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if let Some(style) = style {
         let v = attr_tokens(&style.value);
         ctor = quote! { ::vgui::ApplyStyle::apply_to(#v, #ctor) };
+    }
+    if let Some(class) = class {
+        let v = attr_tokens(&class.value);
+        ctor = quote! {{
+            let __tw = ::vgui::tw!(#v);
+            let mut __el = #ctor;
+            (__tw.base)(__el.style());
+            if let ::std::option::Option::Some(__h) = __tw.hover {
+                __el = __el.hover(move |mut s| { __h(&mut s); s });
+            }
+            if let ::std::option::Option::Some(__f) = __tw.focus {
+                __el = __el.focus(move |mut s| { __f(&mut s); s });
+            }
+            if let ::std::option::Option::Some(__a) = __tw.active {
+                __el = __el.active(move |mut s| { __a(&mut s); s });
+            }
+            __el
+        }};
     }
     if let Some(hover) = hover {
         let v = attr_tokens(&hover.value);

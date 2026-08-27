@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui", "examples/counter"]
+members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind", "crates/vgui", "examples/counter", "examples/todolist"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ repository = "https://github.com/local/vgui"
 gpui = "0.2.2"
 vgui-css = { path = "crates/vgui-css" }
 vgui-view = { path = "crates/vgui-view" }
+vgui-tailwind = { path = "crates/vgui-tailwind" }
 vgui = { path = "crates/vgui" }
 syn = { version = "2", features = ["full", "extra-traits"] }
 quote = "1"

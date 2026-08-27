@@ -5886,6 +5886,7 @@ dependencies = [
  "gpui",
  "trybuild",
  "vgui-css",
+ "vgui-tailwind",
  "vgui-view",
 ]
 
@@ -5904,6 +5905,23 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "vgui-tailwind"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "vgui-todolist"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "vgui",
 ]
 
 [[package]]

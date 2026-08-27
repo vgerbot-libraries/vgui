@@ -9,6 +9,7 @@ repository.workspace = true
 gpui.workspace = true
 vgui-css.workspace = true
 vgui-view.workspace = true
+vgui-tailwind.workspace = true
 
 [dev-dependencies]
 trybuild = "1"

@@ -1,11 +1,10 @@
-use gpui::{div, px, rgb, size, App, Application, Bounds, WindowBounds, WindowOptions};
+use gpui::{px, size, App, Application, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
 
 fn increment_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
     view! {
         <button
-            style={css! { padding: 8px; background: #0000ff; }}
-            hover={css! { background: #000088; }}
+            class="p-2 bg-[#0000ff] hover:bg-[#000088] text-white rounded"
             on:click={click(move |cx| set_count.update(cx, |n| *n += 1))}
         >
             {"Increment"}
@@ -16,8 +15,7 @@ fn increment_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
 fn decrement_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
     view! {
         <button
-            style={css! { padding: 8px; background: #FF0000; }}
-            hover={css! { background: #880000; }}
+            class="p-2 bg-[#FF0000] hover:bg-[#880000] text-white rounded"
             on:click={click(move |cx| set_count.update(cx, |n| *n -= 1))}
         >
             {"Decrement"}
@@ -32,18 +30,7 @@ fn app() -> impl gpui::IntoElement {
         move || count.get() * 2
     });
     view! {
-        <div style={css! {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            padding: 16px;
-            background: #505050;
-            width: 500px;
-            height: 500px;
-            justify-content: center;
-            align-items: center;
-            color: #ffffff;
-        }}>
+        <div class="flex flex-col gap-3 p-4 bg-[#505050] w-[500px] h-[500px] justify-center items-center text-white">
             <span>{format!("Hello, {}!", count.get())}</span>
             <span>{format!("doubled {}", doubled.get())}</span>
             <Show when={count.get() > 0}>
