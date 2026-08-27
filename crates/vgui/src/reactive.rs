@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use gpui::{App, AppContext, Entity, EntityId};
@@ -10,6 +11,42 @@ use crate::root::{Scope, Slot, VguiRoot};
 thread_local! {
     static CURRENT: RefCell<Option<Current>> = const { RefCell::new(None) };
     static TRACKING: RefCell<Option<Vec<EntityId>>> = const { RefCell::new(None) };
+    /// Per-render counter for auto-generated element ids. Set to `Some(0)` when
+    /// a reactive scope is entered (i.e. at the start of every `VguiRoot`
+    /// render) and cleared when the scope exits. While active, `next_auto_id`
+    /// draws from this counter so that:
+    /// - the same logical element gets a stable id across re-renders (counter
+    ///   resets to 0 each render, call order is deterministic), preserving
+    ///   gpui stateful state;
+    /// - distinct elements — such as siblings produced by a `<For>` closure
+    ///   invoked multiple times — receive distinct ids.
+    static ELEMENT_ID_COUNTER: RefCell<Option<u64>> = const { RefCell::new(None) };
+}
+
+/// Fallback counter for auto-generated element ids when no reactive scope is
+/// active (e.g. elements constructed in standalone tests). Uses a high starting
+/// point to avoid collisions with the per-render counter (which starts at 0).
+static FALLBACK_AUTO_ID: AtomicU64 = AtomicU64::new(u64::MAX / 2);
+
+/// Returns a unique, deterministic id for an auto-generated stateful element.
+///
+/// Called by the `view!` macro for elements that need an id (those with
+/// `on:click`, `hover`, `active`, `focus`, `class`, ...) but don't specify one
+/// explicitly. Inside a `VguiRoot` render the id comes from a per-render counter
+/// that is reset on every render, so the same logical element receives the same
+/// id across re-renders (preserving gpui stateful state) while distinct elements
+/// — such as siblings produced by a `<For>` closure invoked multiple times —
+/// receive distinct ids.
+pub fn next_auto_id() -> u64 {
+    ELEMENT_ID_COUNTER.with(|c| {
+        if let Some(counter) = c.borrow_mut().as_mut() {
+            let id = *counter;
+            *counter += 1;
+            id
+        } else {
+            FALLBACK_AUTO_ID.fetch_add(1, Ordering::Relaxed)
+        }
+    })
 }
 
 struct Current {
@@ -29,6 +66,9 @@ pub(crate) fn enter_scope(scope: Rc<RefCell<Scope>>, cx: &mut gpui::Context<Vgui
             },
         });
     });
+    // Reset the per-render element id counter. Each render starts from 0 so
+    // that the same logical element gets a stable id across re-renders.
+    ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = Some(0));
 }
 
 pub(crate) fn exit_scope() {
@@ -46,6 +86,7 @@ pub(crate) fn exit_scope() {
         }
         *c.borrow_mut() = None;
     });
+    ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = None);
 }
 
 fn current() -> Current {
@@ -303,13 +344,81 @@ pub fn create_effect(f: impl Fn() + 'static) {
     }
 }
 
+#[doc(hidden)]
+pub fn __test_enter_render_scope() {
+    ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = Some(0));
+}
+
+#[doc(hidden)]
+pub fn __test_exit_render_scope() {
+    ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = None);
+}
+
 #[cfg(test)]
 mod tests {
-    use super::should_notify;
+    use super::{__test_enter_render_scope as test_enter_render_scope, __test_exit_render_scope as test_exit_render_scope, next_auto_id, should_notify};
 
     #[test]
     fn equal_values_do_not_notify() {
         assert!(!should_notify(&1, &1));
         assert!(should_notify(&1, &2));
+    }
+
+    #[test]
+    fn next_auto_id_is_sequential_within_a_render() {
+        // Simulate entering a render scope (normally done by enter_scope).
+        test_enter_render_scope();
+        // Within one render, sequential calls produce sequential ids starting
+        // at 0. This is what gives sibling elements (e.g. <For> items) distinct
+        // ids.
+        assert_eq!(next_auto_id(), 0);
+        assert_eq!(next_auto_id(), 1);
+        assert_eq!(next_auto_id(), 2);
+        test_exit_render_scope();
+    }
+
+    #[test]
+    fn next_auto_id_is_stable_across_renders() {
+        // Simulate two consecutive renders. The counter resets to 0 at the
+        // start of each render, so the same logical element (same call order)
+        // receives the same id across re-renders. This preserves gpui stateful
+        // state (focus, hover, etc.).
+        test_enter_render_scope();
+        let render1_a = next_auto_id();
+        let render1_b = next_auto_id();
+        test_exit_render_scope();
+
+        test_enter_render_scope();
+        let render2_a = next_auto_id();
+        let render2_b = next_auto_id();
+        test_exit_render_scope();
+
+        assert_eq!(render1_a, render2_a);
+        assert_eq!(render1_b, render2_b);
+        assert_ne!(render1_a, render1_b);
+    }
+
+    #[test]
+    fn next_auto_id_fallback_outside_scope_is_unique() {
+        // Outside any render scope (e.g. elements built in standalone tests),
+        // next_auto_id falls back to a global atomic counter. Two calls must
+        // still produce distinct values, and they must not collide with the
+        // per-render counter range (which starts at 0).
+        test_exit_render_scope(); // ensure no scope is active
+        let a = next_auto_id();
+        let b = next_auto_id();
+        assert_ne!(a, b);
+        // Fallback ids start at u64::MAX / 2, well above the per-render range.
+        assert!(a >= u64::MAX / 2);
+        assert!(b >= u64::MAX / 2);
+    }
+
+    #[test]
+    fn next_auto_id_does_not_leak_between_tests() {
+        // Guards against a forgotten scope reset leaving the counter active for
+        // unrelated tests. After exit, calls should use the fallback path.
+        test_exit_render_scope();
+        let outside = next_auto_id();
+        assert!(outside >= u64::MAX / 2);
     }
 }

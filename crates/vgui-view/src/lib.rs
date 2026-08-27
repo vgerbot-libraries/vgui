@@ -3,9 +3,6 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Ident, Span, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, ToTokens};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-static AUTO_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[proc_macro]
 pub fn view(input: TokenStream) -> TokenStream {
@@ -557,10 +554,13 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         };
         ctor = quote! { #ctor.id(#v) };
     } else if needs_id {
-        let id = AUTO_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let id_str = format!("{}:{}", name, id);
-        let id_lit = syn::LitStr::new(&id_str, el.tag.span());
-        ctor = quote! { #ctor.id(#id_lit) };
+        // Generate the id at runtime so that elements produced by a closure
+        // invoked multiple times (e.g. `<For>` items) each get a distinct id,
+        // while remaining stable across re-renders (the counter is reset on
+        // every `VguiRoot` render). Using a `(&'static str, u64)` produces an
+        // `ElementId::NamedInteger`, which is readable and collision-resistant.
+        let name_lit = syn::LitStr::new(&name, el.tag.span());
+        ctor = quote! { #ctor.id((#name_lit, ::vgui::next_auto_id())) };
     }
     let _ = needs_stateful;
 
