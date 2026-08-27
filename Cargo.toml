@@ -6,7 +6,11 @@ members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind", "crate
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/local/vgui"
+repository = "https://github.com/vgerbot-libraries/vgui"
+homepage = "https://github.com/vgerbot-libraries/vgui"
+description = "A declarative, reactive GUI framework for Rust, built on gpui."
+keywords = ["gui", "gpui", "reactive", "css", "tailwind"]
+categories = ["gui", "rust-patterns", "macro"]
 
 [workspace.dependencies]
 gpui = "0.2.2"
