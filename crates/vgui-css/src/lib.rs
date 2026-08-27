@@ -1362,6 +1362,24 @@ fn emit_decl(decl: &Decl) -> syn::Result<TokenStream2> {
                 s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(#v);
             })
         }
+        "line-height" => {
+            if tokens.len() == 1 {
+                if let TokenTree::Literal(_) = &tokens[0] {
+                    if parse_suffixed_length(&tokens[0]).is_none() {
+                        if let Some(n) = parse_number(&tokens[0]) {
+                            return Ok(quote! {
+                                s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(::gpui::relative(#n as f32));
+                            });
+                        }
+                    }
+                }
+            }
+            let len = parse_length(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
+            let v = emit_as_definite(&len, prop, span)?;
+            Ok(quote! {
+                s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(#v);
+            })
+        }
         "line-clamp" => {
             let n = number_value(tokens, prop, span)? as usize;
             Ok(quote! {
@@ -1408,6 +1426,9 @@ fn emit_interp_prop(prop: &str, expr: TokenStream2, span: Span) -> syn::Result<T
             s.gap.height = Some(__gap);
         }),
         "aspect-ratio" => Ok(quote! { s.aspect_ratio = Some(#expr as f32); }),
+        "line-height" => Ok(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#expr));
+        }),
         "line-clamp" => Ok(quote! {
             s.text.get_or_insert_with(::core::default::Default::default).line_clamp = Some(#expr as usize);
         }),

@@ -35,6 +35,8 @@ fn todo_item(todo: Todo, set_todos: WriteSignal<Vec<Todo>>) -> impl gpui::IntoEl
             background: rgb(34, 197, 94);
             color: #fff;
             font-size: 14px;
+            text-align: center;
+            line-height: 20px;
         }
     } else {
         css! {
@@ -45,6 +47,8 @@ fn todo_item(todo: Todo, set_todos: WriteSignal<Vec<Todo>>) -> impl gpui::IntoEl
             background: #333;
             color: #fff;
             font-size: 14px;
+            text-align: center;
+            line-height: 20px;
         }
     };
     let set_todos_toggle = set_todos.clone();
