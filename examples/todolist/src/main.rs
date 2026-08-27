@@ -129,9 +129,21 @@ fn filter_button(
 
 fn app() -> impl gpui::IntoElement {
     let (todos, set_todos) = create_signal(vec![
-        Todo { id: 0, text: "Learn vgui".into(), done: false },
-        Todo { id: 1, text: "Build a todo app".into(), done: false },
-        Todo { id: 2, text: "Ship it".into(), done: false },
+        Todo {
+            id: 0,
+            text: "Learn vgui".into(),
+            done: false,
+        },
+        Todo {
+            id: 1,
+            text: "Build a todo app".into(),
+            done: false,
+        },
+        Todo {
+            id: 2,
+            text: "Ship it".into(),
+            done: false,
+        },
     ]);
     let (next_id, set_next_id) = create_signal(3u32);
     let (filter, set_filter) = create_signal("all".to_string());

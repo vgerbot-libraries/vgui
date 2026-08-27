@@ -22,9 +22,10 @@ pub(crate) fn enter_scope(scope: Rc<RefCell<Scope>>, cx: &mut gpui::Context<Vgui
         *c.borrow_mut() = Some(Current {
             scope,
             cx: unsafe {
-                std::mem::transmute::<&mut gpui::Context<VguiRoot>, *mut gpui::Context<'static, VguiRoot>>(
-                    cx,
-                )
+                std::mem::transmute::<
+                    &mut gpui::Context<VguiRoot>,
+                    *mut gpui::Context<'static, VguiRoot>,
+                >(cx)
             },
         });
     });
@@ -111,7 +112,11 @@ impl<T: Clone + PartialEq + 'static> WriteSignal<T> {
         });
     }
 
-    pub fn update<C: AppContext, R>(&self, cx: &mut C, f: impl FnOnce(&mut T) -> R) -> C::Result<R> {
+    pub fn update<C: AppContext, R>(
+        &self,
+        cx: &mut C,
+        f: impl FnOnce(&mut T) -> R,
+    ) -> C::Result<R> {
         let cache = self.cache.clone();
         self.entity.update(cx, |cell, cx| {
             let old = cell.0.clone();
@@ -147,8 +152,6 @@ struct MemoRuntime<T: Clone + PartialEq + 'static> {
     compute: Arc<dyn Fn() -> T>,
     deps: Vec<EntityId>,
 }
-
-
 
 pub fn create_signal<T: Clone + PartialEq + 'static>(
     initial: T,
@@ -246,17 +249,24 @@ pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) 
         let mut scope = cur.scope.borrow_mut();
         scope.slots.push(Slot::Memo(Arc::new(typed.clone())));
         scope.subscriptions.push(sub);
-        scope.memos.push(Rc::new(move |cx: &mut gpui::Context<VguiRoot>| {
-            let new_value = (runtime.compute)();
-            let old = runtime.cell.cache.read().expect("signal cache poisoned").clone();
-            if old != new_value {
-                *runtime.cell.cache.write().expect("signal cache poisoned") = new_value.clone();
-                let _ = runtime.cell.entity.update(cx, |cell, cx| {
-                    cell.0 = new_value;
-                    cx.notify();
-                });
-            }
-        }));
+        scope
+            .memos
+            .push(Rc::new(move |cx: &mut gpui::Context<VguiRoot>| {
+                let new_value = (runtime.compute)();
+                let old = runtime
+                    .cell
+                    .cache
+                    .read()
+                    .expect("signal cache poisoned")
+                    .clone();
+                if old != new_value {
+                    *runtime.cell.cache.write().expect("signal cache poisoned") = new_value.clone();
+                    let _ = runtime.cell.entity.update(cx, |cell, cx| {
+                        cell.0 = new_value;
+                        cx.notify();
+                    });
+                }
+            }));
         scope.memo_deps.push(deps);
         scope.index += 1;
     }

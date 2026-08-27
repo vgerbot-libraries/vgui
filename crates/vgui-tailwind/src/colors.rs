@@ -15,7 +15,10 @@ fn named_color(name: &str, shade: Option<&str>) -> Option<(u8, u8, u8)> {
     }
     let shade = shade?;
     let table = palette(name)?;
-    table.iter().find(|(s, _, _, _)| *s == shade).map(|(_, r, g, b)| (*r, *g, *b))
+    table
+        .iter()
+        .find(|(s, _, _, _)| *s == shade)
+        .map(|(_, r, g, b)| (*r, *g, *b))
 }
 
 fn palette(name: &str) -> Option<&'static [(&'static str, u8, u8, u8)]> {

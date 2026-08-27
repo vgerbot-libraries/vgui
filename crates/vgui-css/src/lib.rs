@@ -230,7 +230,11 @@ fn parse_number(tt: &TokenTree) -> Option<f32> {
     if let TokenTree::Literal(lit) = tt {
         let s = lit.to_string().replace('_', "");
         if s.ends_with("f32") || s.ends_with("f64") {
-            return s.trim_end_matches("f32").trim_end_matches("f64").parse().ok();
+            return s
+                .trim_end_matches("f32")
+                .trim_end_matches("f64")
+                .parse()
+                .ok();
         }
         if s.contains('.') {
             return s.parse().ok();
@@ -477,7 +481,9 @@ fn emit_length(len: &LengthVal) -> TokenStream2 {
 fn emit_as_length(len: &LengthVal, span: Span) -> syn::Result<TokenStream2> {
     match &len.kind {
         LengthKind::Auto => Ok(quote! { ::gpui::Length::Auto }),
-        LengthKind::Interp(expr) => Ok(quote! { ::core::convert::Into::<::gpui::Length>::into(#expr) }),
+        LengthKind::Interp(expr) => {
+            Ok(quote! { ::core::convert::Into::<::gpui::Length>::into(#expr) })
+        }
         _ => {
             let inner = emit_length(len);
             Ok(quote_spanned! {span=> ::core::convert::Into::<::gpui::Length>::into(#inner) })
@@ -487,11 +493,10 @@ fn emit_as_length(len: &LengthVal, span: Span) -> syn::Result<TokenStream2> {
 
 fn emit_as_definite(len: &LengthVal, prop: &str, span: Span) -> syn::Result<TokenStream2> {
     match &len.kind {
-        LengthKind::Auto => Err(syn::Error::new(
-            span,
-            format!("{prop} cannot be auto"),
-        )),
-        LengthKind::Interp(expr) => Ok(quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#expr) }),
+        LengthKind::Auto => Err(syn::Error::new(span, format!("{prop} cannot be auto"))),
+        LengthKind::Interp(expr) => {
+            Ok(quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#expr) })
+        }
         _ => {
             let inner = emit_length(len);
             Ok(quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#inner) })
@@ -506,7 +511,9 @@ fn emit_as_absolute(len: &LengthVal, prop: &str, span: Span) -> syn::Result<Toke
             span,
             format!("{prop} cannot be a percentage"),
         )),
-        LengthKind::Interp(expr) => Ok(quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(#expr) }),
+        LengthKind::Interp(expr) => {
+            Ok(quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(#expr) })
+        }
         _ => {
             let inner = emit_length(len);
             Ok(quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(#inner) })
@@ -524,7 +531,9 @@ fn parse_hex_digits(raw: &str) -> Result<(u32, bool), ()> {
                 out.push(c);
                 out.push(c);
             }
-            u32::from_str_radix(&out, 16).map(|v| (v, false)).map_err(|_| ())
+            u32::from_str_radix(&out, 16)
+                .map(|v| (v, false))
+                .map_err(|_| ())
         }
         4 => {
             let mut out = String::new();
@@ -532,10 +541,16 @@ fn parse_hex_digits(raw: &str) -> Result<(u32, bool), ()> {
                 out.push(c);
                 out.push(c);
             }
-            u32::from_str_radix(&out, 16).map(|v| (v, true)).map_err(|_| ())
+            u32::from_str_radix(&out, 16)
+                .map(|v| (v, true))
+                .map_err(|_| ())
         }
-        6 => u32::from_str_radix(hex, 16).map(|v| (v, false)).map_err(|_| ()),
-        8 => u32::from_str_radix(hex, 16).map(|v| (v, true)).map_err(|_| ()),
+        6 => u32::from_str_radix(hex, 16)
+            .map(|v| (v, false))
+            .map_err(|_| ()),
+        8 => u32::from_str_radix(hex, 16)
+            .map(|v| (v, true))
+            .map_err(|_| ()),
         _ => Err(()),
     }
 }
@@ -695,7 +710,10 @@ fn expand_box_edges(values: &[LengthVal]) -> syn::Result<[LengthVal; 4]> {
             clone_len(&values[3]),
         ]),
         n => Err(syn::Error::new(
-            values.get(0).map(|v| v.span).unwrap_or_else(Span::call_site),
+            values
+                .get(0)
+                .map(|v| v.span)
+                .unwrap_or_else(Span::call_site),
             format!("expected 1, 2, or 4 values, got {n}"),
         )),
     }
@@ -1356,15 +1374,29 @@ fn emit_decl(decl: &Decl) -> syn::Result<TokenStream2> {
 
 fn emit_interp_prop(prop: &str, expr: TokenStream2, span: Span) -> syn::Result<TokenStream2> {
     match prop {
-        "width" => Ok(quote! { s.size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
-        "height" => Ok(quote! { s.size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
-        "min-width" => Ok(quote! { s.min_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
-        "min-height" => Ok(quote! { s.min_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
-        "max-width" => Ok(quote! { s.max_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
-        "max-height" => Ok(quote! { s.max_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
+        "width" => Ok(
+            quote! { s.size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
+        "height" => Ok(
+            quote! { s.size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
+        "min-width" => Ok(
+            quote! { s.min_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
+        "min-height" => Ok(
+            quote! { s.min_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
+        "max-width" => Ok(
+            quote! { s.max_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
+        "max-height" => Ok(
+            quote! { s.max_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
         "flex-grow" => Ok(quote! { s.flex_grow = Some(#expr as f32); }),
         "flex-shrink" => Ok(quote! { s.flex_shrink = Some(#expr as f32); }),
-        "flex-basis" => Ok(quote! { s.flex_basis = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); }),
+        "flex-basis" => Ok(
+            quote! { s.flex_basis = Some(::core::convert::Into::<::gpui::Length>::into(#expr)); },
+        ),
         "opacity" => Ok(quote! { s.opacity = Some(#expr as f32); }),
         "background" | "background-color" => Ok(quote! { s.background = Some((#expr).into()); }),
         "color" => Ok(quote! {

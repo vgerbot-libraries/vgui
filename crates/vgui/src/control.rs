@@ -1,10 +1,6 @@
 use gpui::{Display, IntoElement, ParentElement, Styled};
 
-pub fn show(
-    when: bool,
-    then: impl IntoElement,
-    fallback: impl IntoElement,
-) -> gpui::AnyElement {
+pub fn show(when: bool, then: impl IntoElement, fallback: impl IntoElement) -> gpui::AnyElement {
     if when {
         then.into_any_element()
     } else {

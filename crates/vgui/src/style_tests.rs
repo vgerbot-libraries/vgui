@@ -22,10 +22,7 @@ fn css_flex_padding_background_width() {
     assert_eq!(probe.0.display, Some(Display::Flex));
     assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(8.))));
     assert!(probe.0.background.is_some());
-    assert_eq!(
-        probe.0.size.width,
-        Some(Length::from(relative(0.5)))
-    );
+    assert_eq!(probe.0.size.width, Some(Length::from(relative(0.5))));
 }
 
 #[test]
@@ -80,14 +77,8 @@ fn tw_text_color_and_size() {
 fn tw_arbitrary_values() {
     let style = tw!("w-[500px] h-[250px] bg-[#505050]");
     let probe = style.apply_to(Probe(Default::default()));
-    assert_eq!(
-        probe.0.size.width,
-        Some(Length::from(px(500.)))
-    );
-    assert_eq!(
-        probe.0.size.height,
-        Some(Length::from(px(250.)))
-    );
+    assert_eq!(probe.0.size.width, Some(Length::from(px(500.))));
+    assert_eq!(probe.0.size.height, Some(Length::from(px(250.))));
     assert!(probe.0.background.is_some());
 }
 
@@ -123,14 +114,8 @@ fn tw_margin_auto() {
 fn tw_width_height() {
     let style = tw!("w-full h-full");
     let probe = style.apply_to(Probe(Default::default()));
-    assert_eq!(
-        probe.0.size.width,
-        Some(Length::from(relative(1.)))
-    );
-    assert_eq!(
-        probe.0.size.height,
-        Some(Length::from(relative(1.)))
-    );
+    assert_eq!(probe.0.size.width, Some(Length::from(relative(1.))));
+    assert_eq!(probe.0.size.height, Some(Length::from(relative(1.))));
 }
 
 #[test]

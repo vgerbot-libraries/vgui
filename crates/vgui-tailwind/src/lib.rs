@@ -240,8 +240,12 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         // Flex direction
         "flex-row" => quote! { s.flex_direction = Some(::gpui::FlexDirection::Row); },
         "flex-col" => quote! { s.flex_direction = Some(::gpui::FlexDirection::Column); },
-        "flex-row-reverse" => quote! { s.flex_direction = Some(::gpui::FlexDirection::RowReverse); },
-        "flex-col-reverse" => quote! { s.flex_direction = Some(::gpui::FlexDirection::ColumnReverse); },
+        "flex-row-reverse" => {
+            quote! { s.flex_direction = Some(::gpui::FlexDirection::RowReverse); }
+        }
+        "flex-col-reverse" => {
+            quote! { s.flex_direction = Some(::gpui::FlexDirection::ColumnReverse); }
+        }
 
         // Flex wrap
         "flex-wrap" => quote! { s.flex_wrap = Some(::gpui::FlexWrap::Wrap); },
@@ -273,9 +277,15 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "justify-center" => quote! { s.justify_content = Some(::gpui::JustifyContent::Center); },
         "justify-start" => quote! { s.justify_content = Some(::gpui::JustifyContent::FlexStart); },
         "justify-end" => quote! { s.justify_content = Some(::gpui::JustifyContent::FlexEnd); },
-        "justify-between" => quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceBetween); },
-        "justify-around" => quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceAround); },
-        "justify-evenly" => quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceEvenly); },
+        "justify-between" => {
+            quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceBetween); }
+        }
+        "justify-around" => {
+            quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceAround); }
+        }
+        "justify-evenly" => {
+            quote! { s.justify_content = Some(::gpui::JustifyContent::SpaceEvenly); }
+        }
 
         // Align items
         "items-center" => quote! { s.align_items = Some(::gpui::AlignItems::Center); },
@@ -306,10 +316,18 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "static" => quote! { s.position = Some(::gpui::Position::Relative); },
 
         // Overflow
-        "overflow-hidden" => quote! { s.overflow.x = Some(::gpui::Overflow::Hidden); s.overflow.y = Some(::gpui::Overflow::Hidden); },
-        "overflow-scroll" => quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); s.overflow.y = Some(::gpui::Overflow::Scroll); },
-        "overflow-auto" => quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); s.overflow.y = Some(::gpui::Overflow::Scroll); },
-        "overflow-visible" => quote! { s.overflow.x = Some(::gpui::Overflow::Visible); s.overflow.y = Some(::gpui::Overflow::Visible); },
+        "overflow-hidden" => {
+            quote! { s.overflow.x = Some(::gpui::Overflow::Hidden); s.overflow.y = Some(::gpui::Overflow::Hidden); }
+        }
+        "overflow-scroll" => {
+            quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); s.overflow.y = Some(::gpui::Overflow::Scroll); }
+        }
+        "overflow-auto" => {
+            quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); s.overflow.y = Some(::gpui::Overflow::Scroll); }
+        }
+        "overflow-visible" => {
+            quote! { s.overflow.x = Some(::gpui::Overflow::Visible); s.overflow.y = Some(::gpui::Overflow::Visible); }
+        }
         "overflow-x-hidden" => quote! { s.overflow.x = Some(::gpui::Overflow::Hidden); },
         "overflow-x-scroll" => quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); },
         "overflow-x-auto" => quote! { s.overflow.x = Some(::gpui::Overflow::Scroll); },
@@ -324,8 +342,12 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "visible" => quote! { s.visibility = Some(::gpui::Visibility::Visible); },
 
         // Font style
-        "italic" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Italic); },
-        "not-italic" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Normal); },
+        "italic" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Italic); }
+        }
+        "not-italic" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Normal); }
+        }
 
         // Text decoration
         "underline" => quote! {
@@ -346,8 +368,12 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         },
 
         // White space
-        "whitespace-normal" => quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Normal); },
-        "whitespace-nowrap" => quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Nowrap); },
+        "whitespace-normal" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Normal); }
+        }
+        "whitespace-nowrap" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Nowrap); }
+        }
 
         // Border style
         "border-solid" => quote! { s.border_style = Some(::gpui::BorderStyle::Solid); },
@@ -360,10 +386,18 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
             s.border_widths.bottom = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.)));
             s.border_widths.left = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.)));
         },
-        "border-t" => quote! { s.border_widths.top = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); },
-        "border-r" => quote! { s.border_widths.right = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); },
-        "border-b" => quote! { s.border_widths.bottom = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); },
-        "border-l" => quote! { s.border_widths.left = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); },
+        "border-t" => {
+            quote! { s.border_widths.top = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); }
+        }
+        "border-r" => {
+            quote! { s.border_widths.right = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); }
+        }
+        "border-b" => {
+            quote! { s.border_widths.bottom = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); }
+        }
+        "border-l" => {
+            quote! { s.border_widths.left = Some(::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(1.))); }
+        }
 
         // Shadow
         "shadow-sm" => spacing::shadow_value("sm").unwrap(),
@@ -389,25 +423,49 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "cursor-pointer" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::PointingHand); },
         "cursor-default" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::Arrow); },
         "cursor-text" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::IBeam); },
-        "cursor-not-allowed" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OperationNotAllowed); },
+        "cursor-not-allowed" => {
+            quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OperationNotAllowed); }
+        }
         "cursor-grab" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OpenHand); },
         "cursor-grabbing" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::ClosedHand); },
         "cursor-crosshair" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::Crosshair); },
 
         // Font weight
-        "font-thin" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); },
-        "font-light" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); },
-        "font-normal" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); },
-        "font-medium" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); },
-        "font-semibold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); },
-        "font-bold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); },
-        "font-extrabold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); },
-        "font-black" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); },
+        "font-thin" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); }
+        }
+        "font-light" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); }
+        }
+        "font-normal" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); }
+        }
+        "font-medium" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); }
+        }
+        "font-semibold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
+        }
+        "font-bold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); }
+        }
+        "font-extrabold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
+        }
+        "font-black" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); }
+        }
 
         // Text align
-        "text-left" => quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); },
-        "text-center" => quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); },
-        "text-right" => quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); },
+        "text-left" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); }
+        }
+        "text-center" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); }
+        }
+        "text-right" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); }
+        }
 
         // Text size
         "text-xs" => emit_font_size(12.0),
@@ -437,19 +495,27 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "h-screen" => quote! { s.size.height = Some(::gpui::Length::from(::gpui::relative(1.))); },
 
         // Min width
-        "min-w-full" => quote! { s.min_size.width = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        "min-w-full" => {
+            quote! { s.min_size.width = Some(::gpui::Length::from(::gpui::relative(1.))); }
+        }
         "min-w-auto" => quote! { s.min_size.width = Some(::gpui::Length::Auto); },
 
         // Min height
-        "min-h-full" => quote! { s.min_size.height = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        "min-h-full" => {
+            quote! { s.min_size.height = Some(::gpui::Length::from(::gpui::relative(1.))); }
+        }
         "min-h-auto" => quote! { s.min_size.height = Some(::gpui::Length::Auto); },
 
         // Max width
-        "max-w-full" => quote! { s.max_size.width = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        "max-w-full" => {
+            quote! { s.max_size.width = Some(::gpui::Length::from(::gpui::relative(1.))); }
+        }
         "max-w-none" => quote! { s.max_size.width = Some(::gpui::Length::Auto); },
 
         // Max height
-        "max-h-full" => quote! { s.max_size.height = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        "max-h-full" => {
+            quote! { s.max_size.height = Some(::gpui::Length::from(::gpui::relative(1.))); }
+        }
         "max-h-none" => quote! { s.max_size.height = Some(::gpui::Length::Auto); },
 
         // Margin auto
@@ -490,8 +556,12 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "bg-black" => quote! { s.background = Some((::gpui::black()).into()); },
         "bg-white" => quote! { s.background = Some((::gpui::white()).into()); },
         "bg-transparent" => quote! {},
-        "text-black" => quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::black()).into()); },
-        "text-white" => quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::white()).into()); },
+        "text-black" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::black()).into()); }
+        }
+        "text-white" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::white()).into()); }
+        }
         "text-transparent" => quote! {},
         "border-black" => quote! { s.border_color = Some((::gpui::black()).into()); },
         "border-white" => quote! { s.border_color = Some((::gpui::white()).into()); },
@@ -563,8 +633,10 @@ fn emit_prefixed(util: &str, opacity: Option<u8>) -> Option<TokenStream2> {
 fn emit_two_part_prefix(util: &str, _opacity: Option<u8>) -> Option<TokenStream2> {
     // border-t-2, border-r-2, etc.
     for (prefix, field) in [
-        ("border-t", "top"), ("border-r", "right"),
-        ("border-b", "bottom"), ("border-l", "left"),
+        ("border-t", "top"),
+        ("border-r", "right"),
+        ("border-b", "bottom"),
+        ("border-l", "left"),
     ] {
         let field_ident = format_ident(field);
         if util == prefix {
@@ -583,8 +655,10 @@ fn emit_two_part_prefix(util: &str, _opacity: Option<u8>) -> Option<TokenStream2
 
     // rounded-tl, rounded-tr, rounded-bl, rounded-br (single corner)
     for (prefix, field) in [
-        ("rounded-tl", "top_left"), ("rounded-tr", "top_right"),
-        ("rounded-br", "bottom_right"), ("rounded-bl", "bottom_left"),
+        ("rounded-tl", "top_left"),
+        ("rounded-tr", "top_right"),
+        ("rounded-br", "bottom_right"),
+        ("rounded-bl", "bottom_left"),
     ] {
         if util == prefix {
             return Some(emit_rounded_corner(field, 4.0));
@@ -820,20 +894,36 @@ fn emit_gap_axis(axis: &str, rest: &str) -> Option<TokenStream2> {
 }
 
 fn emit_width(rest: &str) -> Option<TokenStream2> {
-    if rest == "full" { return Some(quote! { s.size.width = Some(::gpui::Length::from(::gpui::relative(1.))); }); }
-    if rest == "auto" { return Some(quote! { s.size.width = Some(::gpui::Length::Auto); }); }
-    if rest == "fit" { return Some(quote! { s.size.width = Some(::gpui::Length::Auto); }); }
-    if rest == "screen" { return Some(quote! { s.size.width = Some(::gpui::Length::from(::gpui::relative(1.))); }); }
+    if rest == "full" {
+        return Some(quote! { s.size.width = Some(::gpui::Length::from(::gpui::relative(1.))); });
+    }
+    if rest == "auto" {
+        return Some(quote! { s.size.width = Some(::gpui::Length::Auto); });
+    }
+    if rest == "fit" {
+        return Some(quote! { s.size.width = Some(::gpui::Length::Auto); });
+    }
+    if rest == "screen" {
+        return Some(quote! { s.size.width = Some(::gpui::Length::from(::gpui::relative(1.))); });
+    }
     let n = spacing::spacing_value(rest)?;
     let v = len_px(n);
     Some(quote! { s.size.width = Some(#v); })
 }
 
 fn emit_height(rest: &str) -> Option<TokenStream2> {
-    if rest == "full" { return Some(quote! { s.size.height = Some(::gpui::Length::from(::gpui::relative(1.))); }); }
-    if rest == "auto" { return Some(quote! { s.size.height = Some(::gpui::Length::Auto); }); }
-    if rest == "fit" { return Some(quote! { s.size.height = Some(::gpui::Length::Auto); }); }
-    if rest == "screen" { return Some(quote! { s.size.height = Some(::gpui::Length::from(::gpui::relative(1.))); }); }
+    if rest == "full" {
+        return Some(quote! { s.size.height = Some(::gpui::Length::from(::gpui::relative(1.))); });
+    }
+    if rest == "auto" {
+        return Some(quote! { s.size.height = Some(::gpui::Length::Auto); });
+    }
+    if rest == "fit" {
+        return Some(quote! { s.size.height = Some(::gpui::Length::Auto); });
+    }
+    if rest == "screen" {
+        return Some(quote! { s.size.height = Some(::gpui::Length::from(::gpui::relative(1.))); });
+    }
     let n = spacing::spacing_value(rest)?;
     let v = len_px(n);
     Some(quote! { s.size.height = Some(#v); })
@@ -847,10 +937,26 @@ fn emit_background(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {
 fn emit_text(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {
     // Text align
     match rest {
-        "left" => return Some(quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); }),
-        "center" => return Some(quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); }),
-        "right" => return Some(quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); }),
-        "justify" => return Some(quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); }),
+        "left" => {
+            return Some(
+                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); },
+            )
+        }
+        "center" => {
+            return Some(
+                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); },
+            )
+        }
+        "right" => {
+            return Some(
+                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); },
+            )
+        }
+        "justify" => {
+            return Some(
+                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); },
+            )
+        }
         _ => {}
     }
 
@@ -861,7 +967,9 @@ fn emit_text(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {
 
     // Text color
     if let Some(color) = emit_color_value(rest, opacity) {
-        return Some(quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); });
+        return Some(
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); },
+        );
     }
 
     None
@@ -918,7 +1026,9 @@ fn emit_cursor(rest: &str) -> Option<TokenStream2> {
         "pointer" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::PointingHand); },
         "default" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::Arrow); },
         "text" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::IBeam); },
-        "not-allowed" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OperationNotAllowed); },
+        "not-allowed" => {
+            quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OperationNotAllowed); }
+        }
         "grab" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::OpenHand); },
         "grabbing" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::ClosedHand); },
         "crosshair" => quote! { s.mouse_cursor = Some(::gpui::CursorStyle::Crosshair); },
@@ -928,14 +1038,30 @@ fn emit_cursor(rest: &str) -> Option<TokenStream2> {
 
 fn emit_font_weight_prefixed(rest: &str) -> Option<TokenStream2> {
     Some(match rest {
-        "thin" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); },
-        "light" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); },
-        "normal" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); },
-        "medium" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); },
-        "semibold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); },
-        "bold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); },
-        "extrabold" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); },
-        "black" => quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); },
+        "thin" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); }
+        }
+        "light" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); }
+        }
+        "normal" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); }
+        }
+        "medium" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); }
+        }
+        "semibold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
+        }
+        "bold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); }
+        }
+        "extrabold" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
+        }
+        "black" => {
+            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); }
+        }
         _ => return None,
     })
 }
@@ -1009,10 +1135,18 @@ fn emit_row(rest: &str) -> Option<TokenStream2> {
 
 fn emit_min_max(kind: &str, rest: &str) -> Option<TokenStream2> {
     if let Some(rest) = rest.strip_prefix("w-") {
-        return if kind == "min" { emit_min_size("width", rest) } else { emit_max_size("width", rest) };
+        return if kind == "min" {
+            emit_min_size("width", rest)
+        } else {
+            emit_max_size("width", rest)
+        };
     }
     if let Some(rest) = rest.strip_prefix("h-") {
-        return if kind == "min" { emit_min_size("height", rest) } else { emit_max_size("height", rest) };
+        return if kind == "min" {
+            emit_min_size("height", rest)
+        } else {
+            emit_max_size("height", rest)
+        };
     }
     None
 }
@@ -1024,7 +1158,9 @@ fn emit_min_size(axis: &str, rest: &str) -> Option<TokenStream2> {
     }
     if rest == "full" {
         let field = format_ident(axis);
-        return Some(quote! { s.min_size.#field = Some(::gpui::Length::from(::gpui::relative(1.))); });
+        return Some(
+            quote! { s.min_size.#field = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        );
     }
     let n = spacing::spacing_value(rest)?;
     let field = format_ident(axis);
@@ -1039,7 +1175,9 @@ fn emit_max_size(axis: &str, rest: &str) -> Option<TokenStream2> {
     }
     if rest == "full" {
         let field = format_ident(axis);
-        return Some(quote! { s.max_size.#field = Some(::gpui::Length::from(::gpui::relative(1.))); });
+        return Some(
+            quote! { s.max_size.#field = Some(::gpui::Length::from(::gpui::relative(1.))); },
+        );
     }
     let n = spacing::spacing_value(rest)?;
     let field = format_ident(axis);
@@ -1125,7 +1263,9 @@ fn emit_arbitrary(util: &str, arb: &str, _opacity: Option<u8>) -> syn::Result<To
             if util == "bg" {
                 return Ok(quote! { s.background = Some((#color).into()); });
             } else if util == "text" {
-                return Ok(quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); });
+                return Ok(
+                    quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); },
+                );
             } else {
                 return Ok(quote! { s.border_color = Some((#color).into()); });
             }
@@ -1144,7 +1284,9 @@ fn emit_arbitrary(util: &str, arb: &str, _opacity: Option<u8>) -> syn::Result<To
 fn emit_arbitrary_length(util: &str, len: TokenStream2) -> TokenStream2 {
     match util {
         "w" => quote! { s.size.width = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "h" => quote! { s.size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
+        "h" => {
+            quote! { s.size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
         "p" => {
             let d = quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#len) };
             quote! {
@@ -1162,10 +1304,18 @@ fn emit_arbitrary_length(util: &str, len: TokenStream2) -> TokenStream2 {
             let d = quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#len) };
             quote! { s.padding.top = Some(#d); s.padding.bottom = Some(#d); }
         }
-        "pt" => quote! { s.padding.top = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); },
-        "pr" => quote! { s.padding.right = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); },
-        "pb" => quote! { s.padding.bottom = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); },
-        "pl" => quote! { s.padding.left = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); },
+        "pt" => {
+            quote! { s.padding.top = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); }
+        }
+        "pr" => {
+            quote! { s.padding.right = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); }
+        }
+        "pb" => {
+            quote! { s.padding.bottom = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); }
+        }
+        "pl" => {
+            quote! { s.padding.left = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#len)); }
+        }
         "m" => {
             let l = quote! { ::core::convert::Into::<::gpui::Length>::into(#len) };
             quote! {
@@ -1183,10 +1333,18 @@ fn emit_arbitrary_length(util: &str, len: TokenStream2) -> TokenStream2 {
             let l = quote! { ::core::convert::Into::<::gpui::Length>::into(#len) };
             quote! { s.margin.top = Some(#l); s.margin.bottom = Some(#l); }
         }
-        "mt" => quote! { s.margin.top = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "mr" => quote! { s.margin.right = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "mb" => quote! { s.margin.bottom = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "ml" => quote! { s.margin.left = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
+        "mt" => {
+            quote! { s.margin.top = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "mr" => {
+            quote! { s.margin.right = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "mb" => {
+            quote! { s.margin.bottom = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "ml" => {
+            quote! { s.margin.left = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
         "gap" => {
             let d = quote! { ::core::convert::Into::<::gpui::DefiniteLength>::into(#len) };
             quote! { s.gap.width = Some(#d); s.gap.height = Some(#d); }
@@ -1213,14 +1371,30 @@ fn emit_arbitrary_length(util: &str, len: TokenStream2) -> TokenStream2 {
                 s.border_widths.left = Some(#a);
             }
         }
-        "min-w" => quote! { s.min_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "min-h" => quote! { s.min_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "max-w" => quote! { s.max_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "max-h" => quote! { s.max_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "top" => quote! { s.inset.top = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "right" => quote! { s.inset.right = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "bottom" => quote! { s.inset.bottom = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
-        "left" => quote! { s.inset.left = Some(::core::convert::Into::<::gpui::Length>::into(#len)); },
+        "min-w" => {
+            quote! { s.min_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "min-h" => {
+            quote! { s.min_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "max-w" => {
+            quote! { s.max_size.width = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "max-h" => {
+            quote! { s.max_size.height = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "top" => {
+            quote! { s.inset.top = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "right" => {
+            quote! { s.inset.right = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "bottom" => {
+            quote! { s.inset.bottom = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
+        "left" => {
+            quote! { s.inset.left = Some(::core::convert::Into::<::gpui::Length>::into(#len)); }
+        }
         "inset" => {
             let l = quote! { ::core::convert::Into::<::gpui::Length>::into(#len) };
             quote! {

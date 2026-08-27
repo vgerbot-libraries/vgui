@@ -96,7 +96,10 @@ fn parse_node(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Node> {
                 Ok(Node::Interp(lit_ts))
             }
         }
-        other => Err(syn::Error::new(other.span(), "expected element, fragment, or `{expr}`")),
+        other => Err(syn::Error::new(
+            other.span(),
+            "expected element, fragment, or `{expr}`",
+        )),
     }
 }
 
@@ -113,7 +116,8 @@ fn parse_element_or_fragment(tokens: &[TokenTree], i: &mut usize) -> syn::Result
             if *i >= tokens.len() {
                 return Err(syn::Error::new(span, "unclosed fragment"));
             }
-            if is_punct(&tokens[*i], '<') && *i + 1 < tokens.len() && is_punct(&tokens[*i + 1], '/') {
+            if is_punct(&tokens[*i], '<') && *i + 1 < tokens.len() && is_punct(&tokens[*i + 1], '/')
+            {
                 *i += 2;
                 if *i >= tokens.len() || !is_punct(&tokens[*i], '>') {
                     return Err(syn::Error::new(span, "expected `</>`"));
@@ -170,14 +174,14 @@ fn parse_element_or_fragment(tokens: &[TokenTree], i: &mut usize) -> syn::Result
             };
             *i += 1;
             if *i >= tokens.len() || !is_punct(&tokens[*i], '>') {
-                return Err(syn::Error::new(close.span(), "expected `>` after closing tag"));
+                return Err(syn::Error::new(
+                    close.span(),
+                    "expected `>` after closing tag",
+                ));
             }
             *i += 1;
             if close.to_string() != tag.to_string() {
-                return Err(syn::Error::new(
-                    close.span(),
-                    "mismatched closing tag",
-                ));
+                return Err(syn::Error::new(close.span(), "mismatched closing tag"));
             }
             break;
         }
@@ -331,7 +335,12 @@ fn emit_element(el: &Element) -> syn::Result<TokenStream2> {
     if name == "For" {
         return emit_for(el);
     }
-    if name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+    if name
+        .chars()
+        .next()
+        .map(|c| c.is_uppercase())
+        .unwrap_or(false)
+    {
         return emit_component(el);
     }
     emit_builtin(el)
@@ -368,12 +377,7 @@ fn emit_for(el: &Element) -> syn::Result<TokenStream2> {
         match &attr.kind {
             AttrKind::Ident(id) if id == "each" => each = Some(attr_tokens(&attr.value)),
             AttrKind::Ident(id) if id == "fallback" => fallback = Some(attr_tokens(&attr.value)),
-            _ => {
-                return Err(syn::Error::new(
-                    attr.span,
-                    "unsupported attribute on <For>",
-                ))
-            }
+            _ => return Err(syn::Error::new(attr.span, "unsupported attribute on <For>")),
         }
     }
     let each = each.ok_or_else(|| syn::Error::new(el.tag.span(), "missing `each` on <For>"))?;
@@ -505,14 +509,17 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     }
 
     // Check if class string contains focus: or active: variants (requires id)
-    let class_needs_id = class.as_ref().and_then(|c| {
-        if let Some(lit) = string_lit_static(&c.value) {
-            let s = lit.to_string();
-            Some(s.contains("focus:") || s.contains("active:"))
-        } else {
-            None
-        }
-    }).unwrap_or(false);
+    let class_needs_id = class
+        .as_ref()
+        .and_then(|c| {
+            if let Some(lit) = string_lit_static(&c.value) {
+                let s = lit.to_string();
+                Some(s.contains("focus:") || s.contains("active:"))
+            } else {
+                None
+            }
+        })
+        .unwrap_or(false);
 
     let needs_stateful = !events.is_empty()
         || hover.is_some()
@@ -522,7 +529,14 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         || events.iter().any(|(ev, _, _)| {
             matches!(
                 ev.to_string().as_str(),
-                "click" | "hover" | "mouse_down" | "mouse_up" | "mouse_move" | "scroll" | "key_down" | "key_up"
+                "click"
+                    | "hover"
+                    | "mouse_down"
+                    | "mouse_up"
+                    | "mouse_move"
+                    | "scroll"
+                    | "key_down"
+                    | "key_up"
             )
         });
     // hover is on InteractiveElement, not Stateful. active/on_click/on_hover need Stateful.
@@ -531,9 +545,9 @@ fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             || focus.is_some()
             || class.is_some()
             || class_needs_id
-            || events.iter().any(|(ev, _, _)| {
-                matches!(ev.to_string().as_str(), "click" | "hover")
-            }));
+            || events
+                .iter()
+                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover")));
 
     if let Some(id_attr) = id {
         let v = if let Some(lit) = string_lit_static(&id_attr.value) {
