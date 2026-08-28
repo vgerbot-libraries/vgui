@@ -5908,6 +5908,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-inputs"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "vgui",
+]
+
+[[package]]
 name = "vgui-tailwind"
 version = "0.1.0"
 dependencies = [

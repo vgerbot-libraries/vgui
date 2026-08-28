@@ -1,0 +1,5 @@
+error: unexpected tokens after view root
+ --> tests/ui/input_children.rs:6:13
+  |
+6 |             <span>{"child"}</span>
+  |             ^

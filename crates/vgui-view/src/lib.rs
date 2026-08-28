@@ -48,6 +48,7 @@ pub(crate) enum AttrKind {
     Id,
     Src,
     Class,
+    Type,
 }
 
 pub(crate) enum AttrValue {

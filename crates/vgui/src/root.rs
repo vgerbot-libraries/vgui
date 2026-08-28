@@ -25,6 +25,7 @@ pub(crate) enum Slot {
     Signal(std::sync::Arc<dyn std::any::Any>),
     Memo(std::sync::Arc<dyn std::any::Any>),
     Effect(std::sync::Arc<dyn std::any::Any>),
+    Widget(std::sync::Arc<dyn std::any::Any>),
 }
 
 pub struct VguiRoot {

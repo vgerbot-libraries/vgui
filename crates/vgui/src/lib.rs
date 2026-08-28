@@ -6,6 +6,8 @@ pub use vgui_view::view;
 
 mod child;
 mod control;
+mod input_text;
+mod input_widgets;
 pub mod prelude;
 mod reactive;
 mod root;
@@ -13,6 +15,13 @@ mod style;
 
 pub use crate::child::{click, into_child, IntoViewChild};
 pub use crate::control::{for_each, for_each_or, show, show_when};
+pub use crate::input_text::{
+    input_cb, str_change_cb, text_input, TextKind, TextInputProps,
+};
+pub use crate::input_widgets::{
+    bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
+    range_input, FileProps, RadioProps, RangeProps,
+};
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::root::{mount, VguiRoot};
 pub use crate::style::{ApplyStyle, Css, TwStyle};

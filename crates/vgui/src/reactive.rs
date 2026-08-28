@@ -98,6 +98,14 @@ fn current() -> Current {
     })
 }
 
+/// Run a closure with the current VguiRoot context. Panics if not inside a
+/// VguiRoot render (same precondition as `create_signal`).
+pub(crate) fn with_root_cx<R>(f: impl FnOnce(&mut gpui::Context<VguiRoot>) -> R) -> R {
+    let cur = current();
+    let cx = unsafe { &mut *cur.cx };
+    f(cx)
+}
+
 impl Clone for Current {
     fn clone(&self) -> Self {
         Self {
@@ -246,6 +254,42 @@ pub fn create_signal<T: Clone + PartialEq + 'static>(
         },
         WriteSignal { entity, cache },
     )
+}
+
+/// Get-or-create a persistent gpui view entity, cached in a reactive scope
+/// slot (mirroring `create_signal`). The same `Entity<T>` handle is returned
+/// on every render so gpui keeps the view alive and its editing/drag state
+/// persists across re-renders.
+pub(crate) fn get_or_create_view<T: gpui::Render + 'static>(
+    factory: impl FnOnce(&mut gpui::Context<VguiRoot>) -> gpui::Entity<T>,
+) -> gpui::Entity<T> {
+    let cur = current();
+    {
+        let mut scope = cur.scope.borrow_mut();
+        let index = scope.index;
+        if index < scope.slots.len() {
+            let stored = match &scope.slots[index] {
+                Slot::Widget(stored) => stored.clone(),
+                _ => panic!("vgui widget slot {index} changed type"),
+            };
+            scope.index += 1;
+            drop(scope);
+            return stored
+                .downcast_ref::<gpui::Entity<T>>()
+                .cloned()
+                .unwrap_or_else(|| panic!("vgui widget slot {index} changed type"));
+        }
+    }
+    let cx = unsafe { &mut *cur.cx };
+    let entity = factory(cx);
+    {
+        let mut scope = cur.scope.borrow_mut();
+        scope
+            .slots
+            .push(Slot::Widget(std::sync::Arc::new(entity.clone())));
+        scope.index += 1;
+    }
+    entity
 }
 
 pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) -> ReadSignal<T> {

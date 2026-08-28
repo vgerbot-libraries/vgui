@@ -85,6 +85,16 @@ pub(crate) fn parse_element_or_fragment(
             }));
         }
         if is_punct(&tokens[*i], '>') {
+            // Void element: `<input>` without `/>` — treat as self-closing.
+            if tag.to_string() == "input" {
+                *i += 1;
+                return Ok(Node::Element(Element {
+                    tag,
+                    attrs,
+                    children: Vec::new(),
+                    self_closing: true,
+                }));
+            }
             *i += 1;
             break;
         }
@@ -146,6 +156,7 @@ pub(crate) fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Att
                 "id" => AttrKind::Id,
                 "src" => AttrKind::Src,
                 "class" => AttrKind::Class,
+                "type" => AttrKind::Type,
                 "on" => {
                     if *i >= tokens.len() || !is_punct(&tokens[*i], ':') {
                         return Err(syn::Error::new(span, "expected `on:event`"));

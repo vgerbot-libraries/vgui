@@ -37,7 +37,7 @@ build with — see the [examples](#examples).
 - [Reactivity](#reactivity)
 - [Styling](#styling)
 - [Control flow](#control-flow)
-- [License](#license)
+- [Input elements](#input-elements)
 
 ## Workspace layout
 
@@ -50,7 +50,7 @@ This repository is a Cargo workspace:
 | `vgui-css`             | proc-macro  | The `css!` macro.                                             |
 | `vgui-tailwind`        | proc-macro  | The `tw!` macro and the Tailwind class registry.              |
 | `examples/counter`     | bin         | A minimal counter demonstrating signals and `Show`.           |
-| `examples/todolist`    | bin         | A todo app demonstrating `For`, filters and `css!` styling.   |
+| `examples/inputs`     | bin         | All `<input>` types: text, password, checkbox, radio, range, file, etc. |
 
 ## Prerequisites
 
@@ -179,6 +179,16 @@ and `hover`/`active` refinements.
 
 ```bash
 cargo run -p vgui-todolist
+```
+
+### Inputs
+
+A comprehensive demo of every `<input>` type: text with live echo, password,
+checkbox, radio group, range slider, number, date, file picker, submit
+button, and hidden.
+
+```bash
+cargo run -p vgui-inputs
 ```
 
 ## Usage
@@ -344,7 +354,76 @@ view! {
         <Greeting name={"world"} />
     </div>
 }
+
+## Input elements
+
+`<input>` is a void element (self-closing — both `<input type="text">` and
+`<input type="text" />` are accepted). The `type` attribute selects the
+widget kind; if omitted, `type="text"` is assumed.
+
+### Text-based types
+
+`text`, `password`, `search`, `email`, `url`, `tel`, `number`, `date`,
+`datetime-local`, `time`, `month`, `week`, `color` all render a text field
+with full cursor, selection, keyboard editing, clipboard (Ctrl+A/C/V/X), and
+IME (CJK composition) support.
+
+```rust
+view! {
+    <input
+        type="text"
+        placeholder="Name"
+        on:input={move |v: &str, cx: &mut App| set_name.set(cx, v.to_string())}
+    />
+}
 ```
+
+Supported attributes: `value`, `placeholder`, `disabled`, `readonly`, `min`,
+`max`, `step` (for `number`), `on:input` (fires on every keystroke), `on:change`
+(fires on Enter/blur), plus `style`, `class`, `hover`, `active`, `focus`, `id`.
+
+> **Note:** `date`, `datetime-local`, `time`, `month`, `week`, and `color`
+> are text-entry v1 — they use a format placeholder and light validation
+> with no calendar/color popup. Popups are future work.
+
+### Checkbox & Radio
+
+```rust
+view! {
+    <input type="checkbox" checked={done.get()} on:change={move |v: bool, cx: &mut App| set_done.set(cx, v)} />
+    <input type="radio" checked={sel.get() == 0} on:change={move |_v: bool, cx: &mut App| set_sel.set(cx, 0)} />
+}
+```
+
+### Range slider
+
+```rust
+view! {
+    <input type="range" min={0.0f64} max={100.0f64} step={1.0f64} value={vol.get()}
+        on:change={move |v: f64, cx: &mut App| set_vol.set(cx, v)} />
+}
+```
+
+### File picker
+
+```rust
+view! {
+    <input type="file" value="Browse..." multiple={true}
+        on:change={move |paths: Vec<std::path::PathBuf>, _cx: &mut App| {
+            eprintln!("selected: {:?}", paths);
+        }} />
+}
+```
+
+### Submit / Button / Reset
+
+These render as clickable buttons (like `<button>`). The `value` attribute
+becomes the button label. `on:click` wires the handler. `submit` and `reset`
+have no form semantics in vgui v1 — they behave as buttons.
+
+### Hidden
+
+`<input type="hidden">` renders nothing (`gpui::Empty`).
 
 ## License
 
