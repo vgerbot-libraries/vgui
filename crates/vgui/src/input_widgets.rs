@@ -176,6 +176,13 @@ impl RangeInput {
         self.style = props.style;
         self.class = props.class;
         self.on_change = props.on_change;
+        if let Some(idx) = props.tabindex {
+            if idx >= 0 {
+                self.focus_handle_field = self.focus_handle_field.clone().tab_index(idx).tab_stop(true);
+            } else {
+                self.focus_handle_field = self.focus_handle_field.clone().tab_stop(false);
+            }
+        }
     }
 
     fn ratio(&self) -> f32 {
@@ -432,6 +439,7 @@ pub struct RangeProps {
     pub on_change: Option<Box<dyn FnMut(f64, &mut App)>>,
     pub style: Option<Css>,
     pub class: Option<TwStyle>,
+    pub tabindex: Option<isize>,
 }
 
 /// Get-or-create the persistent `RangeInput` entity and sync props.

@@ -217,3 +217,30 @@ fn different_tag_names_get_different_named_ids() {
     let div_id = element_id(&div).expect("div has id");
     assert_ne!(btn_id, div_id, "different tags must produce different ids");
 }
+
+#[test]
+fn tabindex_forces_auto_id_on_div() {
+    // A plain <div> with tabindex but no other interactive attrs must receive
+    // an auto-generated id so it becomes Stateful<Div> (required for tab_index
+    // / focusable). This exercises the emit_builtin tabindex path.
+    let _scope = RenderScope::new();
+    let el = view! {
+        <div tabindex={0}>{"tab"}</div>
+    };
+    let id = element_id(&el).expect("div with tabindex should have an auto id");
+    assert_eq!(
+        id,
+        ElementId::NamedInteger(SharedString::from("div"), 0),
+        "tabindex div should get id ('div', 0)"
+    );
+}
+
+#[test]
+fn tabindex_negative_one_compiles() {
+    // tabindex={-1} must compile (focusable but skipped by Tab traversal).
+    let _scope = RenderScope::new();
+    let el = view! {
+        <div tabindex={-1}>{"skip"}</div>
+    };
+    assert!(element_id(&el).is_some(), "tabindex=-1 div should be stateful");
+}

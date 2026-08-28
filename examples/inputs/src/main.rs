@@ -24,6 +24,7 @@ fn app() -> impl gpui::IntoElement {
                     type="text"
                     placeholder="Type here..."
                     on:input={move |v: &str, cx: &mut App| set_text.set(cx, v.to_string())}
+                    tabindex={0}
                 />
                 <span class="text-sm text-[#0f0]">{format!("echo: \"{}\"", text.get())}</span>
             </div>
@@ -35,6 +36,7 @@ fn app() -> impl gpui::IntoElement {
                     type="password"
                     placeholder="secret"
                     on:input={move |v: &str, cx: &mut App| set_password.set(cx, v.to_string())}
+                    tabindex={0}
                 />
                 <span class="text-sm text-[#0f0]">{format!("len: {} chars", password.get().chars().count())}</span>
             </div>
@@ -45,6 +47,7 @@ fn app() -> impl gpui::IntoElement {
                     type="checkbox"
                     checked={checked.get()}
                     on:change={move |v: bool, cx: &mut App| set_checked.set(cx, v)}
+                    tabindex={-1}
                 />
                 <span class="text-sm">{format!("checkbox: {}", if checked.get() { "on" } else { "off" })}</span>
             </div>
@@ -79,6 +82,7 @@ fn app() -> impl gpui::IntoElement {
                     step={1.0f64}
                     value={slider.get()}
                     on:change={move |v: f64, cx: &mut App| set_slider.set(cx, v)}
+                    tabindex={1}
                 />
                 <span class="text-sm text-[#0f0]">{format!("value: {:.1}", slider.get())}</span>
             </div>
@@ -92,6 +96,7 @@ fn app() -> impl gpui::IntoElement {
                     max={100.0f64}
                     placeholder="42"
                     on:input={move |v: &str, cx: &mut App| set_number.set(cx, v.to_string())}
+                    tabindex={0}
                 />
                 <span class="text-sm text-[#0f0]">{format!("number: \"{}\"", number_val.get())}</span>
             </div>
@@ -103,6 +108,7 @@ fn app() -> impl gpui::IntoElement {
                     type="date"
                     placeholder="2026-01-15"
                     on:input={move |v: &str, cx: &mut App| set_date.set(cx, v.to_string())}
+                    tabindex={0}
                 />
                 <span class="text-sm text-[#0f0]">{format!("date: \"{}\"", date_val.get())}</span>
             </div>

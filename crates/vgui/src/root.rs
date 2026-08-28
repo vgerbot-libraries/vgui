@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use gpui::{AnyElement, App, AppContext, Context, Entity, IntoElement, Render, WeakEntity, Window};
+use gpui::{AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, WeakEntity, Window};
 
 use crate::reactive::{enter_scope, exit_scope};
 
@@ -87,7 +87,17 @@ impl Render for VguiRoot {
         enter_scope(self.scope.clone(), cx);
         let el = (self.render)();
         exit_scope();
-        el
+        gpui::div()
+            .on_key_down(|event: &gpui::KeyDownEvent, window: &mut Window, _cx: &mut App| {
+                if event.keystroke.key == "tab" {
+                    if event.keystroke.modifiers.shift {
+                        window.focus_prev();
+                    } else {
+                        window.focus_next();
+                    }
+                }
+            })
+            .child(el)
     }
 }
 

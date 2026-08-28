@@ -16,6 +16,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut active = None;
     let mut focus = None;
     let mut class = None;
+    let mut tabindex = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     for attr in &el.attrs {
@@ -27,6 +28,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Active => active = Some(attr),
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
+            AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => unknown.push(id.clone()),
             AttrKind::Type => {
@@ -96,6 +98,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let needs_id = id.is_none()
         && (active.is_some()
             || focus.is_some()
+            || tabindex.is_some()
             || class.is_some()
             || class_needs_id
             || events
@@ -112,6 +115,19 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     } else if needs_id {
         let name_lit = syn::LitStr::new(&name, el.tag.span());
         ctor = quote! { #ctor.id((#name_lit, ::vgui::next_auto_id())) };
+    }
+    if let Some(tabindex_attr) = tabindex {
+        let idx = tabindex_expr(&tabindex_attr.value);
+        ctor = quote! {{
+            let __tabindex = #idx;
+            let mut __el = #ctor;
+            if __tabindex >= 0 {
+                __el = __el.tab_index(__tabindex);
+            } else {
+                __el = __el.focusable();
+            }
+            __el
+        }};
     }
     let _ = needs_stateful;
 
@@ -209,6 +225,24 @@ fn f64_opt_expr(v: &AttrValue) -> TokenStream2 {
     quote! { ::std::option::Option::Some((#e) as f64) }
 }
 
+/// Convert an `AttrValue` into an `isize` token stream for `tabindex`.
+///
+/// Accepted forms: `tabindex="0"` (string literal, parsed at compile time),
+/// `tabindex=0` (integer literal), `tabindex={expr}` (any expression).
+fn tabindex_expr(v: &AttrValue) -> TokenStream2 {
+    // String literal: tabindex="0" → parse at compile time
+    if let Some(lit) = string_lit_static(v) {
+        if let Ok(lit_str) = syn::parse2::<syn::LitStr>(lit.clone()) {
+            if let Ok(n) = lit_str.value().parse::<isize>() {
+                return quote! { #n };
+            }
+        }
+    }
+    // Integer literal or {expr} → cast to isize
+    let e = attr_tokens(v);
+    quote! { ((#e) as isize) }
+}
+
 /// Apply style/class/hover/active/focus/id/events chaining on a div-returning
 /// element, reusing the same logic as `emit_builtin`.
 fn chain_div_extras(
@@ -220,6 +254,7 @@ fn chain_div_extras(
     active: Option<&Attr>,
     focus: Option<&Attr>,
     id: Option<&Attr>,
+    tabindex: Option<&Attr>,
     events: &[(Ident, TokenStream2, Span)],
 ) -> TokenStream2 {
     let name = "input";
@@ -238,6 +273,7 @@ fn chain_div_extras(
     let needs_id = id.is_none()
         && (active.is_some()
             || focus.is_some()
+            || tabindex.is_some()
             || class.is_some()
             || class_needs_id
             || events
@@ -254,6 +290,19 @@ fn chain_div_extras(
     } else if needs_id {
         let name_lit = syn::LitStr::new(name, el.tag.span());
         ctor = quote! { #ctor.id((#name_lit, ::vgui::next_auto_id())) };
+    }
+    if let Some(tabindex_attr) = tabindex {
+        let idx = tabindex_expr(&tabindex_attr.value);
+        ctor = quote! {{
+            let __tabindex = #idx;
+            let mut __el = #ctor;
+            if __tabindex >= 0 {
+                __el = __el.tab_index(__tabindex);
+            } else {
+                __el = __el.focusable();
+            }
+            __el
+        }};
     }
 
     if let Some(style) = style {
@@ -336,6 +385,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
     let mut focus = None;
     let mut class = None;
     let mut id = None;
+    let mut tabindex = None;
     let mut events: Vec<(Ident, TokenStream2, Span)> = Vec::new();
     // input-specific
     let mut on_input = None;
@@ -359,6 +409,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
             AttrKind::Id => id = Some(attr),
+            AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => {
                 let ev_name = ev.to_string();
                 let handler = attr_tokens(&attr.value);
@@ -484,6 +535,14 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let tabindex_expr_val = match tabindex {
+                Some(v) => {
+                    let e = tabindex_expr(&v.value);
+                    quote! { ::std::option::Option::Some(#e) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
             Ok(quote! {
                 ::vgui::text_input(::vgui::TextInputProps {
                     kind: #kind_variant,
@@ -498,6 +557,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                     style: #style_expr,
                     class: #class_expr,
+                    tabindex: #tabindex_expr_val,
                 })
             })
         }
@@ -524,7 +584,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -550,7 +610,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -607,6 +667,14 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let tabindex_expr_val = match tabindex {
+                Some(v) => {
+                    let e = tabindex_expr(&v.value);
+                    quote! { ::std::option::Option::Some(#e) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
             Ok(quote! {
                 ::vgui::range_input(::vgui::RangeProps {
                     value: #value_expr,
@@ -617,6 +685,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                     style: #style_expr,
                     class: #class_expr,
+                    tabindex: #tabindex_expr_val,
                 })
             })
         }
@@ -638,7 +707,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
             // Use `value` attr as the button label text.
             if let Some(v) = value {
                 let label = attr_tokens(v);
@@ -661,7 +730,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             // Use `value` attr as button label text.
             let label = value.map(|v| attr_tokens(v));
 
-            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, &events);
+            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
 
             if let Some(label) = label {
                 Ok(quote! {{

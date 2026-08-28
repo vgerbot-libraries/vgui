@@ -137,6 +137,13 @@ impl TextInput {
         self.class = props.class;
         self.on_input = props.on_input;
         self.on_change = props.on_change;
+        if let Some(idx) = props.tabindex {
+            if idx >= 0 {
+                self.focus_handle_field = self.focus_handle_field.clone().tab_index(idx).tab_stop(true);
+            } else {
+                self.focus_handle_field = self.focus_handle_field.clone().tab_stop(false);
+            }
+        }
     }
 
     // ── Displayed text ───────────────────────────────────────────────
@@ -1116,6 +1123,7 @@ pub struct TextInputProps {
     pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
     pub style: Option<Css>,
     pub class: Option<TwStyle>,
+    pub tabindex: Option<isize>,
 }
 
 /// Get-or-create the persistent `TextInput` entity and sync props.
