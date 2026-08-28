@@ -78,6 +78,9 @@ pub struct TextInput {
     class: Option<TwStyle>,
     blink_task: Option<Task<()>>,
     layout: TextLayout,
+    picker_open: bool,
+    picker_year: i32,
+    picker_month: u32,
 }
 
 impl TextInput {
@@ -105,6 +108,9 @@ impl TextInput {
             class: None,
             blink_task: None,
             layout: TextLayout::default(),
+            picker_open: false,
+            picker_year: 2026,
+            picker_month: 1,
         }
     }
 
@@ -255,15 +261,64 @@ impl TextInput {
         }
     }
 
+    // ── Date picker ──────────────────────────────────────────────────
+
+    fn supports_picker(&self) -> bool {
+        matches!(
+            self.kind,
+            TextKind::Date | TextKind::DateTime | TextKind::Month
+        )
+    }
+
+    fn open_picker(&mut self) {
+        if let Some((y, m, _)) = parse_date(&self.value) {
+            self.picker_year = y;
+            self.picker_month = m;
+        } else if let Some((y, m, _)) = today_date() {
+            self.picker_year = y;
+            self.picker_month = m;
+        }
+        self.picker_open = true;
+    }
+
+    fn select_date(&mut self, year: i32, month: u32, day: u32, cx: &mut Context<Self>) {
+        self.value = format!("{:04}-{:02}-{:02}", year, month, day);
+        self.cursor = self.value.len();
+        self.selection = None;
+        self.picker_open = false;
+        self.fire_on_input(cx);
+        self.fire_on_change(cx);
+    }
+
     // ── Editing primitives ───────────────────────────────────────────
 
     fn filter_text(&self, text: &str) -> String {
-        if self.kind == TextKind::Number {
-            text.chars()
+        match self.kind {
+            TextKind::Number => text
+                .chars()
                 .filter(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '+' | 'e' | 'E'))
-                .collect()
-        } else {
-            text.to_string()
+                .collect(),
+            TextKind::Date | TextKind::Month => text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || *c == '-')
+                .collect(),
+            TextKind::DateTime => text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || matches!(*c, '-' | 'T' | ':'))
+                .collect(),
+            TextKind::Time => text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || *c == ':')
+                .collect(),
+            TextKind::Week => text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || matches!(*c, '-' | 'W'))
+                .collect(),
+            TextKind::Color => text
+                .chars()
+                .filter(|c| c.is_ascii_hexdigit() || *c == '#')
+                .collect(),
+            _ => text.to_string(),
         }
     }
 
@@ -378,10 +433,15 @@ impl TextInput {
                 self.fire_on_change(cx);
             }
             "escape" => {
-                self.value = self.last_committed.clone();
-                self.cursor = self.value.len();
-                self.selection = None;
-                cx.notify();
+                if self.picker_open {
+                    self.picker_open = false;
+                    cx.notify();
+                } else {
+                    self.value = self.last_committed.clone();
+                    self.cursor = self.value.len();
+                    self.selection = None;
+                    cx.notify();
+                }
             }
             "tab" => {
                 // let gpui handle focus traversal
@@ -498,6 +558,178 @@ impl TextInput {
         self.selecting = false;
         cx.notify();
     }
+
+    // ── Date picker popup ────────────────────────────────────────────
+
+    fn render_picker_popup(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let year = self.picker_year;
+        let month = self.picker_month;
+        let today = today_date();
+        let selected = parse_date(&self.value);
+
+        let month_name = month_name(month);
+        let first_weekday = weekday_of_first(year, month);
+        let days_in_month = days_in_month(year, month);
+
+        // Header: ◀  Month Year  ▶
+        let header = gpui::div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_between()
+            .mb_2()
+            .child(
+                gpui::div()
+                    .id("picker-prev")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25C0}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            if this.picker_month == 1 {
+                                this.picker_month = 12;
+                                this.picker_year -= 1;
+                            } else {
+                                this.picker_month -= 1;
+                            }
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                gpui::div()
+                    .text_size(px(13.))
+                    .text_color(gpui::black())
+                    .child(SharedString::from(format!("{} {}", month_name, year))),
+            )
+            .child(
+                gpui::div()
+                    .id("picker-next")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25B6}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            if this.picker_month == 12 {
+                                this.picker_month = 1;
+                                this.picker_year += 1;
+                            } else {
+                                this.picker_month += 1;
+                            }
+                            cx.notify();
+                        }),
+                    ),
+            );
+
+        // Weekday header row
+        let mut weekday_row = gpui::div().flex().flex_row().mb_1();
+        for wd in ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] {
+            weekday_row = weekday_row.child(
+                gpui::div()
+                    .w(px(28.))
+                    .h(px(20.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_size(px(11.))
+                    .text_color(hsla(0.0, 0.0, 0.5, 1.0))
+                    .child(SharedString::from(wd)),
+            );
+        }
+
+        // Day grid
+        let mut day_grid = gpui::div().flex().flex_col();
+        let mut week = gpui::div().flex().flex_row();
+        // Leading blanks
+        for _ in 0..first_weekday {
+            week = week.child(gpui::div().w(px(28.)).h(px(28.)));
+        }
+        for day in 1..=days_in_month {
+            let is_today = today
+                .map(|(ty, tm, td)| ty == year && tm == month && td == day)
+                .unwrap_or(false);
+            let is_selected = selected
+                .map(|(sy, sm, sd)| sy == year && sm == month && sd == day)
+                .unwrap_or(false);
+            let bg = if is_selected {
+                hsla(0.6, 0.8, 0.5, 1.0)
+            } else if is_today {
+                hsla(0.6, 0.6, 0.9, 1.0)
+            } else {
+                gpui::transparent_black()
+            };
+            let fg = if is_selected {
+                gpui::white()
+            } else {
+                gpui::black()
+            };
+            let border = if is_today && !is_selected {
+                hsla(0.6, 0.6, 0.5, 1.0)
+            } else {
+                gpui::transparent_black()
+            };
+            let day_id = ("picker-day", day as u64);
+            week = week.child(
+                gpui::div()
+                    .id(day_id)
+                    .w(px(28.))
+                    .h(px(28.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_size(px(12.))
+                    .text_color(fg)
+                    .bg(bg)
+                    .border_1()
+                    .border_color(border)
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .child(SharedString::from(format!("{}", day)))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _event, _window, cx| {
+                            this.select_date(year, month, day, cx);
+                        }),
+                    ),
+            );
+            let weekday = (first_weekday + day as u32 - 1) % 7;
+            if weekday == 6 {
+                day_grid = day_grid.child(week);
+                week = gpui::div().flex().flex_row();
+            }
+        }
+        // Trailing partial week
+        let last_weekday = (first_weekday + days_in_month as u32 - 1) % 7;
+        if last_weekday != 6 {
+            for _ in (last_weekday + 1)..7 {
+                week = week.child(gpui::div().w(px(28.)).h(px(28.)));
+            }
+            day_grid = day_grid.child(week);
+        }
+
+        let _ = &header; // ensure header is used
+        gpui::div()
+            .id("date-picker-popup")
+            .absolute()
+            .top(px(34.))
+            .left_0()
+            .w(px(224.))
+            .p_2()
+            .bg(gpui::white())
+            .border_1()
+            .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+            .rounded(px(6.))
+            .shadow_md()
+            .flex()
+            .flex_col()
+            .child(header)
+            .child(weekday_row)
+            .child(day_grid)
+    }
 }
 
 // ── Render ───────────────────────────────────────────────────────────
@@ -512,10 +744,15 @@ impl Render for TextInput {
         } else if !is_focused && self.focused {
             self.focused = false;
             self.stop_blink();
+            self.picker_open = false;
             self.fire_on_change(cx);
         }
 
-        let text_style = window.text_style();
+        let mut text_style = window.text_style();
+        // The input has a white background; force the text color to black so
+        // it is always visible regardless of inherited color from ancestors
+        // (e.g. a parent with `text-white`).
+        text_style.color = gpui::black();
         let font_size = text_style.font_size.to_pixels(window.rem_size());
         let line_height = text_style
             .line_height
@@ -602,6 +839,8 @@ impl Render for TextInput {
             .track_focus(&self.focus_handle_field)
             .focusable()
             .cursor_text()
+            .text_color(gpui::black())
+            .relative()
             .px_2()
             .py_1()
             .min_h(px(28.))
@@ -648,6 +887,42 @@ impl Render for TextInput {
                     }
                 },
             ));
+
+        // Calendar toggle icon for date-like inputs
+        if self.supports_picker() {
+            div = div.child(
+                gpui::div()
+                    .id("calendar-icon")
+                    .absolute()
+                    .top_0()
+                    .right_0()
+                    .w(px(24.))
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .text_color(hsla(0.0, 0.0, 0.4, 1.0))
+                    .text_size(px(14.))
+                    .child(SharedString::from("\u{1F4C5}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            if this.picker_open {
+                                this.picker_open = false;
+                            } else {
+                                this.open_picker();
+                            }
+                            cx.notify();
+                        }),
+                    ),
+            );
+        }
+
+        // Date picker popup calendar
+        if self.picker_open && self.supports_picker() {
+            div = div.child(self.render_picker_popup(cx));
+        }
 
         // Apply user-provided style (overrides defaults)
         if let Some(style) = self.style.take() {
@@ -931,4 +1206,98 @@ fn next_word_boundary(s: &str, pos: usize) -> usize {
         }
     }
     p
+}
+
+// ── Date helpers ─────────────────────────────────────────────────────
+
+/// Parse a `YYYY-MM-DD` string into `(year, month, day)`.
+fn parse_date(s: &str) -> Option<(i32, u32, u32)> {
+    let mut parts = s.split('-');
+    let y: i32 = parts.next()?.parse().ok()?;
+    let m: u32 = parts.next()?.parse().ok()?;
+    let d: u32 = parts.next()?.parse().ok()?;
+    if (1..=12).contains(&m) && (1..=31).contains(&d) {
+        Some((y, m, d))
+    } else {
+        None
+    }
+}
+
+/// Return today's date as `(year, month, day)` in the local timezone.
+fn today_date() -> Option<(i32, u32, u32)> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    // Days since epoch
+    let days = (secs / 86400) as i64;
+    // Use a simple civil-from-days algorithm (Howard Hinnant).
+    days_to_ymd(days)
+}
+
+/// Convert days since 1970-01-01 to (year, month, day).
+fn days_to_ymd(days: i64) -> Option<(i32, u32, u32)> {
+    let z = days + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as i64; // [0, 146096]
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+    let mp = (5 * doy + 2) / 153; // [0, 11]
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32; // [1, 31]
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32; // [1, 12]
+    let year = (y + if m <= 2 { 1 } else { 0 }) as i32;
+    Some((year, m, d))
+}
+
+/// Return the weekday (0=Sunday) of the first day of the given month.
+fn weekday_of_first(year: i32, month: u32) -> u32 {
+    // Use Zeller's congruence. January and February are counted as
+    // months 13 and 14 of the previous year.
+    let (y, m): (i32, i32) = if month < 3 {
+        (year - 1, month as i32 + 12)
+    } else {
+        (year, month as i32)
+    };
+    let k = y % 100;
+    let j = y / 100;
+    let h = (1 + 13 * (m + 1) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
+    // Zeller: 0=Saturday → convert to 0=Sunday
+    ((h + 6) % 7) as u32
+}
+
+/// Number of days in a given month.
+fn days_in_month(year: i32, month: u32) -> u32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if is_leap_year(year) {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 30,
+    }
+}
+
+fn is_leap_year(year: i32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+}
+
+fn month_name(month: u32) -> &'static str {
+    match month {
+        1 => "January",
+        2 => "February",
+        3 => "March",
+        4 => "April",
+        5 => "May",
+        6 => "June",
+        7 => "July",
+        8 => "August",
+        9 => "September",
+        10 => "October",
+        11 => "November",
+        12 => "December",
+        _ => "",
+    }
 }

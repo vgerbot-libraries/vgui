@@ -1,8 +1,8 @@
 use gpui::{
-    canvas, px, App, AppContext, Bounds, Context, Entity, Focusable, InteractiveElement,
-    IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    ParentElement, PathPromptOptions, Render, SharedString, Stateful, StatefulInteractiveElement,
-    Styled, Window, hsla,
+    canvas, fill, px, quad, size, App, AppContext, BorderStyle, Bounds, Context, Entity, Focusable,
+    InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, ParentElement, PathPromptOptions, Point, Render, SharedString, Stateful,
+    StatefulInteractiveElement, Styled, Window, hsla,
 };
 
 use crate::reactive::{get_or_create_view, with_root_cx};
@@ -285,9 +285,10 @@ impl Render for RangeInput {
         let thumb_border = hsla(0.6, 0.6, 0.5, 1.0);
         let entity = cx.entity();
 
-        // Capture bounds via canvas prepaint so mouse handlers can map
-        // click x → value. The canvas is a zero-size child overlaying the
-        // track; its prepaint runs after the parent div's layout.
+        // The canvas is absolutely positioned over the entire widget so it
+        // captures the correct bounds (a non-absolute flex child would get
+        // zero width because the track has `w_full`). It also paints the
+        // fill bar and thumb using actual pixel bounds for correct positioning.
         let entity_for_bounds = entity.clone();
 
         let mut div = gpui::div()
@@ -296,6 +297,7 @@ impl Render for RangeInput {
             .focusable()
             .cursor_pointer()
             .h(px(28.))
+            .relative()
             .flex()
             .items_center()
             .on_mouse_down(
@@ -323,47 +325,60 @@ impl Render for RangeInput {
                 this.handle_key_down(event, cx);
             }))
             .child(
-                // Track
+                // Track (background only — fill & thumb are painted on the canvas)
                 gpui::div()
                     .h(px(6.))
                     .w_full()
                     .rounded(px(3.))
-                    .bg(track_color)
-                    .relative()
-                    .child(
-                        // Filled portion
-                        gpui::div()
-                            .absolute()
-                            .top_0()
-                            .left_0()
-                            .h(px(6.))
-                            .w(gpui::px(ratio * 100.0))
-                            .rounded(px(3.))
-                            .bg(fill_color),
-                    )
-                    .child(
-                        // Thumb
-                        gpui::div()
-                            .absolute()
-                            .top(px(-5.))
-                            .left(gpui::px(ratio * 100.0 - 9.0))
-                            .size(px(18.))
-                            .rounded(px(9.))
-                            .bg(thumb_color)
-                            .border_2()
-                            .border_color(thumb_border),
-                    ),
+                    .bg(track_color),
             )
-            .child(canvas(
-                move |bounds, _window, _cx| bounds,
-                move |bounds, _state, _window, cx| {
-                    // Store bounds for mouse handlers
-                    entity_for_bounds.update(cx, |this, cx| {
-                        this.bounds = Some(bounds);
-                        cx.notify();
-                    });
-                },
-            ));
+            .child(
+                canvas(
+                    move |bounds, _window, _cx| bounds,
+                    move |bounds, _state, window, cx| {
+                        // Store bounds for mouse handlers (only notify on change)
+                        entity_for_bounds.update(cx, |this, cx| {
+                            if this.bounds != Some(bounds) {
+                                this.bounds = Some(bounds);
+                                cx.notify();
+                            }
+                        });
+                        // Paint fill bar
+                        let track_h = px(6.);
+                        let track_y = bounds.origin.y
+                            + px((bounds.size.height - track_h) / px(2.));
+                        let fill_w = ratio * bounds.size.width;
+                        let fill_bounds = Bounds::new(
+                            Point::new(bounds.origin.x, track_y),
+                            size(fill_w, track_h),
+                        );
+                        window.paint_quad(fill(fill_bounds, fill_color));
+                        // Paint thumb (18px circle centered on the fill edge)
+                        let thumb_size = px(18.);
+                        let thumb_x = bounds.origin.x + fill_w
+                            - px(thumb_size / px(2.));
+                        let thumb_y = bounds.origin.y
+                            + px((bounds.size.height - thumb_size) / px(2.));
+                        let thumb_bounds = Bounds::new(
+                            Point::new(thumb_x, thumb_y),
+                            size(thumb_size, thumb_size),
+                        );
+                        window.paint_quad(quad(
+                            thumb_bounds,
+                            px(thumb_size / px(2.)),
+                            thumb_color,
+                            px(2.),
+                            thumb_border,
+                            BorderStyle::default(),
+                        ));
+                    },
+                )
+                .absolute()
+                .top_0()
+                .left_0()
+                .w_full()
+                .h_full(),
+            );
 
         if let Some(style) = self.style.take() {
             div = style.apply(div);
