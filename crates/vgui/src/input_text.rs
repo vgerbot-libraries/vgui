@@ -1123,15 +1123,22 @@ pub struct TextInputProps {
     pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
     pub style: Option<Css>,
     pub class: Option<TwStyle>,
+    pub id: Option<String>,
     pub tabindex: Option<isize>,
 }
 
 /// Get-or-create the persistent `TextInput` entity and sync props.
 /// Called by the `view!` macro's expanded code every render.
 pub fn text_input(props: TextInputProps) -> Entity<TextInput> {
+    let id = props.id.clone();
     let entity = get_or_create_view(|cx| cx.new(|cx| TextInput::new(cx)));
     with_root_cx(|cx| {
         entity.update(cx, |view, cx| view.sync_from_props(props, cx));
+        let handle = entity.focus_handle(cx);
+        if let Some(id) = &id {
+            crate::label::register_label_target(id, handle.clone());
+        }
+        crate::label::register_in_label_scope(handle);
     });
     entity
 }

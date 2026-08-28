@@ -50,6 +50,7 @@ pub(crate) enum AttrKind {
     Class,
     Type,
     Tabindex,
+    For,
 }
 
 pub(crate) enum AttrValue {

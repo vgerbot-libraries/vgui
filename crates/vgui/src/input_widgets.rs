@@ -439,14 +439,21 @@ pub struct RangeProps {
     pub on_change: Option<Box<dyn FnMut(f64, &mut App)>>,
     pub style: Option<Css>,
     pub class: Option<TwStyle>,
+    pub id: Option<String>,
     pub tabindex: Option<isize>,
 }
 
 /// Get-or-create the persistent `RangeInput` entity and sync props.
 pub fn range_input(props: RangeProps) -> Entity<RangeInput> {
+    let id = props.id.clone();
     let entity = get_or_create_view(|cx| cx.new(|cx| RangeInput::new(cx)));
     with_root_cx(|cx| {
         entity.update(cx, |view, cx| view.sync_from_props(props, cx));
+        let handle = entity.focus_handle(cx);
+        if let Some(id) = &id {
+            crate::label::register_label_target(id, handle.clone());
+        }
+        crate::label::register_in_label_scope(handle);
     });
     entity
 }

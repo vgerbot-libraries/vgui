@@ -41,6 +41,18 @@ fn app() -> impl gpui::IntoElement {
                 <span class="text-sm text-[#0f0]">{format!("len: {} chars", password.get().chars().count())}</span>
             </div>
 
+            // Labeled text input (for attribute)
+            <div class="flex flex-col gap-1">
+                <label for="username" class="text-sm text-[#888]">{"Username"}</label>
+                <input type="text" id="username" placeholder="Enter username" tabindex={0} />
+            </div>
+
+            // Wrapping label with text input
+            <label class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Wrapped input"}</span>
+                <input type="text" placeholder="Click label to focus" tabindex={0} />
+            </label>
+
             // Checkbox
             <div class="flex flex-row gap-2 items-center">
                 <input

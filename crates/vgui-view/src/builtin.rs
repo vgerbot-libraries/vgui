@@ -9,6 +9,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "input" {
         return emit_input(el);
     }
+    if name == "label" {
+        return emit_label(el);
+    }
     let mut src = None;
     let mut id = None;
     let mut style = None;
@@ -33,6 +36,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Ident(id) => unknown.push(id.clone()),
             AttrKind::Type => {
                 return Err(syn::Error::new(attr.span, "`type` attribute is only valid on <input>"))
+            }
+            AttrKind::For => {
+                return Err(syn::Error::new(attr.span, "`for` is only valid on <label>"))
             }
         }
     }
@@ -255,6 +261,7 @@ fn chain_div_extras(
     focus: Option<&Attr>,
     id: Option<&Attr>,
     tabindex: Option<&Attr>,
+    force_id: bool,
     events: &[(Ident, TokenStream2, Span)],
 ) -> TokenStream2 {
     let name = "input";
@@ -271,7 +278,8 @@ fn chain_div_extras(
         .unwrap_or(false);
 
     let needs_id = id.is_none()
-        && (active.is_some()
+        && (force_id
+            || active.is_some()
             || focus.is_some()
             || tabindex.is_some()
             || class.is_some()
@@ -443,6 +451,9 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Src => {
                 return Err(syn::Error::new(attr.span, "src is not valid on <input>"));
             }
+            AttrKind::For => {
+                return Err(syn::Error::new(attr.span, "`for` is not valid on <input>"));
+            }
         }
     }
 
@@ -543,6 +554,14 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let id_expr = match id {
+                Some(a) => {
+                    let v = attr_tokens(&a.value);
+                    quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&(#v))) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
             Ok(quote! {
                 ::vgui::text_input(::vgui::TextInputProps {
                     kind: #kind_variant,
@@ -557,6 +576,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                     style: #style_expr,
                     class: #class_expr,
+                    id: #id_expr,
                     tabindex: #tabindex_expr_val,
                 })
             })
@@ -584,7 +604,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -610,7 +630,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -675,6 +695,14 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let id_expr = match id {
+                Some(a) => {
+                    let v = attr_tokens(&a.value);
+                    quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&(#v))) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
             Ok(quote! {
                 ::vgui::range_input(::vgui::RangeProps {
                     value: #value_expr,
@@ -685,6 +713,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                     style: #style_expr,
                     class: #class_expr,
+                    id: #id_expr,
                     tabindex: #tabindex_expr_val,
                 })
             })
@@ -707,7 +736,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
             // Use `value` attr as the button label text.
             if let Some(v) = value {
                 let label = attr_tokens(v);
@@ -730,7 +759,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             // Use `value` attr as button label text.
             let label = value.map(|v| attr_tokens(v));
 
-            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, &events);
+            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
 
             if let Some(label) = label {
                 Ok(quote! {{
@@ -753,5 +782,87 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 "unsupported `<input type=\"{other}\">`; supported types: text, password, search, email, url, tel, number, date, datetime-local, time, month, week, color, checkbox, radio, range, file, submit, button, reset, hidden"
             ),
         )),
+    }
+}
+
+// ── <label> ──────────────────────────────────────────────────────────
+
+fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
+    let mut for_attr = None;
+    let mut id = None;
+    let mut style = None;
+    let mut hover = None;
+    let mut active = None;
+    let mut focus = None;
+    let mut class = None;
+    let mut tabindex = None;
+    let mut events: Vec<(Ident, TokenStream2, Span)> = Vec::new();
+    let mut unknown = Vec::new();
+
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::For => for_attr = Some(attr),
+            AttrKind::Id => id = Some(attr),
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Hover => hover = Some(attr),
+            AttrKind::Active => active = Some(attr),
+            AttrKind::Focus => focus = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            AttrKind::Tabindex => tabindex = Some(attr),
+            AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
+            AttrKind::Ident(id2) => unknown.push(id2.clone()),
+            AttrKind::Type => {
+                return Err(syn::Error::new(attr.span, "`type` is not valid on <label>"))
+            }
+            AttrKind::Src => {
+                return Err(syn::Error::new(attr.span, "src is not valid on <label>"))
+            }
+        }
+    }
+    if !unknown.is_empty() {
+        return Err(syn::Error::new(
+            unknown[0].span(),
+            format!("unknown attribute `{}` on <label>", unknown[0]),
+        ));
+    }
+
+    // Label always needs an id because on_mouse_down requires Stateful.
+    let mut ctor = quote! { ::gpui::div().cursor_pointer() };
+    ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, true, &events);
+
+    let kids = emit_children(&el.children)?;
+
+    if let Some(for_a) = for_attr {
+        // Explicit `for="id"` — look up registry at click time.
+        let for_id_expr = match string_lit_static(&for_a.value) {
+            Some(lit) => quote! { ::std::string::String::from(#lit) },
+            None => {
+                let e = attr_tokens(&for_a.value);
+                quote! { ::std::string::ToString::to_string(&(#e)) }
+            }
+        };
+        Ok(quote! {{
+            let mut el = #ctor;
+            #(el = el.child(#kids);)*
+            let __for_id = #for_id_expr;
+            el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, _cx| {
+                ::vgui::focus_label_target(&__for_id, window);
+            });
+            el
+        }})
+    } else {
+        // Wrapping case — collect first focus handle from children.
+        Ok(quote! {{
+            ::vgui::__label_scope_enter();
+            let mut el = #ctor;
+            #(el = el.child(#kids);)*
+            let __target = ::vgui::label_scope_exit();
+            if let ::std::option::Option::Some(__h) = __target {
+                el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, _cx| {
+                    window.focus(&__h);
+                });
+            }
+            el
+        }})
     }
 }

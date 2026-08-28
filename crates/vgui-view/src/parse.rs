@@ -157,6 +157,7 @@ pub(crate) fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Att
                 "src" => AttrKind::Src,
                 "class" => AttrKind::Class,
                 "type" => AttrKind::Type,
+                "for" => AttrKind::For,
                 "tabindex" => AttrKind::Tabindex,
                 "on" => {
                     if *i >= tokens.len() || !is_punct(&tokens[*i], ':') {

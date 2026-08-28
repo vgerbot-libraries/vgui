@@ -8,6 +8,7 @@ mod child;
 mod control;
 mod input_text;
 mod input_widgets;
+mod label;
 pub mod prelude;
 mod reactive;
 mod root;
@@ -22,6 +23,7 @@ pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
     range_input, FileProps, RadioProps, RangeProps,
 };
+pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit};
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::root::{mount, VguiRoot};
 pub use crate::style::{ApplyStyle, Css, TwStyle};
