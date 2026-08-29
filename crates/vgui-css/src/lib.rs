@@ -1,3 +1,7 @@
+//! vgui-css — the `css!` proc-macro.
+//!
+//! Parses CSS declarations (`color: #fff; padding: 8px;`) and compiles them
+//! into gpui `StyleRefinement` closures.
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

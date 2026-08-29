@@ -1,3 +1,8 @@
+//! vgui — a declarative, reactive GUI framework for Rust, built on gpui.
+//!
+//! Provides the `view!` macro for JSX-like views, `css!`/`tw!` for styling,
+//! SolidJS-style reactivity (`create_signal`, `create_memo`, `create_effect`),
+//! and built-in control-flow and input components.
 extern crate self as vgui;
 
 pub use vgui_css::css;

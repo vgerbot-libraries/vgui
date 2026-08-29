@@ -1,0 +1,11 @@
+[book]
+title = "vgui Documentation"
+authors = ["vgerbot-libraries"]
+language = "en"
+src = "src"
+description = "A declarative, reactive GUI framework for Rust, built on gpui."
+
+[output.html]
+git-repository-url = "https://github.com/vgerbot-libraries/vgui"
+edit-url-template = "https://github.com/vgerbot-libraries/vgui/edit/main/book/src/{path}"
+no-section-label = false

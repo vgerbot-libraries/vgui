@@ -1,3 +1,7 @@
+//! vgui-tailwind — the `tw!` proc-macro and Tailwind class registry.
+//!
+//! Expands Tailwind-style utility classes (`flex p-4 bg-[#0000ff]`) into
+//! gpui style refinements, with `hover:`/`focus:`/`active:` variant support.
 extern crate proc_macro;
 
 mod colors;

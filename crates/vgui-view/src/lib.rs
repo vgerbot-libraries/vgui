@@ -1,3 +1,7 @@
+//! vgui-view — the `view!` proc-macro.
+//!
+//! Expands JSX-like syntax (`<div>`, `<Show>`, `<input>`, ...) into gpui
+//! element builder expressions.
 extern crate proc_macro;
 
 mod parse;
