@@ -363,3 +363,11 @@ pub(crate) fn number_value(tokens: &[TokenTree], prop: &str, span: Span) -> syn:
     }
     Err(unsupported(prop, tokens, span))
 }
+
+/// Wrap an optional default expression as `Some(expr)` or `None`.
+pub(crate) fn opt_default(expr: Option<TokenStream2>) -> TokenStream2 {
+    match expr {
+        Some(e) => quote! { ::std::option::Option::Some(#e) },
+        None => quote! { ::std::option::Option::None },
+    }
+}

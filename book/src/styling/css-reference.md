@@ -124,7 +124,6 @@ The following common CSS properties are **not** supported by `css!` because
 - `background-position` / `background-size` / `background-repeat`
 - `float` / `clear`
 - `@media` queries / responsive breakpoints
-- CSS variables / custom properties
 - `!important`
 
 If you need a property not listed here, check whether a `tw!` utility covers

@@ -197,3 +197,109 @@ Supported interpolation properties:
 | `font-size`                   | `impl Into<gpui::DefiniteLength>` |
 | `line-height`                 | `impl Into<gpui::DefiniteLength>` |
 | `font-family`                 | `impl Into<gpui::SharedString>`  |
+
+## CSS Variables (Custom Properties)
+
+`css!` supports CSS custom properties (`--name: value`) and the `var()` function
+for runtime theming. Custom properties defined inside `css!` provide
+compile-time defaults; `var(--name)` emits a runtime lookup against a
+thread-local theme store.
+
+### Defining and using variables
+
+```rust
+css! {
+    --primary: #ff0000;
+    color: var(--primary);
+    background: var(--bg, #fff);  /* fallback if --bg is unset */
+}
+```
+
+`--name: value` declarations emit no runtime code — they only register
+compile-time defaults for `var()` references in the same block. A `var()` with
+no local definition and no fallback panics at runtime if the theme store also
+lacks the variable.
+
+### Runtime themes
+
+The `theme!` macro builds a `vgui::Theme` value, and `set_theme()` installs it
+globally (thread-local). Theme values override compile-time defaults:
+
+```rust
+use vgui::{set_theme, theme};
+
+set_theme(theme! {
+    --primary: #0000ff;
+    --bg: #1a1a1a;
+});
+
+// Now var(--primary) resolves to blue, overriding the css! default.
+```
+
+`Theme::set_*` builders are available for runtime-constructed themes:
+
+```rust
+use vgui::{CssValue, Theme};
+
+let mut t = Theme::new();
+t.set_color("primary", gpui::rgb(0x0000ff));
+t.set_length("spacing", gpui::px(16.));
+set_theme(t);
+```
+
+### Supported value types in `var()`
+
+All value types work: color, length (`px`/`rem`/`%`/`auto`), number, and
+keyword. The property determines which type is expected:
+
+```rust
+css! {
+    --dir: column;
+    --gap: 12px;
+    --o: 0.5;
+    flex-direction: var(--dir);   /* keyword */
+    gap: var(--gap);              /* length */
+    opacity: var(--o);            /* number */
+}
+```
+
+### Gradients with `var()`
+
+`linear-gradient` color arguments can be `var()` references:
+
+```rust
+css! {
+    --a: #ff0000;
+    --b: #0000ff;
+    background: linear-gradient(90deg, var(--a), var(--b));
+}
+```
+
+### Shorthand restrictions
+
+Multi-value shorthands (`padding`, `margin`, `inset`, `gap`) accept `var()` only
+as the sole value — `padding: var(--p)` works, but `padding: 8px var(--p)` is a
+compile error. Use longhand properties (`padding-top`, etc.) to mix literal and
+variable values. The `border` shorthand does not support `var()`; use
+`border-width`, `border-color`, or `border-style` with `var()` instead.
+
+### Reactivity
+
+Theme changes are **not** auto-reactive — `set_theme` does not notify gpui. To
+re-render on a theme swap, read a signal inside the render closure and call
+`set_theme` there:
+
+```rust
+fn app(mode: ReadSignal<bool>) -> impl IntoView {
+    set_theme(theme_for_mode(mode.get()));
+    // ... rest of render ...
+}
+```
+
+Reading `mode.get()` registers the reactive dependency, so toggling `mode`
+re-runs render, re-sets the theme, and rebuilds styled elements.
+
+### `tw!` scope
+
+`var()` is not supported inside `tw!` (Tailwind has its own theme system). Use
+`style={css!{...}}` for variable-driven styling.

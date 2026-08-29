@@ -231,3 +231,196 @@ pub(crate) fn emit_interp(
         _ => Ok(None),
     }
 }
+
+pub(crate) fn emit_var(
+    prop: &str,
+    name: &str,
+    default_tokens: Option<&[TokenTree]>,
+    span: Span,
+) -> syn::Result<Option<TokenStream2>> {
+    use crate::value::opt_default;
+    // Helper: resolve default tokens to a keyword SharedString literal.
+    let kw_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                if let Some(kw) = keyword(t).or_else(|| hyphen_keyword(t)) {
+                    let kw_lit = kw.as_str();
+                    Ok(Some(quote! { ::gpui::SharedString::from(#kw_lit) }))
+                } else {
+                    Err(syn::Error::new(
+                        span,
+                        format!("var(--{name}) default is not a valid keyword for '{prop}'"),
+                    ))
+                }
+            }
+        }
+    };
+    match prop {
+        "font-size" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    if matches!(len.kind, LengthKind::Percent) {
+                        return Err(syn::Error::new(span, "font-size cannot be a percentage"));
+                    }
+                    Some(emit_as_absolute(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.font_size = Some(::vgui::__var_absolute(#name, #default));
+            }))
+        }
+        "font-weight" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let v = crate::keywords::emit_font_weight(t, span)?;
+                    Some(v)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.font_weight = Some(::vgui::__var_font_weight(#name, #default));
+            }))
+        }
+        "font-style" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.font_style = Some(::vgui::__resolve_font_style(::vgui::__var_keyword(#name, #default).as_str()));
+            }))
+        }
+        "text-align" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.text_align = Some(::vgui::__resolve_text_align(::vgui::__var_keyword(#name, #default).as_str()));
+            }))
+        }
+        "white-space" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.white_space = Some(::vgui::__resolve_white_space(::vgui::__var_keyword(#name, #default).as_str()));
+            }))
+        }
+        "text-overflow" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.text_overflow = Some(::vgui::__resolve_text_overflow(::vgui::__var_keyword(#name, #default).as_str()));
+            }))
+        }
+        "text-decoration" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                ::vgui::__apply_text_decoration(s, ::vgui::__var_keyword(#name, #default).as_str());
+            }))
+        }
+        "text-decoration-style" => {
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                ::vgui::__apply_text_decoration_style(s, ::vgui::__var_keyword(#name, #default).as_str());
+            }))
+        }
+        "text-decoration-thickness" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_length(&len))
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.underline.get_or_insert_with(::core::default::Default::default).thickness =
+                    ::vgui::__var_length(#name, #default);
+            }))
+        }
+        "line-height" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    // Bare number → relative(n); else definite length.
+                    if t.len() == 1 {
+                        if let TokenTree::Literal(_) = &t[0] {
+                            if parse_suffixed_length(&t[0]).is_none() {
+                                if let Some(n) = parse_number(&t[0]) {
+                                    return Ok(Some(quote! {
+                                        s.text.line_height = Some(::vgui::__var_line_height(#name, ::std::option::Option::Some(::gpui::relative(#n as f32))));
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_definite(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.line_height = Some(::vgui::__var_line_height(#name, #default));
+            }))
+        }
+        "font-family" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    if let Some(kw) = keyword(t) {
+                        Some(quote! { ::gpui::SharedString::from(#kw) })
+                    } else if t.len() == 1 {
+                        if let TokenTree::Literal(lit) = &t[0] {
+                            if let Ok(s) = syn::parse2::<syn::LitStr>(TokenStream2::from(TokenTree::Literal(lit.clone()))) {
+                                let v = s.value();
+                                Some(quote! { ::gpui::SharedString::from(#v) })
+                            } else {
+                                return Err(unsupported(prop, t, span));
+                            }
+                        } else {
+                            return Err(unsupported(prop, t, span));
+                        }
+                    } else {
+                        return Err(unsupported(prop, t, span));
+                    }
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.font_family = Some(::vgui::__var_font_family(#name, #default));
+            }))
+        }
+        "line-clamp" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let n = crate::value::number_value(t, prop, span)?;
+                    Some(quote! { #n as f32 })
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.line_clamp = Some(::vgui::__var_number(#name, #default) as usize);
+            }))
+        }
+        "text-decoration-color" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let c = crate::color::emit_color(t, span)?;
+                    Some(quote! { ::gpui::Hsla::from(#c) })
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                s.text.underline.get_or_insert_with(::core::default::Default::default).color =
+                    Some(::vgui::__var_color(#name, #default).into());
+            }))
+        }
+        _ => Ok(None),
+    }
+}

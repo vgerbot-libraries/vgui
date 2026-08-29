@@ -302,3 +302,144 @@ fn parse_grid_placement(tokens: &[TokenTree], span: Span) -> syn::Result<TokenSt
     }
     Err(unsupported("grid placement", tokens, span))
 }
+
+pub(crate) fn emit_var(
+    prop: &str,
+    name: &str,
+    default_tokens: Option<&[TokenTree]>,
+    span: Span,
+) -> syn::Result<Option<TokenStream2>> {
+    use crate::value::opt_default;
+    let name_lit = name;
+    // Helper: resolve default tokens to a keyword SharedString literal.
+    let kw_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                if let Some(kw) = keyword(t).or_else(|| hyphen_keyword(t)) {
+                    let kw_lit = kw.as_str();
+                    Ok(Some(quote! { ::gpui::SharedString::from(#kw_lit) }))
+                } else {
+                    Err(syn::Error::new(
+                        span,
+                        format!("var(--{name_lit}) default is not a valid keyword for '{prop}'"),
+                    ))
+                }
+            }
+        }
+    };
+    // Helper: resolve default tokens to a number.
+    let num_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                let n = number_value(t, prop, span)?;
+                Ok(Some(quote! { #n as f32 }))
+            }
+        }
+    };
+    match prop {
+        "display" | "visibility" | "overflow" | "overflow-x" | "overflow-y" | "position"
+        | "flex-direction" | "flex-wrap" | "justify-content" | "align-items" | "align-self"
+        | "align-content" | "cursor" | "border-style" | "box-shadow" | "scrollbar-width" => {
+            let resolver = match prop {
+                "display" => "__resolve_display",
+                "visibility" => "__resolve_visibility",
+                "overflow" | "overflow-x" | "overflow-y" => "__resolve_overflow",
+                "position" => "__resolve_position",
+                "flex-direction" => "__resolve_flex_direction",
+                "flex-wrap" => "__resolve_flex_wrap",
+                "justify-content" => "__resolve_justify",
+                "align-items" | "align-self" => "__resolve_align_items",
+                "align-content" => "__resolve_align_content",
+                "cursor" => "__resolve_cursor",
+                "border-style" => "__resolve_border_style",
+                "box-shadow" => "__resolve_box_shadow",
+                "scrollbar-width" => "__resolve_scrollbar_width",
+                _ => unreachable!(),
+            };
+            let default = kw_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            let resolver_ident = proc_macro2::Ident::new(resolver, span);
+            let field = match prop {
+                "overflow" => {
+                    quote! {
+                        let __v = ::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str());
+                        s.overflow.x = Some(__v);
+                        s.overflow.y = Some(__v);
+                    }
+                }
+                "overflow-x" => quote! { s.overflow.x = Some(::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str())); },
+                "overflow-y" => quote! { s.overflow.y = Some(::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str())); },
+                "box-shadow" => quote! { s.box_shadow = Some(::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str())); },
+                "scrollbar-width" => quote! { s.scrollbar_width = ::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str()); },
+                "align-self" => quote! { s.align_self = Some(::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str())); },
+                _ => {
+                    let field_ident = proc_macro2::Ident::new(prop.replace('-', "_").as_str(), span);
+                    quote! { s.#field_ident = Some(::vgui::#resolver_ident(::vgui::__var_keyword(#name_lit, #default).as_str())); }
+                }
+            };
+            Ok(Some(field))
+        }
+        "flex-grow" | "flex-shrink" | "grid-template-columns" | "grid-template-rows" => {
+            let default = num_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            match prop {
+                "flex-grow" => Ok(Some(quote! { s.flex_grow = Some(::vgui::__var_number(#name_lit, #default)); })),
+                "flex-shrink" => Ok(Some(quote! { s.flex_shrink = Some(::vgui::__var_number(#name_lit, #default)); })),
+                "grid-template-columns" => Ok(Some(quote! { s.grid_cols = Some(::vgui::__var_number(#name_lit, #default) as u16); })),
+                "grid-template-rows" => Ok(Some(quote! { s.grid_rows = Some(::vgui::__var_number(#name_lit, #default) as u16); })),
+                _ => unreachable!(),
+            }
+        }
+        "flex-basis" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_length(&len, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! { s.flex_basis = Some(::vgui::__var_length(#name_lit, #default)); }))
+        }
+        "gap" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_definite(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_definite(#name_lit, #default);
+                s.gap.width = Some(__v);
+                s.gap.height = Some(__v);
+            }))
+        }
+        "row-gap" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_definite(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! { s.gap.height = Some(::vgui::__var_definite(#name_lit, #default)); }))
+        }
+        "column-gap" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_definite(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! { s.gap.width = Some(::vgui::__var_definite(#name_lit, #default)); }))
+        }
+        _ => Ok(None),
+    }
+}

@@ -1,6 +1,6 @@
-use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Length, StyleRefinement, Styled};
+use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, StyleRefinement, Styled};
 
-use crate::{css, tw, ApplyStyle};
+use crate::{css, set_theme, theme, tw, ApplyStyle, Theme};
 
 struct Probe(StyleRefinement);
 
@@ -67,10 +67,8 @@ fn tw_bg_color() {
 fn tw_text_color_and_size() {
     let style = tw!("text-white text-xl");
     let probe = style.apply_to(Probe(Default::default()));
-    assert!(probe.0.text.is_some());
-    let text = probe.0.text.unwrap();
-    assert!(text.color.is_some());
-    assert_eq!(text.font_size, Some(gpui::AbsoluteLength::from(px(20.))));
+    assert!(probe.0.text.color.is_some());
+    assert_eq!(probe.0.text.font_size, Some(gpui::AbsoluteLength::from(px(20.))));
 }
 
 #[test]
@@ -142,4 +140,117 @@ fn tw_empty() {
     assert!(style.hover.is_none());
     assert!(style.focus.is_none());
     assert!(style.active.is_none());
+}
+
+// ---------------------------------------------------------------------------
+// CSS variable (custom property) tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn css_var_local_color() {
+    let probe = css! {
+        --primary: #ff0000;
+        color: var(--primary);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(
+        probe.0.text.color,
+        Some(Hsla::from(gpui::rgb(0xff0000)))
+    );
+}
+
+#[test]
+fn css_var_local_length() {
+    let probe = css! {
+        --gap: 12px;
+        gap: var(--gap);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(probe.0.gap.width, Some(DefiniteLength::from(px(12.))));
+    assert_eq!(probe.0.gap.height, Some(DefiniteLength::from(px(12.))));
+}
+
+#[test]
+fn css_var_fallback() {
+    let probe = css! {
+        color: var(--missing, #00ff00);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(
+        probe.0.text.color,
+        Some(Hsla::from(gpui::rgb(0x00ff00)))
+    );
+}
+
+#[test]
+fn css_var_theme_override() {
+    set_theme(theme! {
+        --primary: #0000ff;
+    });
+    let probe = css! {
+        --primary: #ff0000;
+        color: var(--primary);
+    }
+    .apply(Probe(Default::default()));
+    // Theme wins over local default.
+    assert_eq!(
+        probe.0.text.color,
+        Some(Hsla::from(gpui::rgb(0x0000ff)))
+    );
+    // Reset so other tests aren't affected.
+    set_theme(Theme::default());
+}
+
+#[test]
+fn css_var_keyword() {
+    let probe = css! {
+        --dir: column;
+        flex-direction: var(--dir);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(probe.0.flex_direction, Some(FlexDirection::Column));
+}
+
+#[test]
+fn css_var_number() {
+    let probe = css! {
+        --o: 0.5;
+        opacity: var(--o);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(probe.0.opacity, Some(0.5));
+}
+
+#[test]
+fn css_var_padding_shorthand() {
+    let probe = css! {
+        --p: 8px;
+        padding: var(--p);
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(8.))));
+    assert_eq!(probe.0.padding.right, Some(DefiniteLength::from(px(8.))));
+    assert_eq!(probe.0.padding.bottom, Some(DefiniteLength::from(px(8.))));
+    assert_eq!(probe.0.padding.left, Some(DefiniteLength::from(px(8.))));
+}
+
+#[test]
+fn css_var_gradient() {
+    let probe = css! {
+        --a: #ff0000;
+        --b: #0000ff;
+        background: linear-gradient(90deg, var(--a), var(--b));
+    }
+    .apply(Probe(Default::default()));
+    assert!(probe.0.background.is_some());
+}
+
+#[test]
+#[should_panic(expected = "css var 'totally_unset' is not set")]
+fn css_var_missing_panics() {
+    let probe = css! {
+        color: var(--totally_unset);
+    }
+    .apply(Probe(Default::default()));
+    let _ = probe.0.text.color;
 }

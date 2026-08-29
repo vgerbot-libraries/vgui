@@ -168,3 +168,151 @@ fn emit_aspect_ratio(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStrea
     }
     Err(unsupported("aspect-ratio", tokens, span))
 }
+
+pub(crate) fn emit_var(
+    prop: &str,
+    name: &str,
+    default_tokens: Option<&[TokenTree]>,
+    span: Span,
+) -> syn::Result<Option<TokenStream2>> {
+    use crate::value::opt_default;
+    // Helper: resolve default tokens to a Length expression.
+    let len_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                Some(emit_as_length(&len, span)).transpose()
+            }
+        }
+    };
+    // Helper: resolve default tokens to a DefiniteLength expression.
+    let def_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                Some(emit_as_definite(&len, prop, span)).transpose()
+            }
+        }
+    };
+    // Helper: resolve default tokens to a number.
+    let num_default = |tokens: Option<&[TokenTree]>, prop: &str| -> syn::Result<Option<TokenStream2>> {
+        match tokens {
+            None => Ok(None),
+            Some(t) => {
+                let n = crate::value::number_value(t, prop, span)?;
+                Ok(Some(quote! { #n as f32 }))
+            }
+        }
+    };
+    match prop {
+        "width" | "height" | "min-width" | "min-height" | "max-width" | "max-height" => {
+            let default = len_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            let (which, field) = match prop {
+                "width" => ("size", "width"),
+                "height" => ("size", "height"),
+                "min-width" => ("min_size", "width"),
+                "min-height" => ("min_size", "height"),
+                "max-width" => ("max_size", "width"),
+                "max-height" => ("max_size", "height"),
+                _ => unreachable!(),
+            };
+            let which_ident = Ident::new(which, span);
+            let field_ident = Ident::new(field, span);
+            Ok(Some(quote! {
+                s.#which_ident.#field_ident = Some(::vgui::__var_length(#name, #default));
+            }))
+        }
+        "padding" => {
+            let default = def_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_definite(#name, #default);
+                s.padding.top = Some(__v);
+                s.padding.right = Some(__v);
+                s.padding.bottom = Some(__v);
+                s.padding.left = Some(__v);
+            }))
+        }
+        "padding-top" | "padding-right" | "padding-bottom" | "padding-left"
+        | "padding-inline" | "padding-block" => {
+            let default = def_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            match prop {
+                "padding-top" => Ok(Some(quote! { s.padding.top = Some(::vgui::__var_definite(#name, #default)); })),
+                "padding-right" => Ok(Some(quote! { s.padding.right = Some(::vgui::__var_definite(#name, #default)); })),
+                "padding-bottom" => Ok(Some(quote! { s.padding.bottom = Some(::vgui::__var_definite(#name, #default)); })),
+                "padding-left" => Ok(Some(quote! { s.padding.left = Some(::vgui::__var_definite(#name, #default)); })),
+                "padding-inline" => Ok(Some(quote! {
+                    let __v = ::vgui::__var_definite(#name, #default);
+                    s.padding.left = Some(__v);
+                    s.padding.right = Some(__v);
+                })),
+                "padding-block" => Ok(Some(quote! {
+                    let __v = ::vgui::__var_definite(#name, #default);
+                    s.padding.top = Some(__v);
+                    s.padding.bottom = Some(__v);
+                })),
+                _ => unreachable!(),
+            }
+        }
+        "margin" => {
+            let default = len_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_length(#name, #default);
+                s.margin.top = Some(__v);
+                s.margin.right = Some(__v);
+                s.margin.bottom = Some(__v);
+                s.margin.left = Some(__v);
+            }))
+        }
+        "margin-top" | "margin-right" | "margin-bottom" | "margin-left"
+        | "margin-inline" | "margin-block" => {
+            let default = len_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            match prop {
+                "margin-top" => Ok(Some(quote! { s.margin.top = Some(::vgui::__var_length(#name, #default)); })),
+                "margin-right" => Ok(Some(quote! { s.margin.right = Some(::vgui::__var_length(#name, #default)); })),
+                "margin-bottom" => Ok(Some(quote! { s.margin.bottom = Some(::vgui::__var_length(#name, #default)); })),
+                "margin-left" => Ok(Some(quote! { s.margin.left = Some(::vgui::__var_length(#name, #default)); })),
+                "margin-inline" => Ok(Some(quote! {
+                    let __v = ::vgui::__var_length(#name, #default);
+                    s.margin.left = Some(__v);
+                    s.margin.right = Some(__v);
+                })),
+                "margin-block" => Ok(Some(quote! {
+                    let __v = ::vgui::__var_length(#name, #default);
+                    s.margin.top = Some(__v);
+                    s.margin.bottom = Some(__v);
+                })),
+                _ => unreachable!(),
+            }
+        }
+        "inset" => {
+            let default = len_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_length(#name, #default);
+                s.inset.top = Some(__v);
+                s.inset.right = Some(__v);
+                s.inset.bottom = Some(__v);
+                s.inset.left = Some(__v);
+            }))
+        }
+        "top" | "right" | "bottom" | "left" => {
+            let default = len_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            let edge = Ident::new(prop, span);
+            Ok(Some(quote! { s.inset.#edge = Some(::vgui::__var_length(#name, #default)); }))
+        }
+        "aspect-ratio" => {
+            let default = num_default(default_tokens, prop)?;
+            let default = opt_default(default);
+            Ok(Some(quote! { s.aspect_ratio = Some(::vgui::__var_number(#name, #default)); }))
+        }
+        _ => Ok(None),
+    }
+}

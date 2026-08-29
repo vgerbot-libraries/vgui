@@ -235,3 +235,196 @@ fn parse_gradient_angle(tokens: &[TokenTree], span: Span) -> syn::Result<TokenSt
     }
     Err(syn::Error::new(span, "expected gradient angle (e.g. 90deg) or direction (e.g. to right)"))
 }
+
+/// Try to parse `linear-gradient(angle, var(--a), var(--b))` where color args
+/// may be `var()` references. Returns `Ok(None)` if tokens aren't a gradient.
+/// Called from `emit_decl` when the value contains `var()` inside a gradient.
+pub(crate) fn try_emit_var_gradient(
+    tokens: &[TokenTree],
+    local_vars: &std::collections::HashMap<String, Vec<TokenTree>>,
+    span: Span,
+) -> syn::Result<Option<TokenStream2>> {
+    use crate::value::opt_default;
+    // Reuse the same detection logic as try_parse_linear_gradient.
+    if tokens.is_empty() {
+        return Ok(None);
+    }
+    let group_idx = if tokens.len() >= 4
+        && matches!(&tokens[0], TokenTree::Ident(id) if id == "linear")
+        && matches!(&tokens[1], TokenTree::Punct(p) if p.as_char() == '-')
+        && matches!(&tokens[2], TokenTree::Ident(id) if id == "gradient")
+    {
+        3
+    } else if tokens.len() >= 2
+        && matches!(&tokens[0], TokenTree::Ident(id) if id == "linear_gradient")
+    {
+        1
+    } else {
+        return Ok(None);
+    };
+    let TokenTree::Group(g) = &tokens[group_idx] else { return Ok(None); };
+    if g.delimiter() != proc_macro2::Delimiter::Parenthesis {
+        return Ok(None);
+    }
+    let args: Vec<TokenTree> = g.stream().into_iter().collect();
+    // Split args by top-level commas only (keep var(...) groups intact).
+    let parts: Vec<Vec<TokenTree>> = split_top_level_commas(&args);
+    if parts.len() < 3 {
+        return Err(syn::Error::new(span, "linear-gradient requires at least 3 arguments: angle/dir, from-color, to-color"));
+    }
+    let angle = parse_gradient_angle(&parts[0], span)?;
+    // Each color arg: either a literal color (emit_color) or a var() reference.
+    let resolve_color_arg = |arg: &[TokenTree]| -> syn::Result<TokenStream2> {
+        if let Some(vref) = crate::parse::is_var(arg) {
+            let vname = vref.name.clone();
+            let default_tokens = local_vars.get(&vref.name).or(vref.fallback.as_ref()).map(|v| v.as_slice());
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let c = emit_color(t, span)?;
+                    Some(quote! { ::gpui::Hsla::from(#c) })
+                }
+            };
+            let default = opt_default(default);
+            Ok(quote! { ::vgui::__var_color(#vname, #default) })
+        } else {
+            let c = emit_color(arg, span)?;
+            Ok(quote! { ::gpui::Hsla::from(#c) })
+        }
+    };
+    let from = resolve_color_arg(&parts[1])?;
+    let to = resolve_color_arg(&parts[2])?;
+    Ok(Some(quote! {
+        s.background = ::std::option::Option::Some(::gpui::linear_gradient(
+            #angle,
+            ::gpui::linear_color_stop(#from, 0.0),
+            ::gpui::linear_color_stop(#to, 1.0),
+        ).into());
+    }))
+}
+
+pub(crate) fn emit_var(
+    prop: &str,
+    name: &str,
+    default_tokens: Option<&[TokenTree]>,
+    span: Span,
+) -> syn::Result<Option<TokenStream2>> {
+    use crate::value::opt_default;
+    match prop {
+        "background" | "background-color" | "color" | "border-color" | "text-background"
+        | "text-background-color" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let c = crate::color::emit_color(t, span)?;
+                    Some(quote! { ::gpui::Hsla::from(#c) })
+                }
+            };
+            let default = opt_default(default);
+            let field = match prop {
+                "background" | "background-color" | "text-background" | "text-background-color" => {
+                    if prop == "text-background" || prop == "text-background-color" {
+                        quote! { s.text.background_color = Some(::vgui::__var_color(#name, #default).into()); }
+                    } else {
+                        quote! { s.background = Some(::vgui::__var_color(#name, #default).into()); }
+                    }
+                }
+                "color" => quote! { s.text.color = Some(::vgui::__var_color(#name, #default).into()); },
+                "border-color" => quote! { s.border_color = Some(::vgui::__var_color(#name, #default).into()); },
+                _ => unreachable!(),
+            };
+            Ok(Some(field))
+        }
+        "opacity" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let n = crate::value::number_value(t, prop, span)?;
+                    Some(quote! { #n as f32 })
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! { s.opacity = Some(::vgui::__var_number(#name, #default)); }))
+        }
+        "border-width" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_absolute(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_absolute(#name, #default);
+                s.border_widths.top = Some(__v);
+                s.border_widths.right = Some(__v);
+                s.border_widths.bottom = Some(__v);
+                s.border_widths.left = Some(__v);
+            }))
+        }
+        "border-radius" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_absolute(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            Ok(Some(quote! {
+                let __v = ::vgui::__var_absolute(#name, #default);
+                s.corner_radii.top_left = Some(__v);
+                s.corner_radii.top_right = Some(__v);
+                s.corner_radii.bottom_right = Some(__v);
+                s.corner_radii.bottom_left = Some(__v);
+            }))
+        }
+        "border-top-left-radius" | "border-top-right-radius"
+        | "border-bottom-right-radius" | "border-bottom-left-radius" => {
+            let default = match default_tokens {
+                None => None,
+                Some(t) => {
+                    let len = parse_length(t).ok_or_else(|| unsupported(prop, t, span))?;
+                    Some(emit_as_absolute(&len, prop, span)?)
+                }
+            };
+            let default = opt_default(default);
+            let corner = match prop {
+                "border-top-left-radius" => "top_left",
+                "border-top-right-radius" => "top_right",
+                "border-bottom-right-radius" => "bottom_right",
+                "border-bottom-left-radius" => "bottom_left",
+                _ => unreachable!(),
+            };
+            let ident = Ident::new(corner, span);
+            Ok(Some(quote! { s.corner_radii.#ident = Some(::vgui::__var_absolute(#name, #default)); }))
+        }
+        "border" => Err(syn::Error::new(
+            span,
+            "border shorthand does not support var(); use border-width / border-color / border-style with var()",
+        )),
+        _ => Ok(None),
+    }
+}
+
+/// Split tokens by top-level commas only, preserving nested groups (e.g.
+/// `var(--a)`) as single parts.
+fn split_top_level_commas(tokens: &[TokenTree]) -> Vec<Vec<TokenTree>> {
+    let mut out = Vec::new();
+    let mut cur = Vec::new();
+    for tt in tokens {
+        match tt {
+            TokenTree::Punct(p) if p.as_char() == ',' => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+            }
+            _ => cur.push(tt.clone()),
+        }
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    out
+}

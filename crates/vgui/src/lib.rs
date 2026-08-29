@@ -6,6 +6,7 @@
 extern crate self as vgui;
 
 pub use vgui_css::css;
+pub use vgui_css::theme;
 pub use vgui_tailwind::tw;
 pub use vgui_view::view;
 
@@ -18,6 +19,7 @@ pub mod prelude;
 mod reactive;
 mod root;
 mod style;
+pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
 pub use crate::control::{details, dialog, for_each, for_each_or, progress, show, show_when};
@@ -33,6 +35,18 @@ pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::root::{mount, VguiRoot};
 pub use crate::style::{ApplyStyle, Css, TwStyle};
+pub use crate::theme::{set_theme, with_theme, CssValue, Theme};
+// Hidden helpers called by macro-emitted `var()` code.
+pub use crate::theme::{
+    __apply_text_decoration, __apply_text_decoration_style, __resolve_align_content,
+    __resolve_align_items, __resolve_border_style, __resolve_box_shadow, __resolve_cursor,
+    __resolve_display, __resolve_flex_direction, __resolve_flex_wrap, __resolve_font_style,
+    __resolve_justify, __resolve_overflow, __resolve_position, __resolve_scrollbar_width,
+    __resolve_text_align, __resolve_text_overflow, __resolve_visibility, __resolve_white_space,
+    __var_absolute, __var_color, __var_definite, __var_font_family, __var_font_weight,
+    __var_keyword, __var_length, __var_line_height, __var_number, __weight_from_name,
+    __weight_from_number,
+};
 
 // Internal test helpers — not part of the public API. Exposed so integration
 // tests can simulate a render scope without spinning up a full gpui App.

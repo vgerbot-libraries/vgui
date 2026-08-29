@@ -5786,6 +5786,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-theming"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-todolist"
 version = "0.1.0"
 dependencies = [

@@ -33,6 +33,7 @@
 - [Todo List](./examples/todolist.md)
 - [Inputs Demo](./examples/inputs.md)
 - [Tags Demo](./examples/tags-demo.md)
+- [Theming](./examples/theming.md)
 
 # Reference
 
