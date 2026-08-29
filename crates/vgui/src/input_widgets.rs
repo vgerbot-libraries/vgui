@@ -219,7 +219,7 @@ impl RangeInput {
         if self.disabled {
             return;
         }
-        self.focus_handle_field.focus(window);
+        self.focus_handle_field.focus(window, cx);
         self.dragging = true;
         let x = event.position.x - bounds.origin.x;
         self.value = self.value_from_x(x, bounds.size.width);

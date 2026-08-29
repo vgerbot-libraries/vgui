@@ -1,5 +1,9 @@
 # Todo List Example
 
+## Live Demo
+
+<iframe src="../wasm/todolist/" width="100%" height="600" style="border:1px solid #444; border-radius:4px;"></iframe>
+
 ## Overview
 
 The todo list is a larger application that demonstrates:
@@ -16,8 +20,16 @@ The todo list is a larger application that demonstrates:
 ## Source Code
 
 ```rust
-use gpui::{px, size, App, Application, Bounds, WindowBounds, WindowOptions};
+#![cfg_attr(target_family = "wasm", no_main)]
+
+use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
+
+#[cfg(not(target_family = "wasm"))]
+use gpui_platform::application;
+
+#[cfg(target_family = "wasm")]
+use gpui_platform::single_threaded_web;
 
 #[derive(Clone, PartialEq)]
 struct Todo {
@@ -291,8 +303,14 @@ fn app() -> impl gpui::IntoElement {
     }
 }
 
-fn main() {
-    Application::new().run(|cx: &mut App| {
+fn run() {
+    #[cfg(not(target_family = "wasm"))]
+    let gpui_app = application();
+
+    #[cfg(target_family = "wasm")]
+    let gpui_app = single_threaded_web();
+
+    let launch = |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(500.), px(600.0)), cx);
         cx.open_window(
             WindowOptions {
@@ -302,7 +320,25 @@ fn main() {
             |_, cx| vgui::mount(cx, app),
         )
         .unwrap();
-    });
+    };
+
+    #[cfg(not(target_family = "wasm"))]
+    gpui_app.run(launch);
+
+    #[cfg(target_family = "wasm")]
+    std::mem::forget(gpui_app.run_embedded(launch));
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn main() {
+    run();
+}
+
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    gpui_platform::web_init();
+    run();
 }
 ```
 
@@ -337,6 +373,17 @@ click handler, not during render tracking.
 
 ### Running
 
+**Native:**
+
 ```bash
 cargo run -p vgui-todolist
+```
+
+**Web (WASM):**
+
+```bash
+cargo build --target wasm32-unknown-unknown -p vgui-todolist --release
+wasm-bindgen --target web --out-dir examples/todolist/dist \
+    --no-typescript target/wasm32-unknown-unknown/release/todolist.wasm
+python3 scripts/serve_plain.py 8080 examples/todolist
 ```

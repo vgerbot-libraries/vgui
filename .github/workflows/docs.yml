@@ -31,19 +31,13 @@ jobs:
             libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libwayland-dev libgl-dev libegl-dev
       - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
       - uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: 'latest'
-      - name: Build book
-        run: mdbook build book
-      - name: Build API docs
-        run: cargo doc --workspace --no-deps
-      - name: Copy API docs into book output
-        run: |
-          mkdir -p book/book/api
-          cp -r target/doc/* book/book/api/
-      - name: Disable Jekyll
-        run: touch book/book/.nojekyll
+      - name: Build docs (WASM demos + mdBook + API docs)
+        run: scripts/build_docs.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -543,7 +543,7 @@ impl TextInput {
         if self.disabled {
             return;
         }
-        self.focus_handle_field.focus(window);
+        self.focus_handle_field.focus(window, cx);
         let position = event.position;
         let index = self
             .layout

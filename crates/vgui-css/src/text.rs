@@ -21,13 +21,13 @@ pub(crate) fn emit(
             }
             let v = emit_as_absolute(&len, prop, span)?;
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).font_size = Some(#v);
+                s.text.font_size = Some(#v);
             }))
         }
         "font-weight" => {
             let v = emit_font_weight(tokens, span)?;
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(#v);
+                s.text.font_weight = Some(#v);
             }))
         }
         "font-style" => {
@@ -43,7 +43,7 @@ pub(crate) fn emit(
                 }
             };
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(#v);
+                s.text.font_style = Some(#v);
             }))
         }
         "text-align" => {
@@ -60,27 +60,27 @@ pub(crate) fn emit(
                 }
             };
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(#v);
+                s.text.text_align = Some(#v);
             }))
         }
         "text-decoration" => {
             let kw = hyphen_keyword(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
             Ok(Some(match kw.as_str() {
                 "underline" => Ok(quote! {
-                    s.text.get_or_insert_with(::core::default::Default::default).underline = Some(::gpui::UnderlineStyle {
+                    s.text.underline = Some(::gpui::UnderlineStyle {
                         thickness: ::gpui::px(1.),
                         ..::core::default::Default::default()
                     });
                 }),
                 "line-through" => Ok(quote! {
-                    s.text.get_or_insert_with(::core::default::Default::default).strikethrough = Some(::gpui::StrikethroughStyle {
+                    s.text.strikethrough = Some(::gpui::StrikethroughStyle {
                         thickness: ::gpui::px(1.),
                         ..::core::default::Default::default()
                     });
                 }),
                 "none" => Ok(quote! {
-                    s.text.get_or_insert_with(::core::default::Default::default).underline = None;
-                    s.text.get_or_insert_with(::core::default::Default::default).strikethrough = None;
+                    s.text.underline = None;
+                    s.text.strikethrough = None;
                 }),
                 other => Err(syn::Error::new(
                     span,
@@ -101,7 +101,7 @@ pub(crate) fn emit(
                 }
             };
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(#v);
+                s.text.white_space = Some(#v);
             }))
         }
         "line-height" => {
@@ -110,7 +110,7 @@ pub(crate) fn emit(
                     if parse_suffixed_length(&tokens[0]).is_none() {
                         if let Some(n) = parse_number(&tokens[0]) {
                             return Ok(Some(quote! {
-                                s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(::gpui::relative(#n as f32));
+                                s.text.line_height = Some(::gpui::relative(#n as f32));
                             }));
                         }
                     }
@@ -119,7 +119,7 @@ pub(crate) fn emit(
             let len = parse_length(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
             let v = emit_as_definite(&len, prop, span)?;
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(#v);
+                s.text.line_height = Some(#v);
             }))
         }
 "font-family" => {
@@ -127,7 +127,7 @@ pub(crate) fn emit(
         kw
     } else if let Some(expr) = is_interp(tokens) {
         return Ok(Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).font_family =
+            s.text.font_family =
                 ::std::option::Option::Some(::gpui::SharedString::from(#expr));
         }));
     } else if tokens.len() == 1 {
@@ -144,7 +144,7 @@ pub(crate) fn emit(
         return Err(unsupported(prop, tokens, span));
     };
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default).font_family =
+        s.text.font_family =
             ::std::option::Option::Some(::gpui::SharedString::from(#fam));
     }))
 }
@@ -156,13 +156,13 @@ pub(crate) fn emit(
         other => return Err(syn::Error::new(span, format!("unsupported text-overflow: {other}"))),
     };
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(#v);
+        s.text.text_overflow = Some(#v);
     }))
 }
 "text-decoration-color" => {
     let c = crate::color::emit_color(tokens, span)?;
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default)
+        s.text
             .underline.get_or_insert_with(::core::default::Default::default).color = Some((#c).into());
     }))
 }
@@ -170,7 +170,7 @@ pub(crate) fn emit(
     let len = parse_length(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
     let v = emit_length(&len);
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default)
+        s.text
             .underline.get_or_insert_with(::core::default::Default::default).thickness = #v;
     }))
 }
@@ -182,20 +182,20 @@ pub(crate) fn emit(
         other => return Err(syn::Error::new(span, format!("unsupported text-decoration-style: {other}"))),
     };
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default)
+        s.text
             .underline.get_or_insert_with(::core::default::Default::default).wavy = #wavy;
     }))
 }
 "text-background" | "text-background-color" => {
     let c = crate::color::emit_color(tokens, span)?;
     Ok(Some(quote! {
-        s.text.get_or_insert_with(::core::default::Default::default).background_color = Some((#c).into());
+        s.text.background_color = Some((#c).into());
     }))
 }
         "line-clamp" => {
             let n = number_value(tokens, prop, span)? as usize;
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).line_clamp = Some(#n);
+                s.text.line_clamp = Some(#n);
             }))
         }
         _ => Ok(None),
@@ -209,24 +209,24 @@ pub(crate) fn emit_interp(
 ) -> syn::Result<Option<TokenStream2>> {
     match prop {
         "line-height" => Ok(Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#expr));
+            s.text.line_height = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#expr));
         })),
 "font-family" => Ok(Some(quote! {
-    s.text.get_or_insert_with(::core::default::Default::default).font_family =
+    s.text.font_family =
         ::std::option::Option::Some(::gpui::SharedString::from(#expr));
 })),
 "text-overflow" => Ok(Some(quote! {
-    s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(#expr);
+    s.text.text_overflow = Some(#expr);
 })),
 "text-decoration-color" => Ok(Some(quote! {
-    s.text.get_or_insert_with(::core::default::Default::default)
+    s.text
         .underline.get_or_insert_with(::core::default::Default::default).color = Some((#expr).into());
 })),
 "text-background" | "text-background-color" => Ok(Some(quote! {
-    s.text.get_or_insert_with(::core::default::Default::default).background_color = Some((#expr).into());
+    s.text.background_color = Some((#expr).into());
 })),
         "line-clamp" => Ok(Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_clamp = Some(#expr as usize);
+            s.text.line_clamp = Some(#expr as usize);
         })),
         _ => Ok(None),
     }

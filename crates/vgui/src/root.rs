@@ -88,12 +88,12 @@ impl Render for VguiRoot {
         let el = (self.render)();
         exit_scope();
         gpui::div()
-            .on_key_down(|event: &gpui::KeyDownEvent, window: &mut Window, _cx: &mut App| {
+            .on_key_down(|event: &gpui::KeyDownEvent, window: &mut Window, cx: &mut App| {
                 if event.keystroke.key == "tab" {
                     if event.keystroke.modifiers.shift {
-                        window.focus_prev();
+                        window.focus_prev(cx);
                     } else {
-                        window.focus_next();
+                        window.focus_next(cx);
                     }
                 }
             })

@@ -28,6 +28,10 @@ cargo run -p vgui-inputs
 cargo run -p vgui-tags-demo
 ```
 
+> When adding a new example, follow the
+> [Example Writing Rule](../../.agents/rules/writing-examples.md) to ensure it
+> supports both native and WASM targets with a live demo in the mdBook.
+
 ### Run tests
 
 ```bash

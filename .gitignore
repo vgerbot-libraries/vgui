@@ -27,6 +27,10 @@ target
 # mdBook build output
 book/book/
 
+# WASM build output
+examples/*/dist/
+book/src/wasm/
+
 # SkillHub: ignore skill bodies (= node_modules), keep lockfile (= package-lock.json)
 .agents/skills/@*/
 !.agents/skills/.skills_store_lock.json
