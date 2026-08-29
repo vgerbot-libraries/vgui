@@ -22,7 +22,7 @@ CSS properties. It demonstrates:
 - `<progress>` and `<meter>`.
 - `<textarea>` and `<select>`.
 - `<details>`/`<summary>` collapsible.
-- `<dialog>` modal.
+- `<dialog>` modal with `on:close` dismissal (click-outside, escape, explicit close).
 - Additional event handlers (`on:modifiers_changed`, `on:any_mouse_down`).
 - Tables with `colspan`.
 
@@ -43,6 +43,9 @@ use gpui_platform::single_threaded_web;
 fn app() -> impl gpui::IntoElement {
     let (open, set_open) = create_signal(false);
     let (text, set_text) = create_signal("Hello".to_string());
+    let (show_dialog, set_show_dialog) = create_signal(false);
+    let dismiss_dialog = set_show_dialog.clone();
+    let close_dialog_btn = set_show_dialog.clone();
 
     view! {
         <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-[600px] h-[700px] text-white overflow-y-auto">
@@ -149,8 +152,16 @@ fn app() -> impl gpui::IntoElement {
 
             <hr />
 
-            <dialog open={false}>
-                <div class="bg-white p-4 rounded">{"Dialog content"}</div>
+            <button on:click={click(move |cx| set_show_dialog.set(cx, true))}>
+                {"Open Dialog"}
+            </button>
+            <dialog open={show_dialog.get()} on:close={move |cx| dismiss_dialog.set(cx, false)}>
+                <div class="bg-white p-4 rounded text-black">
+                    <p>{"Dialog content — click outside or press Escape to close."}</p>
+                    <button on:click={click(move |cx| close_dialog_btn.set(cx, false))}>
+                        {"Close"}
+                    </button>
+                </div>
             </dialog>
 
             <div on:modifiers_changed={move |_e, _w, _cx| {}} on:any_mouse_down={move |_e, _w, _cx| {}}>
@@ -183,8 +194,14 @@ fn app() -> impl gpui::IntoElement {
     }
 }
 
-fn main() {
-    Application::new().run(|cx: &mut App| {
+fn run() {
+    #[cfg(not(target_family = "wasm"))]
+    let gpui_app = application();
+
+    #[cfg(target_family = "wasm")]
+    let gpui_app = single_threaded_web();
+
+    let launch = |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(600.), px(700.0)), cx);
         cx.open_window(
             WindowOptions {
@@ -194,7 +211,25 @@ fn main() {
             |_, cx| vgui::mount(cx, app),
         )
         .unwrap();
-    });
+    };
+
+    #[cfg(not(target_family = "wasm"))]
+    gpui_app.run(launch);
+
+    #[cfg(target_family = "wasm")]
+    std::mem::forget(gpui_app.run_embedded(launch));
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn main() {
+    run();
+}
+
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    gpui_platform::web_init();
+    run();
 }
 ```
 
@@ -223,6 +258,18 @@ The demo exercises several `css!` properties beyond the basics:
 
 The `open` attribute is driven by a signal, toggled in the `<summary>` click
 handler — demonstrating how to manage collapsible state reactively.
+
+### `<dialog>` with `on:close` dismissal
+
+The dialog's `open` attribute is driven by a signal. The `on:close` handler
+fires on three dismissal paths: clicking the backdrop (click-outside), pressing
+Escape while focus is within the dialog, and the explicit "Close" button. The
+dialog renders on a portal layer at priority 100, so it floats above the
+scrolling content and stays centered regardless of scroll position.
+
+Because `WriteSignal` is `Clone` but not `Copy`, the `set_show_dialog` signal is
+cloned into `dismiss_dialog` and `close_dialog_btn` before being moved into the
+`on:close` and button `on:click` closures respectively.
 
 ### Running
 

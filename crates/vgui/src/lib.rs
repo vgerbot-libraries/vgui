@@ -15,6 +15,7 @@ mod child;
 mod control;
 mod input_text;
 mod input_widgets;
+mod overlay;
 mod label;
 pub mod prelude;
 mod reactive;
@@ -24,7 +25,8 @@ mod style;
 pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
-pub use crate::control::{details, dialog, for_each, for_each_or, progress, show, show_when};
+pub use crate::overlay::{dialog, floating, portal};
+pub use crate::control::{details, for_each, for_each_or, progress, show, show_when};
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInputProps,
 };

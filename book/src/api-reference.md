@@ -45,7 +45,9 @@ The main crate. Key exports:
 | `for_each_or(items, fallback, child_fn) -> AnyElement` | List rendering with fallback. |
 | `progress(value, max) -> Div`          | Progress bar.                            |
 | `details(open, summary, content) -> AnyElement` | Collapsible container.           |
-| `dialog(open, content) -> AnyElement`  | Modal dialog.                            |
+| `dialog(open, on_close, content) -> AnyElement` | Modal dialog with portal, click-outside, escape. |
+| `portal(content, priority) -> AnyElement` | Portal floating layer. |
+| `floating(position, content) -> AnyElement` | Positioned floating element. |
 
 ### Input widgets
 

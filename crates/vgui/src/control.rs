@@ -79,25 +79,3 @@ pub fn details(
     }
     el.into_any_element()
 }
-
-/// Render a modal dialog with a semi-transparent overlay.
-/// When `open` is false, returns a hidden element.
-pub fn dialog(open: bool, content: impl gpui::IntoElement) -> gpui::AnyElement {
-    if !open {
-        let mut el = gpui::div();
-        el.style().display = Some(gpui::Display::None);
-        return el.into_any_element();
-    }
-    gpui::div()
-        .absolute()
-        .top_0()
-        .left_0()
-        .w_full()
-        .h_full()
-        .bg(gpui::hsla(0., 0., 0., 0.5))
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(content)
-        .into_any_element()
-}

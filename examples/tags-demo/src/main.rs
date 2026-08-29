@@ -12,6 +12,9 @@ use gpui_platform::single_threaded_web;
 fn app() -> impl gpui::IntoElement {
     let (open, set_open) = create_signal(false);
     let (text, set_text) = create_signal("Hello".to_string());
+    let (show_dialog, set_show_dialog) = create_signal(false);
+    let dismiss_dialog = set_show_dialog.clone();
+    let close_dialog_btn = set_show_dialog.clone();
 
     view! {
         <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-[600px] h-[700px] text-white overflow-y-auto">
@@ -118,8 +121,16 @@ fn app() -> impl gpui::IntoElement {
 
             <hr />
 
-            <dialog open={false}>
-                <div class="bg-white p-4 rounded">{"Dialog content"}</div>
+            <button on:click={click(move |cx| set_show_dialog.set(cx, true))}>
+                {"Open Dialog"}
+            </button>
+            <dialog open={show_dialog.get()} on:close={move |cx| dismiss_dialog.set(cx, false)}>
+                <div class="bg-white p-4 rounded text-black">
+                    <p>{"Dialog content — click outside or press Escape to close."}</p>
+                    <button on:click={click(move |cx| close_dialog_btn.set(cx, false))}>
+                        {"Close"}
+                    </button>
+                </div>
             </dialog>
 
             <div on:modifiers_changed={move |_e, _w, _cx| {}} on:any_mouse_down={move |_e, _w, _cx| {}}>

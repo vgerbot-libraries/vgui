@@ -18,6 +18,15 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "select" {
         return emit_select(el);
     }
+    if name == "dialog" {
+        return emit_dialog(el);
+    }
+    if name == "portal" {
+        return emit_portal(el);
+    }
+    if name == "floating" {
+        return emit_floating(el);
+    }
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -50,11 +59,11 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
                 let id_name = id.to_string();
-                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>/<dialog>,
+                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>,
                 // colspan/rowspan on <td>/<th>.
                 if (name == "a" && id_name == "href")
                     || ((name == "progress" || name == "meter") && (id_name == "value" || id_name == "max"))
-                    || ((name == "details" || name == "dialog") && id_name == "open")
+                    || (name == "details" && id_name == "open")
                     || ((name == "td" || name == "th") && (id_name == "colspan" || id_name == "rowspan"))
                 {
                     // ignore — consumed in the tag match
@@ -182,21 +191,6 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             let kids = emit_children(&el.children)?;
             quote! { ::vgui::details(#open, ::gpui::div(), {
                 let mut __p = ::gpui::div().flex_col();
-                #(let __c = #kids; __p = __p.child(__c);)*
-                __p
-            }) }
-        }
-        // Dialog modal overlay
-        "dialog" => {
-            let open = el.attrs.iter().find_map(|a| {
-                if let AttrKind::Ident(id) = &a.kind {
-                    if id.to_string() == "open" { return Some(attr_tokens(&a.value)); }
-                }
-                None
-            }).unwrap_or(quote! { false });
-            let kids = emit_children(&el.children)?;
-            quote! { ::vgui::dialog(#open, {
-                let mut __p = ::gpui::div();
                 #(let __c = #kids; __p = __p.child(__c);)*
                 __p
             }) }
@@ -334,7 +328,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         ctor = emit_event(ctor, &ev, handler, span)?;
     }
     let is_void = matches!(name.as_str(), "br" | "hr");
-    let handles_children = matches!(name.as_str(), "details" | "dialog");
+    let handles_children = matches!(name.as_str(), "details");
     let kids = if is_void || handles_children {
         Vec::new()
     } else {
@@ -1329,4 +1323,93 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             el
         }})
     }
+}
+
+// ── <dialog> / <portal> / <floating> ─────────────────────────────────
+
+/// Emit a `<dialog>` modal overlay. Allowed attributes: `open` (bool, default
+/// `false`), `on:close` (`Fn(&mut App)` closure, default no-op). The closure is
+/// passed verbatim — no `click()` wrapper.
+fn emit_dialog(el: &Element) -> syn::Result<TokenStream2> {
+    let mut open = None;
+    let mut on_close = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id.to_string() == "open" => {
+                open = Some(attr_tokens(&attr.value));
+            }
+            AttrKind::On(ev) if ev.to_string() == "close" => {
+                on_close = Some(attr_tokens(&attr.value));
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <dialog>; allowed: `open`, `on:close`",
+                ));
+            }
+        }
+    }
+    let open = open.unwrap_or(quote! { false });
+    let on_close = on_close.unwrap_or(quote! { move |_cx: &mut ::gpui::App| {} });
+    let kids = emit_children(&el.children)?;
+    Ok(quote! { ::vgui::dialog(#open, #on_close, {
+        let mut __p = ::gpui::div();
+        #(let __c = #kids; __p = __p.child(__c);)*
+        __p
+    }) })
+}
+
+/// Emit a `<portal>` floating-layer element. Allowed attributes: `priority`
+/// (usize, default `0`; higher paints on top).
+fn emit_portal(el: &Element) -> syn::Result<TokenStream2> {
+    let mut priority = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id.to_string() == "priority" => {
+                priority = Some(attr_tokens(&attr.value));
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <portal>; allowed: `priority`",
+                ));
+            }
+        }
+    }
+    let priority = priority.unwrap_or(quote! { 0usize });
+    let kids = emit_children(&el.children)?;
+    Ok(quote! { ::vgui::portal({
+        let mut __p = ::gpui::div();
+        #(let __c = #kids; __p = __p.child(__c);)*
+        __p
+    }, #priority) })
+}
+
+/// Emit a `<floating>` positioned element. Allowed attributes: `position`
+/// (`Point<Pixels>`, **required**). Uses window-coordinate placement with
+/// overflow avoidance.
+fn emit_floating(el: &Element) -> syn::Result<TokenStream2> {
+    let mut position = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id.to_string() == "position" => {
+                position = Some(attr_tokens(&attr.value));
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <floating>; allowed: `position`",
+                ));
+            }
+        }
+    }
+    let position = position.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<floating> requires a `position` attribute")
+    })?;
+    let kids = emit_children(&el.children)?;
+    Ok(quote! { ::vgui::floating(#position, {
+        let mut __p = ::gpui::div();
+        #(let __c = #kids; __p = __p.child(__c);)*
+        __p
+    }) })
 }

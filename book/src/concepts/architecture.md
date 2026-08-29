@@ -43,7 +43,8 @@ The `vgui` crate's internal module structure:
 | ----------------- | ----------------------------------------------------------------- |
 | `reactive`        | `create_signal`, `create_memo`, `create_effect`, `ReadSignal`, `WriteSignal`, scope management, dependency tracking. |
 | `root`            | `VguiRoot` entity, `Scope` (the reactive owner), `mount()`.       |
-| `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `details`, `dialog`. |
+| `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `details`. |
+| `overlay`         | `portal`, `floating`, `dialog` (modal overlay with portal, click-outside, escape). |
 | `input_text`      | `TextInput` widget (text fields, text areas), `TextInputProps`, `TextAreaProps`, `TextKind`. |
 | `input_widgets`   | `checkbox`, `radio`, `range_input`, `file_input`, `select` and their props. |
 | `label`           | Label-to-input focus association via `for=` / wrapping.          |
