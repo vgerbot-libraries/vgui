@@ -1309,8 +1309,8 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             let mut el = #ctor;
             #(el = el.child(#kids);)*
             let __for_id = #for_id_expr;
-            el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, _cx| {
-                ::vgui::focus_label_target(&__for_id, window);
+            el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, cx| {
+                ::vgui::focus_label_target(&__for_id, window, cx);
             });
             el
         }})
@@ -1322,8 +1322,8 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             #(el = el.child(#kids);)*
             let __target = ::vgui::label_scope_exit();
             if let ::std::option::Option::Some(__h) = __target {
-                el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, _cx| {
-                    window.focus(&__h);
+                el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, cx| {
+                    window.focus(&__h, cx);
                 });
             }
             el

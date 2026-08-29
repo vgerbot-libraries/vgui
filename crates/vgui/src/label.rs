@@ -5,7 +5,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use gpui::{FocusHandle, Window};
+use gpui::{App, FocusHandle, Window};
 
 thread_local! {
     static REGISTRY: RefCell<HashMap<String, FocusHandle>> = RefCell::new(HashMap::new());
@@ -21,10 +21,10 @@ pub fn register_label_target(id: &str, handle: FocusHandle) {
 }
 
 /// Look up a focus handle by id and focus it. Called from label's on_mouse_down.
-pub fn focus_label_target(id: &str, window: &mut Window) {
+pub fn focus_label_target(id: &str, window: &mut Window, cx: &mut App) {
     let handle = REGISTRY.with(|r| r.borrow().get(id).cloned());
     if let Some(handle) = handle {
-        window.focus(&handle);
+        window.focus(&handle, cx);
     }
 }
 

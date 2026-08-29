@@ -2,7 +2,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use gpui::{App, AppContext, Entity, EntityId};
 
@@ -120,13 +120,13 @@ pub struct SignalCell<T>(pub T);
 #[derive(Clone)]
 pub struct ReadSignal<T> {
     entity: Entity<SignalCell<T>>,
-    cache: Arc<RwLock<T>>,
+    cache: Rc<RefCell<T>>,
 }
 
 #[derive(Clone)]
 pub struct WriteSignal<T> {
     entity: Entity<SignalCell<T>>,
-    cache: Arc<RwLock<T>>,
+    cache: Rc<RefCell<T>>,
 }
 
 impl<T: Clone + 'static> ReadSignal<T> {
@@ -136,12 +136,12 @@ impl<T: Clone + 'static> ReadSignal<T> {
                 list.push(self.entity.entity_id());
             }
         });
-        self.cache.read().expect("signal cache poisoned").clone()
+        self.cache.borrow().clone()
     }
 
     pub fn get_with(&self, cx: &App) -> T {
         let value = self.entity.read(cx).0.clone();
-        *self.cache.write().expect("signal cache poisoned") = value.clone();
+        *self.cache.borrow_mut() = value.clone();
         value
     }
 }
@@ -149,12 +149,12 @@ impl<T: Clone + 'static> ReadSignal<T> {
 impl<T: Clone + PartialEq + 'static> WriteSignal<T> {
     pub fn set<C: AppContext>(&self, cx: &mut C, value: T) {
         {
-            let cache = self.cache.read().expect("signal cache poisoned");
+            let cache = self.cache.borrow();
             if *cache == value {
                 return;
             }
         }
-        *self.cache.write().expect("signal cache poisoned") = value.clone();
+        *self.cache.borrow_mut() = value.clone();
         let _ = self.entity.update(cx, |cell, cx| {
             cell.0 = value;
             cx.notify();
@@ -165,13 +165,13 @@ impl<T: Clone + PartialEq + 'static> WriteSignal<T> {
         &self,
         cx: &mut C,
         f: impl FnOnce(&mut T) -> R,
-    ) -> C::Result<R> {
+    ) -> R {
         let cache = self.cache.clone();
         self.entity.update(cx, |cell, cx| {
             let old = cell.0.clone();
             let r = f(&mut cell.0);
             if old != cell.0 {
-                *cache.write().expect("signal cache poisoned") = cell.0.clone();
+                *cache.borrow_mut() = cell.0.clone();
                 cx.notify();
             }
             r
@@ -193,7 +193,7 @@ fn with_tracking<R>(f: impl FnOnce() -> R) -> (R, Vec<EntityId>) {
 #[derive(Clone)]
 pub(crate) struct TypedCell<T> {
     pub entity: Entity<SignalCell<T>>,
-    pub cache: Arc<RwLock<T>>,
+    pub cache: Rc<RefCell<T>>,
 }
 
 struct MemoRuntime<T: Clone + PartialEq + 'static> {
@@ -233,7 +233,7 @@ pub fn create_signal<T: Clone + PartialEq + 'static>(
 
     let cx = unsafe { &mut *cur.cx };
     let entity = cx.new(|_| SignalCell(initial.clone()));
-    let cache = Arc::new(RwLock::new(initial));
+    let cache = Rc::new(RefCell::new(initial));
     let sub = cx.observe(&entity, |this, observed, cx| {
         this.notify_dep(observed.entity_id(), cx);
     });
@@ -317,7 +317,7 @@ pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) 
     let (value, deps) = with_tracking(|| compute());
     let cx = unsafe { &mut *cur.cx };
     let entity = cx.new(|_| SignalCell(value.clone()));
-    let cache = Arc::new(RwLock::new(value));
+    let cache = Rc::new(RefCell::new(value));
     let typed = TypedCell {
         entity: entity.clone(),
         cache: cache.clone(),
@@ -338,14 +338,9 @@ pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) 
             .memos
             .push(Rc::new(move |cx: &mut gpui::Context<VguiRoot>| {
                 let new_value = (runtime.compute)();
-                let old = runtime
-                    .cell
-                    .cache
-                    .read()
-                    .expect("signal cache poisoned")
-                    .clone();
+                let old = runtime.cell.cache.borrow().clone();
                 if old != new_value {
-                    *runtime.cell.cache.write().expect("signal cache poisoned") = new_value.clone();
+                    *runtime.cell.cache.borrow_mut() = new_value.clone();
                     let _ = runtime.cell.entity.update(cx, |cell, cx| {
                         cell.0 = new_value;
                         cx.notify();

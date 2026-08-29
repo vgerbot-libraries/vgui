@@ -347,36 +347,36 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
 
         // Font style
         "italic" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Italic); }
+            quote! { s.text.font_style = Some(::gpui::FontStyle::Italic); }
         }
         "not-italic" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_style = Some(::gpui::FontStyle::Normal); }
+            quote! { s.text.font_style = Some(::gpui::FontStyle::Normal); }
         }
 
         // Text decoration
         "underline" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).underline = Some(::gpui::UnderlineStyle {
+            s.text.underline = Some(::gpui::UnderlineStyle {
                 thickness: ::gpui::px(1.),
                 ..::core::default::Default::default()
             });
         },
         "line-through" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).strikethrough = Some(::gpui::StrikethroughStyle {
+            s.text.strikethrough = Some(::gpui::StrikethroughStyle {
                 thickness: ::gpui::px(1.),
                 ..::core::default::Default::default()
             });
         },
         "no-underline" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).underline = None;
-            s.text.get_or_insert_with(::core::default::Default::default).strikethrough = None;
+            s.text.underline = None;
+            s.text.strikethrough = None;
         },
 
         // White space
         "whitespace-normal" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Normal); }
+            quote! { s.text.white_space = Some(::gpui::WhiteSpace::Normal); }
         }
         "whitespace-nowrap" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Nowrap); }
+            quote! { s.text.white_space = Some(::gpui::WhiteSpace::Nowrap); }
         }
 
         // Border style
@@ -436,39 +436,39 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
 
         // Font weight
         "font-thin" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::THIN); }
         }
         "font-light" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::LIGHT); }
         }
         "font-normal" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::NORMAL); }
         }
         "font-medium" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::MEDIUM); }
         }
         "font-semibold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
         }
         "font-bold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::BOLD); }
         }
         "font-extrabold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
         }
         "font-black" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::BLACK); }
         }
 
         // Text align
         "text-left" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); }
+            quote! { s.text.text_align = Some(::gpui::TextAlign::Left); }
         }
         "text-center" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); }
+            quote! { s.text.text_align = Some(::gpui::TextAlign::Center); }
         }
         "text-right" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); }
+            quote! { s.text.text_align = Some(::gpui::TextAlign::Right); }
         }
 
         // Text size
@@ -561,10 +561,10 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "bg-white" => quote! { s.background = Some((::gpui::white()).into()); },
         "bg-transparent" => quote! {},
         "text-black" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::black()).into()); }
+            quote! { s.text.color = Some((::gpui::black()).into()); }
         }
         "text-white" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((::gpui::white()).into()); }
+            quote! { s.text.color = Some((::gpui::white()).into()); }
         }
         "text-transparent" => quote! {},
         "border-black" => quote! { s.border_color = Some((::gpui::black()).into()); },
@@ -575,55 +575,55 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "truncate" => quote! {
             s.overflow.x = Some(::gpui::Overflow::Hidden);
             s.overflow.y = Some(::gpui::Overflow::Hidden);
-            s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Nowrap);
-            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
+            s.text.white_space = Some(::gpui::WhiteSpace::Nowrap);
+            s.text.text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
         },
         "text-ellipsis" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
+            s.text.text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
         },
         "text-clip" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("")));
+            s.text.text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("")));
         },
 
         // Font family
         "font-mono" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("monospace"));
+            s.text.font_family = ::std::option::Option::Some(::gpui::SharedString::from("monospace"));
         },
         "font-sans" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("sans-serif"));
+            s.text.font_family = ::std::option::Option::Some(::gpui::SharedString::from("sans-serif"));
         },
         "font-serif" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("serif"));
+            s.text.font_family = ::std::option::Option::Some(::gpui::SharedString::from("serif"));
         },
 
         // Line height
         "leading-none" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::px(1.)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::px(1.)));
         },
         "leading-tight" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
         },
         "leading-normal" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
         },
         "leading-loose" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.)));
         },
 
         // Text decoration style
         "decoration-solid" => quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.wavy = false;
             }
         },
         "decoration-wavy" => quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.wavy = true;
             }
         },
         "decoration-none" => quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).underline = ::std::option::Option::None;
-            s.text.get_or_insert_with(::core::default::Default::default).strikethrough = ::std::option::Option::None;
+            s.text.underline = ::std::option::Option::None;
+            s.text.strikethrough = ::std::option::Option::None;
         },
 
         _ => return None,
@@ -1000,22 +1000,22 @@ fn emit_text(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {
     match rest {
         "left" => {
             return Some(
-                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); },
+                quote! { s.text.text_align = Some(::gpui::TextAlign::Left); },
             )
         }
         "center" => {
             return Some(
-                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Center); },
+                quote! { s.text.text_align = Some(::gpui::TextAlign::Center); },
             )
         }
         "right" => {
             return Some(
-                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Right); },
+                quote! { s.text.text_align = Some(::gpui::TextAlign::Right); },
             )
         }
         "justify" => {
             return Some(
-                quote! { s.text.get_or_insert_with(::core::default::Default::default).text_align = Some(::gpui::TextAlign::Left); },
+                quote! { s.text.text_align = Some(::gpui::TextAlign::Left); },
             )
         }
         _ => {}
@@ -1029,7 +1029,7 @@ fn emit_text(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {
     // Text color
     if let Some(color) = emit_color_value(rest, opacity) {
         return Some(
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); },
+            quote! { s.text.color = Some((#color).into()); },
         );
     }
 
@@ -1100,28 +1100,28 @@ fn emit_cursor(rest: &str) -> Option<TokenStream2> {
 fn emit_font_weight_prefixed(rest: &str) -> Option<TokenStream2> {
     Some(match rest {
         "thin" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::THIN); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::THIN); }
         }
         "light" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::LIGHT); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::LIGHT); }
         }
         "normal" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::NORMAL); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::NORMAL); }
         }
         "medium" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::MEDIUM); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::MEDIUM); }
         }
         "semibold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::SEMIBOLD); }
         }
         "bold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::BOLD); }
         }
         "extrabold" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::EXTRA_BOLD); }
         }
         "black" => {
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_weight = Some(::gpui::FontWeight::BLACK); }
+            quote! { s.text.font_weight = Some(::gpui::FontWeight::BLACK); }
         }
         _ => return None,
     })
@@ -1130,7 +1130,7 @@ fn emit_font_weight_prefixed(rest: &str) -> Option<TokenStream2> {
 fn emit_font_size(size: f32) -> TokenStream2 {
     let v = quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(::gpui::px(#size)) };
     quote! {
-        s.text.get_or_insert_with(::core::default::Default::default).font_size = Some(#v);
+        s.text.font_size = Some(#v);
     }
 }
 
@@ -1266,7 +1266,7 @@ fn emit_line_clamp(rest: &str) -> Option<TokenStream2> {
     if let Some(rest) = rest.strip_prefix("clamp-") {
         let n: usize = rest.parse().ok()?;
         return Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_clamp = Some(#n);
+            s.text.line_clamp = Some(#n);
         });
     }
     None
@@ -1281,28 +1281,28 @@ fn emit_z_index(rest: &str) -> Option<TokenStream2> {
 fn emit_leading(rest: &str) -> Option<TokenStream2> {
     match rest {
         "3" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(0.75)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(0.75)));
         }),
         "4" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.0)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.0)));
         }),
         "5" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
         }),
         "6" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
         }),
         "7" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.75)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.75)));
         }),
         "8" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.0)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.0)));
         }),
         "9" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.25)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.25)));
         }),
         "10" => Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.5)));
+            s.text.line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.5)));
         }),
         _ => {
             // Try arbitrary value: leading-[20px]
@@ -1319,27 +1319,27 @@ fn emit_leading(rest: &str) -> Option<TokenStream2> {
 fn emit_decoration(rest: &str) -> Option<TokenStream2> {
     match rest {
         "0" => Some(quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.thickness = ::gpui::px(0.);
             }
         }),
         "1" => Some(quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.thickness = ::gpui::px(1.);
             }
         }),
         "2" => Some(quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.thickness = ::gpui::px(2.);
             }
         }),
         "4" => Some(quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.thickness = ::gpui::px(4.);
             }
         }),
         "8" => Some(quote! {
-            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+            if let ::std::option::Option::Some(__u) = s.text.underline.as_mut() {
                 __u.thickness = ::gpui::px(8.);
             }
         }),
@@ -1394,7 +1394,7 @@ fn emit_arbitrary(util: &str, arb: &str, _opacity: Option<u8>) -> syn::Result<To
                 return Ok(quote! { s.background = Some((#color).into()); });
             } else if util == "text" {
                 return Ok(
-                    quote! { s.text.get_or_insert_with(::core::default::Default::default).color = Some((#color).into()); },
+                    quote! { s.text.color = Some((#color).into()); },
                 );
             } else {
                 return Ok(quote! { s.border_color = Some((#color).into()); });
@@ -1490,7 +1490,7 @@ fn emit_arbitrary_length(util: &str, len: TokenStream2) -> TokenStream2 {
         }
         "text" => {
             let a = quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(#len) };
-            quote! { s.text.get_or_insert_with(::core::default::Default::default).font_size = Some(#a); }
+            quote! { s.text.font_size = Some(#a); }
         }
         "border" => {
             let a = quote! { ::core::convert::Into::<::gpui::AbsoluteLength>::into(#len) };

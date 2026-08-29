@@ -1,4 +1,8 @@
-# Inputs Demo Example
+# Inputs Demo
+
+## Live Demo
+
+<iframe src="../wasm/inputs/" width="100%" height="600" style="border:1px solid #444; border-radius:4px;"></iframe>
 
 ## Overview
 
@@ -21,8 +25,16 @@ demonstrates:
 ## Source Code
 
 ```rust
-use gpui::{px, size, App, Application, Bounds, WindowBounds, WindowOptions};
+#![cfg_attr(target_family = "wasm", no_main)]
+
+use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
+
+#[cfg(not(target_family = "wasm"))]
+use gpui_platform::application;
+
+#[cfg(target_family = "wasm")]
+use gpui_platform::single_threaded_web;
 
 fn app() -> impl gpui::IntoElement {
     let (text, set_text) = create_signal(String::new());
@@ -211,6 +223,17 @@ focusable child.
 
 ### Running
 
+**Native:**
+
 ```bash
 cargo run -p vgui-inputs
+```
+
+**Web (WASM):**
+
+```bash
+cargo build --target wasm32-unknown-unknown -p vgui-inputs --release
+wasm-bindgen --target web --out-dir examples/inputs/dist \
+    --no-typescript target/wasm32-unknown-unknown/release/inputs.wasm
+python3 scripts/serve_plain.py 8080 examples/inputs
 ```

@@ -27,7 +27,7 @@ pub(crate) fn emit(
         "color" => {
             let c = emit_color(tokens, span)?;
             Ok(Some(quote! {
-                s.text.get_or_insert_with(::core::default::Default::default).color = Some((#c).into());
+                s.text.color = Some((#c).into());
             }))
         }
         "opacity" => {
@@ -100,7 +100,7 @@ pub(crate) fn emit_interp(
         "opacity" => Ok(Some(quote! { s.opacity = Some(#expr as f32); })),
         "background" | "background-color" => Ok(Some(quote! { s.background = Some((#expr).into()); })),
         "color" => Ok(Some(quote! {
-            s.text.get_or_insert_with(::core::default::Default::default).color = Some((#expr).into());
+            s.text.color = Some((#expr).into());
         })),
         _ => Ok(None),
     }

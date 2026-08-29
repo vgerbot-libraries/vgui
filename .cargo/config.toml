@@ -3,3 +3,7 @@ replace-with = "rsproxy"
 
 [source.rsproxy]
 registry = "sparse+https://rsproxy.cn/index/"
+
+
+# WASM target: no atomics/shared-memory needed (single-threaded).
+# This allows deployment on static hosts without COOP/COEP headers.

@@ -126,18 +126,20 @@ time.
 
 ## Building Locally
 
-To generate rustdoc for all crates locally:
+The entire documentation site — WASM demos, this mdBook, and the rustdoc API
+reference — is built with a single command:
 
 ```bash
-cargo doc --no-deps --workspace --open
+scripts/build_docs.sh
 ```
 
-To build and serve this mdBook:
+The output is written to `book/book/`. To build and immediately serve it:
 
 ```bash
-cargo install mdbook
-cd book
-mdbook serve --open
+scripts/build_docs.sh --serve
 ```
 
-The book will be available at `http://localhost:3000`.
+The site is then available at `http://127.0.0.1:8080`.
+
+Prerequisites: `mdbook`, `wasm-bindgen`, and the nightly Rust toolchain (the
+repo pins nightly via `rust-toolchain.toml`).
