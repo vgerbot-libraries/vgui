@@ -117,6 +117,29 @@ fn app() -> impl gpui::IntoElement {
             <div on:modifiers_changed={move |_e, _w, _cx| {}} on:any_mouse_down={move |_e, _w, _cx| {}}>
                 {"Events test"}
             </div>
+
+            <hr />
+
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-[#333]">
+                        <th class="p-2 text-white">{"Name"}</th>
+                        <th class="p-2 text-white">{"Age"}</th>
+                        <th class="p-2 text-white">{"City"}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="p-2">{"Alice"}</td>
+                        <td class="p-2">{"30"}</td>
+                        <td class="p-2">{"Beijing"}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2" colspan={2u32}>{"Bob (spanned 2 cols)"}</td>
+                        <td class="p-2">{"Shanghai"}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     }
 }

@@ -355,6 +355,43 @@ view! {
     </div>
 }
 
+## Tables
+
+Table tags are supported via flex layout (gpui has no native table layout).
+`<table>`, `<thead>`, `<tbody>`, and `<tfoot>` stack their children vertically
+(`flex_col`); `<tr>` is a horizontal flex row, full width; `<td>` and `<th>`
+are `flex_1` cells that share row width equally. `<th>` defaults to bold +
+centered text. `colspan` is mapped to `flex_grow`, so a cell with
+`colspan={2}` grows 2× relative to `colspan=1` cells. `rowspan`, `<colgroup>`,
+and `<col>` are accepted (they compile) but have no visual effect — there is
+no content-based column sizing in a flex layout. For specific column widths,
+apply `class="w-[200px]"` or a `style` width on individual cells.
+
+```rust
+view! {
+    <table class="w-full">
+        <thead>
+            <tr class="bg-[#333]">
+                <th class="p-2 text-white">{"Name"}</th>
+                <th class="p-2 text-white">{"Age"}</th>
+                <th class="p-2 text-white">{"City"}</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="p-2">{"Alice"}</td>
+                <td class="p-2">{"30"}</td>
+                <td class="p-2">{"Beijing"}</td>
+            </tr>
+            <tr>
+                <td class="p-2" colspan={2u32}>{"Bob (spanned 2 cols)"}</td>
+                <td class="p-2">{"Shanghai"}</td>
+            </tr>
+        </tbody>
+    </table>
+}
+```
+
 ## Input elements
 
 `<input>` is a void element (self-closing — both `<input type="text">` and

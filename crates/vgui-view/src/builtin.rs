@@ -21,6 +21,11 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
+    // <colgroup>/<col> have no flex-box meaning; column widths are controlled
+    // per-cell via class/style. Render nothing.
+    if name == "colgroup" || name == "col" {
+        return Ok(quote! { ::gpui::Empty });
+    }
     let mut src = None;
     let mut id = None;
     let mut style = None;
@@ -45,10 +50,12 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
                 let id_name = id.to_string();
-                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>/<dialog>
+                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>/<dialog>,
+                // colspan/rowspan on <td>/<th>.
                 if (name == "a" && id_name == "href")
                     || ((name == "progress" || name == "meter") && (id_name == "value" || id_name == "max"))
                     || ((name == "details" || name == "dialog") && id_name == "open")
+                    || ((name == "td" || name == "th") && (id_name == "colspan" || id_name == "rowspan"))
                 {
                     // ignore — consumed in the tag match
                 } else if name == "img" && id_name == "object_fit" {
@@ -114,6 +121,12 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         "summary" => quote! { ::gpui::div().cursor_pointer() },
         // Button (existing)
         "button" => quote! { ::gpui::div().cursor_pointer() },
+        // Tables (flex-based layout; gpui has no native table layout)
+        "table" | "thead" | "tbody" | "tfoot" => quote! { ::gpui::div().flex_col() },
+        "caption" => quote! { ::gpui::div() },
+        "tr" => quote! { ::gpui::div().flex().w_full() },
+        "td" => emit_cell(el, false)?,
+        "th" => emit_cell(el, true)?,
         // Image (existing)
         "img" => {
             let src = src.ok_or_else(|| syn::Error::new(el.tag.span(), "<img> requires src"))?;
@@ -332,6 +345,37 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         #(el = el.child(#kids);)*
         el
     }})
+}
+
+/// Emit a `<td>` or `<th>` cell. `is_header` selects `<th>` defaults
+/// (bold + centered text). `colspan` is mapped to `flex_grow` so a spanning
+/// cell grows N× relative to colspan=1 cells. `rowspan` is accepted by the
+/// attribute whitelist but has no layout effect in flex layout.
+fn emit_cell(el: &Element, is_header: bool) -> syn::Result<TokenStream2> {
+    let colspan: Option<TokenStream2> = el.attrs.iter().find_map(|a| {
+        if let AttrKind::Ident(id) = &a.kind {
+            if id.to_string() == "colspan" {
+                return Some(attr_tokens(&a.value));
+            }
+        }
+        None
+    });
+
+    let mut ctor = if is_header {
+        quote! { ::gpui::div().flex_1().font_weight(::gpui::FontWeight::BOLD).text_center() }
+    } else {
+        quote! { ::gpui::div().flex_1() }
+    };
+
+    if let Some(cs) = colspan {
+        ctor = quote! {{
+            let mut __el = #ctor;
+            __el.style().flex_grow = Some((#cs) as f32);
+            __el
+        }};
+    }
+
+    Ok(ctor)
 }
 
 fn emit_event(
