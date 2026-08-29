@@ -17,6 +17,7 @@ mod box_model;
 mod visual;
 mod text;
 mod cssvalue;
+mod variants;
 
 #[proc_macro]
 pub fn css(input: TokenStream) -> TokenStream {
@@ -29,6 +30,14 @@ pub fn css(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn theme(input: TokenStream) -> TokenStream {
     match expand_theme(input.into()) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn variants(input: TokenStream) -> TokenStream {
+    match variants::expand_variants(input.into()) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.to_compile_error().into(),
     }

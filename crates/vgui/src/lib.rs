@@ -6,6 +6,7 @@
 extern crate self as vgui;
 
 pub use vgui_css::css;
+pub use vgui_css::variants;
 pub use vgui_css::theme;
 pub use vgui_tailwind::tw;
 pub use vgui_view::view;

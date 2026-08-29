@@ -1,6 +1,6 @@
 use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, StyleRefinement, Styled};
 
-use crate::{css, set_theme, theme, tw, twc, ApplyStyle, IntoTwStyle, Theme, TwClass, tw_dynamic};
+use crate::{css, set_theme, theme, tw, twc, ApplyStyle, IntoTwStyle, Theme, TwClass, tw_dynamic, variants};
 
 struct Probe(StyleRefinement);
 
@@ -390,4 +390,95 @@ fn into_tw_style_twclass() {
     let style = TwClass::new().add("flex").build().into_tw_style();
     let probe = style.apply_to(Probe(Default::default()));
     assert_eq!(probe.0.display, Some(Display::Flex));
+}
+
+// ---------------------------------------------------------------------------
+// `variants!` macro tests
+// ---------------------------------------------------------------------------
+
+variants! {
+    TestBtn {
+        base => css! { border-radius: 4px; },
+        color {
+            red => css! { background: #ff0000; },
+            green => css! { background: #00ff00; },
+            blue => css! { background: #0000ff; },
+        },
+    }
+}
+
+variants! {
+    TestBtn2 {
+        base => css! { border-radius: 4px; },
+        color {
+            red => css! { background: #ff0000; },
+            green => css! { background: #00ff00; },
+            blue => css! { background: #0000ff; },
+        },
+        size {
+            sm => css! { padding: 4px; },
+            md => css! { padding: 8px; },
+            lg => css! { padding: 12px; },
+        },
+    }
+}
+
+variants! {
+    TestBtn3 {
+        color {
+            red => css! { background: #ff0000; },
+            green => css! { background: #00ff00; },
+        },
+    }
+}
+
+#[test]
+fn variants_base_and_dimension() {
+    let probe = ApplyStyle::apply_to(TestBtnVariants::default(), Probe(StyleRefinement::default()));
+    // base style applied
+    assert_eq!(
+        probe.0.corner_radii.top_left,
+        Some(gpui::AbsoluteLength::from(px(4.)))
+    );
+    // default selects the first option (red)
+    assert_eq!(probe.0.background, Some(gpui::rgb(0xff0000).into()));
+}
+
+#[test]
+fn variants_composition() {
+    let v = TestBtn2Variants::default()
+        .color(TestBtn2Color::Green)
+        .size(TestBtn2Size::Md);
+    let probe = ApplyStyle::apply_to(v, Probe(StyleRefinement::default()));
+    assert_eq!(probe.0.background, Some(gpui::rgb(0x00ff00).into()));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(8.))));
+    // base still applies alongside dimensions
+    assert_eq!(
+        probe.0.corner_radii.top_left,
+        Some(gpui::AbsoluteLength::from(px(4.)))
+    );
+}
+
+#[test]
+fn variants_default() {
+    assert_eq!(
+        TestBtnVariants::default(),
+        TestBtnVariants { color: TestBtnColor::Red }
+    );
+    assert_eq!(
+        TestBtn2Variants::default(),
+        TestBtn2Variants {
+            color: TestBtn2Color::Red,
+            size: TestBtn2Size::Sm,
+        }
+    );
+}
+
+#[test]
+fn variants_no_base() {
+    let probe = ApplyStyle::apply_to(TestBtn3Variants::default(), Probe(StyleRefinement::default()));
+    // dimension style applied
+    assert_eq!(probe.0.background, Some(gpui::rgb(0xff0000).into()));
+    // no base => padding untouched
+    assert_eq!(probe.0.padding.top, None);
 }

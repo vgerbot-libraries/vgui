@@ -17,6 +17,7 @@
 
 - [CSS-in-Rust (`css!`)](./styling/css-macro.md)
 - [Tailwind Classes (`tw!`)](./styling/tailwind-classes.md)
+- [Component Variants (`variants!`)](./styling/variants.md)
 - [CSS Property Reference](./styling/css-reference.md)
 
 # Elements & Components
