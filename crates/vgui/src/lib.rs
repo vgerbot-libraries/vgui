@@ -18,6 +18,7 @@ mod label;
 pub mod prelude;
 mod reactive;
 mod root;
+mod tw_dynamic;
 mod style;
 pub mod theme;
 
@@ -35,6 +36,8 @@ pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::root::{mount, VguiRoot};
 pub use crate::style::{ApplyStyle, Css, TwStyle};
+pub use crate::style::{IntoTwStyle, TwClass, TwClassSource};
+pub use crate::tw_dynamic::tw_dynamic;
 pub use crate::theme::{set_theme, with_theme, CssValue, Theme};
 // Hidden helpers called by macro-emitted `var()` code.
 pub use crate::theme::{

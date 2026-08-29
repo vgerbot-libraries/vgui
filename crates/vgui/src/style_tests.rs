@@ -1,6 +1,6 @@
 use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, StyleRefinement, Styled};
 
-use crate::{css, set_theme, theme, tw, ApplyStyle, Theme};
+use crate::{css, set_theme, theme, tw, twc, ApplyStyle, IntoTwStyle, Theme, TwClass, tw_dynamic};
 
 struct Probe(StyleRefinement);
 
@@ -253,4 +253,141 @@ fn css_var_missing_panics() {
     }
     .apply(Probe(Default::default()));
     let _ = probe.0.text.color;
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic class composition tests (runtime interpreter)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn tw_dynamic_matches_tw_literal() {
+    let classes = "flex flex-col gap-3 p-4";
+    // Compile-time path
+    let lit = tw!(classes);
+    let lit_probe = lit.apply_to(Probe(Default::default()));
+    // Runtime path
+    let dyn_style = tw_dynamic(classes);
+    let dyn_probe = dyn_style.apply_to(Probe(Default::default()));
+
+    assert_eq!(lit_probe.0.display, dyn_probe.0.display);
+    assert_eq!(lit_probe.0.flex_direction, dyn_probe.0.flex_direction);
+    assert_eq!(lit_probe.0.gap.width, dyn_probe.0.gap.width);
+    assert_eq!(lit_probe.0.gap.height, dyn_probe.0.gap.height);
+    assert_eq!(lit_probe.0.padding.top, dyn_probe.0.padding.top);
+    assert_eq!(lit_probe.0.padding.right, dyn_probe.0.padding.right);
+    assert_eq!(lit_probe.0.padding.bottom, dyn_probe.0.padding.bottom);
+    assert_eq!(lit_probe.0.padding.left, dyn_probe.0.padding.left);
+}
+
+#[test]
+fn tw_dynamic_conflict_resolution() {
+    // "p-4 p-2" → last wins → padding = 8px (p-2)
+    let style = tw_dynamic("p-4 p-2");
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(8.))));
+
+    // "bg-red-500 bg-blue-500" → last wins → background equals bg-blue-500 alone
+    let style = tw_dynamic("bg-red-500 bg-blue-500");
+    let probe = style.apply_to(Probe(Default::default()));
+    assert!(probe.0.background.is_some());
+    // Verify last-wins: "bg-red-500 bg-blue-500" should equal "bg-blue-500", not "bg-red-500"
+    let blue_only = tw_dynamic("bg-blue-500").apply_to(Probe(Default::default()));
+    let red_only = tw_dynamic("bg-red-500").apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.background, blue_only.0.background);
+    assert_ne!(probe.0.background, red_only.0.background);
+}
+
+#[test]
+fn tw_class_conditional() {
+    // add_if(true, "p-2") applies after "p-4" → padding = 8px
+    let style = TwClass::new()
+        .add("p-4")
+        .add_if(false, "p-8")
+        .add_if(true, "p-2")
+        .build();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(8.))));
+
+    // add_if(false, "p-8") skipped → padding stays at 16px (p-4)
+    let style = TwClass::new()
+        .add("p-4")
+        .add_if(false, "p-8")
+        .build();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(16.))));
+}
+
+#[test]
+fn tw_class_composition() {
+    let style = TwClass::new()
+        .add("flex")
+        .add("p-4")
+        .add("text-white")
+        .build();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Flex));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(16.))));
+    assert!(probe.0.text.color.is_some());
+}
+
+#[test]
+fn tw_class_option_source() {
+    let style = TwClass::new()
+        .add("flex")
+        .add(Some("p-4"))
+        .add(None::<&str>)
+        .build();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Flex));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(16.))));
+}
+
+#[test]
+fn twc_macro() {
+    let class = twc!("flex", true.then_some("p-4"), false.then_some("p-8"));
+    let style = class.build();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Flex));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(16.))));
+}
+
+#[test]
+fn tw_dynamic_hover_variant() {
+    let style = tw_dynamic("flex hover:bg-blue-500");
+    assert!(style.hover.is_some());
+    // Base has display = Flex
+    let base_probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(base_probe.0.display, Some(Display::Flex));
+    // Apply hover closure to a fresh StyleRefinement
+    let style2 = tw_dynamic("flex hover:bg-blue-500");
+    if let Some(hover) = style2.hover {
+        let mut hover_style = StyleRefinement::default();
+        hover(&mut hover_style);
+        assert!(hover_style.background.is_some());
+    } else {
+        panic!("hover closure should be Some");
+    }
+}
+
+#[test]
+fn tw_dynamic_arbitrary() {
+    let style = tw_dynamic("w-[500px] bg-[#0000ff]");
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.size.width, Some(Length::from(px(500.))));
+    assert!(probe.0.background.is_some());
+}
+
+#[test]
+fn into_tw_style_str() {
+    let style = "flex p-4".into_tw_style();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Flex));
+    assert_eq!(probe.0.padding.top, Some(DefiniteLength::from(px(16.))));
+}
+
+#[test]
+fn into_tw_style_twclass() {
+    let style = TwClass::new().add("flex").build().into_tw_style();
+    let probe = style.apply_to(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Flex));
 }

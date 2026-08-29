@@ -1,3 +1,181 @@
+//! vgui-tailwind-core — shared Tailwind class parsing and data tables.
+//!
+//! Pure Rust, no `gpui` dependency. Single source of truth for class-string
+//! parsing (`parse_class`), spacing/font/border value tables, and the color
+//! palette. Used by both the `vgui-tailwind` proc-macro (compile-time) and the
+//! `vgui::tw_dynamic` runtime interpreter.
+
+// ---------------------------------------------------------------------------
+// Variant + ParsedClass
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Variant {
+    Base,
+    Hover,
+    Focus,
+    Active,
+}
+
+#[derive(Clone)]
+pub struct ParsedClass {
+    pub variant: Variant,
+    pub utility: String,
+    pub arbitrary: Option<String>,
+    pub opacity: Option<u8>,
+}
+
+/// Parse a single class string into a `ParsedClass`.
+///
+/// Currently always returns `Some`; the `Option` signature is kept for
+/// call-site compatibility and forward extension.
+pub fn parse_class(class: &str) -> Option<ParsedClass> {
+    let mut variant = Variant::Base;
+    let mut rest = class;
+
+    loop {
+        if let Some(pos) = rest.find(':') {
+            let prefix = &rest[..pos];
+            match prefix {
+                "hover" => variant = Variant::Hover,
+                "focus" => variant = Variant::Focus,
+                "active" => variant = Variant::Active,
+                _ => break,
+            }
+            rest = &rest[pos + 1..];
+        } else {
+            break;
+        }
+    }
+
+    // Split on `/` for opacity modifier
+    let (utility_part, opacity) = if let Some(pos) = rest.rfind('/') {
+        let op_str = &rest[pos + 1..];
+        if op_str.chars().all(|c| c.is_ascii_digit()) {
+            let op: u8 = op_str.parse().ok()?;
+            (rest[..pos].to_string(), Some(op))
+        } else {
+            (rest.to_string(), None)
+        }
+    } else {
+        (rest.to_string(), None)
+    };
+
+    // Extract arbitrary value
+    let (utility, arbitrary) = if let Some(start) = utility_part.find('[') {
+        if utility_part.ends_with(']') {
+            let arb = utility_part[start + 1..utility_part.len() - 1].to_string();
+            let util = utility_part[..start].trim_end_matches('-').to_string();
+            (util, Some(arb))
+        } else {
+            (utility_part, None)
+        }
+    } else {
+        (utility_part, None)
+    };
+
+    Some(ParsedClass {
+        variant,
+        utility,
+        arbitrary,
+        opacity,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Spacing / font-size / border value tables
+// ---------------------------------------------------------------------------
+
+pub fn spacing_value(s: &str) -> Option<f32> {
+    Some(match s {
+        "0" => 0.0,
+        "px" => 1.0,
+        "0.5" => 2.0,
+        "1" => 4.0,
+        "1.5" => 6.0,
+        "2" => 8.0,
+        "2.5" => 10.0,
+        "3" => 12.0,
+        "3.5" => 14.0,
+        "4" => 16.0,
+        "5" => 20.0,
+        "6" => 24.0,
+        "7" => 28.0,
+        "8" => 32.0,
+        "9" => 36.0,
+        "10" => 40.0,
+        "11" => 44.0,
+        "12" => 48.0,
+        "14" => 56.0,
+        "16" => 64.0,
+        "20" => 80.0,
+        "24" => 96.0,
+        "28" => 112.0,
+        "32" => 128.0,
+        "36" => 144.0,
+        "40" => 160.0,
+        "44" => 176.0,
+        "48" => 192.0,
+        "52" => 208.0,
+        "56" => 224.0,
+        "60" => 240.0,
+        "64" => 256.0,
+        "72" => 288.0,
+        "80" => 320.0,
+        "96" => 384.0,
+        _ => return None,
+    })
+}
+
+pub fn font_size_value(s: &str) -> Option<(f32, f32)> {
+    Some(match s {
+        "xs" => (12.0, 16.0),
+        "sm" => (14.0, 20.0),
+        "base" => (16.0, 24.0),
+        "lg" => (18.0, 28.0),
+        "xl" => (20.0, 28.0),
+        "2xl" => (24.0, 32.0),
+        "3xl" => (30.0, 36.0),
+        "4xl" => (36.0, 40.0),
+        "5xl" => (48.0, 48.0),
+        "6xl" => (60.0, 60.0),
+        "7xl" => (72.0, 72.0),
+        "8xl" => (96.0, 96.0),
+        "9xl" => (128.0, 128.0),
+        _ => return None,
+    })
+}
+
+pub fn border_radius_value(s: &str) -> Option<f32> {
+    Some(match s {
+        "none" => 0.0,
+        "sm" => 2.0,
+        "" => 4.0, // "rounded" with no suffix
+        "md" => 6.0,
+        "lg" => 8.0,
+        "xl" => 12.0,
+        "2xl" => 16.0,
+        "3xl" => 24.0,
+        "full" => 9999.0,
+        _ => return None,
+    })
+}
+
+pub fn border_width_value(s: &str) -> Option<f32> {
+    Some(match s {
+        "0" => 0.0,
+        "" => 1.0, // "border" with no suffix
+        "2" => 2.0,
+        "4" => 4.0,
+        "8" => 8.0,
+        _ => return None,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Color palette
+// ---------------------------------------------------------------------------
+
 pub fn color_rgb(name: &str, shade: Option<&str>) -> Option<(u8, u8, u8)> {
     named_color(name, shade)
 }

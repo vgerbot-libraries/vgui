@@ -5734,6 +5734,7 @@ dependencies = [
  "trybuild",
  "vgui-css",
  "vgui-tailwind",
+ "vgui-tailwind-core",
  "vgui-view",
 ]
 
@@ -5783,7 +5784,12 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+ "vgui-tailwind-core",
 ]
+
+[[package]]
+name = "vgui-tailwind-core"
+version = "0.1.0"
 
 [[package]]
 name = "vgui-theming"

@@ -9,24 +9,23 @@ use gpui_platform::application;
 #[cfg(target_family = "wasm")]
 use gpui_platform::single_threaded_web;
 
-fn increment_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
+fn dynamic_button(
+    label: String,
+    count: ReadSignal<i32>,
+    set_count: WriteSignal<i32>,
+    delta: i32,
+) -> impl gpui::IntoElement {
     view! {
         <button
-            class="p-2 bg-[#0000ff] hover:bg-[#000088] text-white rounded"
-            on:click={click(move |cx| set_count.update(cx, |n| *n += 1))}
+            class={twc!(
+                "p-2 rounded text-white",
+                (delta > 0).then_some("bg-[#0000ff] hover:bg-[#000088]"),
+                (delta < 0).then_some("bg-[#FF0000] hover:bg-[#880000]"),
+                (count.get() == 0).then_some("bg-[#666666] hover:bg-[#444444]")
+            )}
+            on:click={click(move |cx| set_count.update(cx, |n| *n += delta))}
         >
-            {"Increment"}
-        </button>
-    }
-}
-
-fn decrement_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
-    view! {
-        <button
-            class="p-2 bg-[#FF0000] hover:bg-[#880000] text-white rounded"
-            on:click={click(move |cx| set_count.update(cx, |n| *n -= 1))}
-        >
-            {"Decrement"}
+            {label}
         </button>
     }
 }
@@ -53,8 +52,8 @@ fn app() -> impl gpui::IntoElement {
             <Show when={count.get() & 1 == 1} fallback={view! { <span>{"even"}</span> }}>
                 <span>{"odd"}</span>
             </Show>
-            {increment_button(set_count.clone())}
-            {decrement_button(set_count.clone())}
+            {dynamic_button(String::from("Increment"), count.clone(), set_count.clone(), 1)}
+            {dynamic_button(String::from("Decrement"), count.clone(), set_count.clone(), -1)}
         </div>
     }
 }

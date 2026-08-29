@@ -4,11 +4,16 @@
 //! gpui style refinements, with `hover:`/`focus:`/`active:` variant support.
 extern crate proc_macro;
 
-mod colors;
-mod spacing;
+mod colors {
+    pub use vgui_tailwind_core::color_rgb;
+}
+mod spacing {
+    pub use vgui_tailwind_core::{spacing_value, font_size_value, border_radius_value, border_width_value};
+}
+use vgui_tailwind_core::{parse_class, ParsedClass, Variant};
 
 use proc_macro::TokenStream;
-use proc_macro2::{TokenStream as TokenStream2, TokenTree};
+use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
 
@@ -21,7 +26,30 @@ pub fn tw(input: TokenStream) -> TokenStream {
 }
 
 fn expand_tw(input: TokenStream2) -> syn::Result<TokenStream2> {
-    let s = extract_string_literal(&input)?;
+    match extract_string_literal(&input) {
+        Ok(s) => expand_tw_literal(&s),
+        Err(_) => {
+            // Runtime path: unwrap braces if tw! { expr }, delegate to IntoTwStyle.
+            let tokens: Vec<TokenTree> = input.clone().into_iter().collect();
+            let expr = if tokens.len() == 1 {
+                if let TokenTree::Group(g) = &tokens[0] {
+                    if g.delimiter() == Delimiter::Brace {
+                        g.stream()
+                    } else {
+                        input
+                    }
+                } else {
+                    input
+                }
+            } else {
+                input
+            };
+            Ok(quote! { ::vgui::IntoTwStyle::into_tw_style(#expr) })
+        }
+    }
+}
+
+fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
     let classes: Vec<&str> = s.split_whitespace().collect();
     if classes.is_empty() {
         return Ok(quote! {
@@ -140,73 +168,6 @@ fn parse_rust_string(s: &str) -> String {
     out
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Variant {
-    Base,
-    Hover,
-    Focus,
-    Active,
-}
-
-struct ParsedClass {
-    variant: Variant,
-    utility: String,
-    arbitrary: Option<String>,
-    opacity: Option<u8>,
-}
-
-fn parse_class(class: &str) -> Option<ParsedClass> {
-    let mut variant = Variant::Base;
-    let mut rest = class;
-
-    loop {
-        if let Some(pos) = rest.find(':') {
-            let prefix = &rest[..pos];
-            match prefix {
-                "hover" => variant = Variant::Hover,
-                "focus" => variant = Variant::Focus,
-                "active" => variant = Variant::Active,
-                _ => break,
-            }
-            rest = &rest[pos + 1..];
-        } else {
-            break;
-        }
-    }
-
-    // Split on `/` for opacity modifier
-    let (utility_part, opacity) = if let Some(pos) = rest.rfind('/') {
-        let op_str = &rest[pos + 1..];
-        if op_str.chars().all(|c| c.is_ascii_digit()) {
-            let op: u8 = op_str.parse().ok()?;
-            (rest[..pos].to_string(), Some(op))
-        } else {
-            (rest.to_string(), None)
-        }
-    } else {
-        (rest.to_string(), None)
-    };
-
-    // Extract arbitrary value
-    let (utility, arbitrary) = if let Some(start) = utility_part.find('[') {
-        if utility_part.ends_with(']') {
-            let arb = utility_part[start + 1..utility_part.len() - 1].to_string();
-            let util = utility_part[..start].trim_end_matches('-').to_string();
-            (util, Some(arb))
-        } else {
-            (utility_part, None)
-        }
-    } else {
-        (utility_part, None)
-    };
-
-    Some(ParsedClass {
-        variant,
-        utility,
-        arbitrary,
-        opacity,
-    })
-}
 
 fn emit_class(cls: &ParsedClass) -> syn::Result<TokenStream2> {
     let util = cls.utility.as_str();
@@ -404,13 +365,13 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         }
 
         // Shadow
-        "shadow-sm" => spacing::shadow_value("sm").unwrap(),
-        "shadow" => spacing::shadow_value("").unwrap(),
-        "shadow-md" => spacing::shadow_value("md").unwrap(),
-        "shadow-lg" => spacing::shadow_value("lg").unwrap(),
-        "shadow-xl" => spacing::shadow_value("xl").unwrap(),
-        "shadow-2xl" => spacing::shadow_value("2xl").unwrap(),
-        "shadow-none" => spacing::shadow_value("none").unwrap(),
+        "shadow-sm" => shadow_value("sm").unwrap(),
+        "shadow" => shadow_value("").unwrap(),
+        "shadow-md" => shadow_value("md").unwrap(),
+        "shadow-lg" => shadow_value("lg").unwrap(),
+        "shadow-xl" => shadow_value("xl").unwrap(),
+        "shadow-2xl" => shadow_value("2xl").unwrap(),
+        "shadow-none" => shadow_value("none").unwrap(),
 
         // Rounded (no value = 4px)
         "rounded" => emit_rounded_all(4.0),
@@ -668,7 +629,7 @@ fn emit_prefixed(util: &str, opacity: Option<u8>) -> Option<TokenStream2> {
         "border" => emit_border_prefixed(rest, opacity)?,
         "rounded" => emit_rounded_prefixed(rest)?,
         "opacity" => emit_opacity(rest)?,
-        "shadow" => spacing::shadow_value(rest)?,
+        "shadow" => shadow_value(rest)?,
         "cursor" => emit_cursor(rest)?,
         "font" => emit_font_weight_prefixed(rest)?,
         "inset" => emit_inset(rest)?,
@@ -1618,4 +1579,95 @@ fn parse_hex_color(s: &str) -> Option<TokenStream2> {
 
 fn format_ident(name: &str) -> proc_macro2::Ident {
     proc_macro2::Ident::new(name, proc_macro2::Span::call_site())
+}
+
+fn shadow_value(s: &str) -> Option<TokenStream2> {
+    Some(match s {
+        "none" => quote! { ::std::vec::Vec::new() },
+        "sm" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.05),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(1.)),
+                    blur_radius: ::gpui::px(2.),
+                    spread_radius: ::gpui::px(0.),
+                }
+            ]
+        },
+        "" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(1.)),
+                    blur_radius: ::gpui::px(3.),
+                    spread_radius: ::gpui::px(0.),
+                },
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(1.)),
+                    blur_radius: ::gpui::px(2.),
+                    spread_radius: ::gpui::px(-1.),
+                }
+            ]
+        },
+        "md" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(4.)),
+                    blur_radius: ::gpui::px(6.),
+                    spread_radius: ::gpui::px(-1.),
+                },
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(2.)),
+                    blur_radius: ::gpui::px(4.),
+                    spread_radius: ::gpui::px(-2.),
+                }
+            ]
+        },
+        "lg" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(10.)),
+                    blur_radius: ::gpui::px(15.),
+                    spread_radius: ::gpui::px(-3.),
+                },
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(4.)),
+                    blur_radius: ::gpui::px(6.),
+                    spread_radius: ::gpui::px(-4.),
+                }
+            ]
+        },
+        "xl" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(20.)),
+                    blur_radius: ::gpui::px(25.),
+                    spread_radius: ::gpui::px(-5.),
+                },
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.1),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(8.)),
+                    blur_radius: ::gpui::px(10.),
+                    spread_radius: ::gpui::px(-6.),
+                }
+            ]
+        },
+        "2xl" => quote! {
+            ::std::vec![
+                ::gpui::BoxShadow {
+                    color: ::gpui::hsla(0., 0., 0., 0.25),
+                    offset: ::gpui::point(::gpui::px(0.), ::gpui::px(25.)),
+                    blur_radius: ::gpui::px(50.),
+                    spread_radius: ::gpui::px(-12.),
+                }
+            ]
+        },
+        _ => return None,
+    })
 }

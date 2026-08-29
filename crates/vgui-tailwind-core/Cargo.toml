@@ -1,5 +1,5 @@
 [package]
-name = "vgui-tailwind"
+name = "vgui-tailwind-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,12 +8,3 @@ homepage.workspace = true
 description.workspace = true
 keywords.workspace = true
 categories.workspace = true
-
-[lib]
-proc-macro = true
-
-[dependencies]
-vgui-tailwind-core.workspace = true
-syn.workspace = true
-quote.workspace = true
-proc-macro2.workspace = true
