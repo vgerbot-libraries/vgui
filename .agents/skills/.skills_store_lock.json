@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "@user_741dc82b/dev-expert": {
+      "name": "编程专家.Skill",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=dev-expert&namespace=user_741dc82b",
+      "source": "community",
+      "version": "1.0.51",
+      "namespace": {
+        "canonicalName": "@user_741dc82b/dev-expert",
+        "displayName": "user_741dc82b",
+        "handle": "user_741dc82b",
+        "publicSlug": "dev-expert"
+      },
+      "internalSlug": "dev-expert",
+      "publicSlug": "dev-expert",
+      "installDir": ".agents/skills/@user_741dc82b/dev-expert"
+    }
+  }
+}

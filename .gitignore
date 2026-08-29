@@ -26,3 +26,7 @@ target
 
 # mdBook build output
 book/book/
+
+# SkillHub: ignore skill bodies (= node_modules), keep lockfile (= package-lock.json)
+.agents/skills/@*/
+!.agents/skills/.skills_store_lock.json
