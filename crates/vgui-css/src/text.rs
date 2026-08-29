@@ -2,9 +2,9 @@ use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree};
 use quote::quote;
 
 use crate::keywords::emit_font_weight;
-use crate::parse::{hyphen_keyword, keyword, unsupported};
+use crate::parse::{hyphen_keyword, is_interp, keyword, unsupported};
 use crate::value::{
-    emit_as_absolute, emit_as_definite, LengthKind, number_value, parse_length, parse_number,
+    emit_as_absolute, emit_as_definite, emit_length, LengthKind, number_value, parse_length, parse_number,
     parse_suffixed_length,
 };
 
@@ -122,6 +122,76 @@ pub(crate) fn emit(
                 s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(#v);
             }))
         }
+"font-family" => {
+    let fam = if let Some(kw) = keyword(tokens) {
+        kw
+    } else if let Some(expr) = is_interp(tokens) {
+        return Ok(Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).font_family =
+                ::std::option::Option::Some(::gpui::SharedString::from(#expr));
+        }));
+    } else if tokens.len() == 1 {
+        if let TokenTree::Literal(lit) = &tokens[0] {
+            if let Ok(s) = syn::parse2::<syn::LitStr>(TokenStream2::from(TokenTree::Literal(lit.clone()))) {
+                s.value()
+            } else {
+                return Err(unsupported(prop, tokens, span));
+            }
+        } else {
+            return Err(unsupported(prop, tokens, span));
+        }
+    } else {
+        return Err(unsupported(prop, tokens, span));
+    };
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default).font_family =
+            ::std::option::Option::Some(::gpui::SharedString::from(#fam));
+    }))
+}
+"text-overflow" => {
+    let kw = keyword(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
+    let v = match kw.as_str() {
+        "ellipsis" => quote! { ::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")) },
+        "clip" => quote! { ::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("")) },
+        other => return Err(syn::Error::new(span, format!("unsupported text-overflow: {other}"))),
+    };
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(#v);
+    }))
+}
+"text-decoration-color" => {
+    let c = crate::color::emit_color(tokens, span)?;
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default)
+            .underline.get_or_insert_with(::core::default::Default::default).color = Some((#c).into());
+    }))
+}
+"text-decoration-thickness" => {
+    let len = parse_length(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
+    let v = emit_length(&len);
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default)
+            .underline.get_or_insert_with(::core::default::Default::default).thickness = #v;
+    }))
+}
+"text-decoration-style" => {
+    let kw = keyword(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
+    let wavy = match kw.as_str() {
+        "solid" => quote! { false },
+        "wavy" => quote! { true },
+        other => return Err(syn::Error::new(span, format!("unsupported text-decoration-style: {other}"))),
+    };
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default)
+            .underline.get_or_insert_with(::core::default::Default::default).wavy = #wavy;
+    }))
+}
+"text-background" | "text-background-color" => {
+    let c = crate::color::emit_color(tokens, span)?;
+    Ok(Some(quote! {
+        s.text.get_or_insert_with(::core::default::Default::default).background_color = Some((#c).into());
+    }))
+}
         "line-clamp" => {
             let n = number_value(tokens, prop, span)? as usize;
             Ok(Some(quote! {
@@ -141,6 +211,20 @@ pub(crate) fn emit_interp(
         "line-height" => Ok(Some(quote! {
             s.text.get_or_insert_with(::core::default::Default::default).line_height = Some(::core::convert::Into::<::gpui::DefiniteLength>::into(#expr));
         })),
+"font-family" => Ok(Some(quote! {
+    s.text.get_or_insert_with(::core::default::Default::default).font_family =
+        ::std::option::Option::Some(::gpui::SharedString::from(#expr));
+})),
+"text-overflow" => Ok(Some(quote! {
+    s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(#expr);
+})),
+"text-decoration-color" => Ok(Some(quote! {
+    s.text.get_or_insert_with(::core::default::Default::default)
+        .underline.get_or_insert_with(::core::default::Default::default).color = Some((#expr).into());
+})),
+"text-background" | "text-background-color" => Ok(Some(quote! {
+    s.text.get_or_insert_with(::core::default::Default::default).background_color = Some((#expr).into());
+})),
         "line-clamp" => Ok(Some(quote! {
             s.text.get_or_insert_with(::core::default::Default::default).line_clamp = Some(#expr as usize);
         })),

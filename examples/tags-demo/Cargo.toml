@@ -1,0 +1,18 @@
+[package]
+name = "vgui-tags-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "tags-demo"
+path = "src/main.rs"
+
+[dependencies]
+vgui.workspace = true
+gpui.workspace = true

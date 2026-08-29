@@ -5916,6 +5916,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-tags-demo"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "vgui",
+]
+
+[[package]]
 name = "vgui-tailwind"
 version = "0.1.0"
 dependencies = [

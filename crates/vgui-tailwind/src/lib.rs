@@ -567,6 +567,61 @@ fn emit_exact(util: &str) -> Option<TokenStream2> {
         "border-white" => quote! { s.border_color = Some((::gpui::white()).into()); },
         "border-transparent" => quote! {},
 
+        // Text overflow
+        "truncate" => quote! {
+            s.overflow.x = Some(::gpui::Overflow::Hidden);
+            s.overflow.y = Some(::gpui::Overflow::Hidden);
+            s.text.get_or_insert_with(::core::default::Default::default).white_space = Some(::gpui::WhiteSpace::Nowrap);
+            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
+        },
+        "text-ellipsis" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("…")));
+        },
+        "text-clip" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).text_overflow = Some(::gpui::TextOverflow::Truncate(::gpui::SharedString::new_static("")));
+        },
+
+        // Font family
+        "font-mono" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("monospace"));
+        },
+        "font-sans" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("sans-serif"));
+        },
+        "font-serif" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).font_family = ::std::option::Option::Some(::gpui::SharedString::from("serif"));
+        },
+
+        // Line height
+        "leading-none" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::px(1.)));
+        },
+        "leading-tight" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
+        },
+        "leading-normal" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
+        },
+        "leading-loose" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.)));
+        },
+
+        // Text decoration style
+        "decoration-solid" => quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.wavy = false;
+            }
+        },
+        "decoration-wavy" => quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.wavy = true;
+            }
+        },
+        "decoration-none" => quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).underline = ::std::option::Option::None;
+            s.text.get_or_insert_with(::core::default::Default::default).strikethrough = ::std::option::Option::None;
+        },
+
         _ => return None,
     })
 }
@@ -624,6 +679,8 @@ fn emit_prefixed(util: &str, opacity: Option<u8>) -> Option<TokenStream2> {
         "max" => emit_min_max("max", rest)?,
         "aspect" => emit_aspect(rest)?,
         "line" => emit_line_clamp(rest)?,
+        "leading" => emit_leading(rest)?,
+        "decoration" => emit_decoration(rest)?,
         "z" => emit_z_index(rest)?,
 
         _ => return None,
@@ -1215,6 +1272,75 @@ fn emit_z_index(rest: &str) -> Option<TokenStream2> {
     let n: i32 = rest.parse().ok()?;
     let _ = n;
     None // gpui doesn't have z-index in StyleRefinement
+}
+
+fn emit_leading(rest: &str) -> Option<TokenStream2> {
+    match rest {
+        "3" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(0.75)));
+        }),
+        "4" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.0)));
+        }),
+        "5" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.25)));
+        }),
+        "6" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.5)));
+        }),
+        "7" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(1.75)));
+        }),
+        "8" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.0)));
+        }),
+        "9" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.25)));
+        }),
+        "10" => Some(quote! {
+            s.text.get_or_insert_with(::core::default::Default::default).line_height = ::std::option::Option::Some(::gpui::DefiniteLength::from(::gpui::relative(2.5)));
+        }),
+        _ => {
+            // Try arbitrary value: leading-[20px]
+            if let Some(arb) = rest.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+                if let Some(len) = parse_arbitrary_length(arb) {
+                    return Some(emit_arbitrary_length("line-height", len));
+                }
+            }
+            None
+        }
+    }
+}
+
+fn emit_decoration(rest: &str) -> Option<TokenStream2> {
+    match rest {
+        "0" => Some(quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.thickness = ::gpui::px(0.);
+            }
+        }),
+        "1" => Some(quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.thickness = ::gpui::px(1.);
+            }
+        }),
+        "2" => Some(quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.thickness = ::gpui::px(2.);
+            }
+        }),
+        "4" => Some(quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.thickness = ::gpui::px(4.);
+            }
+        }),
+        "8" => Some(quote! {
+            if let ::std::option::Option::Some(__u) = s.text.get_or_insert_with(::core::default::Default::default).underline.as_mut() {
+                __u.thickness = ::gpui::px(8.);
+            }
+        }),
+        _ => None,
+    }
 }
 
 fn emit_color_value(rest: &str, opacity: Option<u8>) -> Option<TokenStream2> {

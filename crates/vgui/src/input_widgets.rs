@@ -527,3 +527,75 @@ pub fn files_cb(
 ) -> Box<dyn FnMut(Vec<std::path::PathBuf>, &mut App)> {
     Box::new(f)
 }
+
+// ── Select ───────────────────────────────────────────────────────────
+
+/// Props for `<select>`.
+pub struct SelectProps {
+    pub options: Vec<(String, String)>,
+    pub value: String,
+    pub disabled: bool,
+    pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
+}
+
+/// Wrap a closure as an `on:change` callback for select.
+pub fn str_select_change_cb(
+    f: impl FnMut(&str, &mut App) + 'static,
+) -> Box<dyn FnMut(&str, &mut App)> {
+    Box::new(f)
+}
+
+/// Render a simple select dropdown. Returns a `Stateful<Div>` so the macro
+/// can chain style/class/id uniformly.
+pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
+    let options = props.options;
+    let selected = props.value;
+    let disabled = props.disabled;
+    let on_change = std::cell::RefCell::new(props.on_change);
+    let open = std::cell::Cell::new(false);
+
+    let display_label = options
+        .iter()
+        .find(|(v, _)| *v == selected)
+        .map(|(_, l)| l.clone())
+        .unwrap_or_else(|| selected.clone());
+
+    let border_color = if disabled {
+        hsla(0.0, 0.0, 0.7, 1.0)
+    } else {
+        hsla(0.0, 0.0, 0.6, 0.4)
+    };
+
+    let _ = open; // TODO: popup dropdown
+
+    gpui::div()
+        .id(("select", crate::reactive::next_auto_id()))
+        .cursor_pointer()
+        .px_2()
+        .py_1()
+        .min_h(px(28.))
+        .border_1()
+        .border_color(border_color)
+        .rounded(px(4.))
+        .bg(gpui::white())
+        .text_color(gpui::black())
+        .text_size(px(14.))
+        .child(SharedString::from(display_label))
+        .on_mouse_down(
+            MouseButton::Left,
+            move |_event: &MouseDownEvent, _window: &mut Window, _cx: &mut App| {
+                if disabled {
+                    return;
+                }
+                // Simple cycle-through on click for now
+                if let Some(idx) = options.iter().position(|(v, _)| *v == selected) {
+                    let next = (idx + 1) % options.len();
+                    if let Some((v, _)) = options.get(next) {
+                        if let Some(cb) = on_change.borrow_mut().as_mut() {
+                            cb(v, _cx);
+                        }
+                    }
+                }
+            },
+        )
+}

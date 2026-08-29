@@ -7,6 +7,7 @@ use crate::keywords::{
 use crate::parse::{hyphen_keyword, keyword, unsupported};
 use crate::value::{
     emit_as_definite, emit_as_length, number_value, parse_length, parse_lengths, parse_number,
+    split_values,
 };
 
 pub(crate) fn emit(
@@ -163,6 +164,21 @@ pub(crate) fn emit(
             let n = n as u16;
             Ok(Some(quote! { s.grid_rows = Some(#n); }))
         }
+"scrollbar-width" => {
+    let kw = keyword(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
+    let v = match kw.as_str() {
+        "thin" => quote! { ::std::option::Option::Some(::gpui::AbsoluteLength::Pixels(::gpui::px(4.))) },
+        "none" => quote! { ::std::option::Option::Some(::gpui::AbsoluteLength::Pixels(::gpui::px(0.))) },
+        "auto" | _ => quote! { ::std::option::Option::Some(::gpui::AbsoluteLength::Pixels(::gpui::px(12.))) },
+    };
+    Ok(Some(quote! { s.scrollbar_width = #v; }))
+}
+"grid-column" => Ok(Some(emit_grid_span(tokens, "column", span)?)),
+"grid-column-start" => Ok(Some(emit_grid_line(tokens, "column", "start", span)?)),
+"grid-column-end" => Ok(Some(emit_grid_line(tokens, "column", "end", span)?)),
+"grid-row" => Ok(Some(emit_grid_span(tokens, "row", span)?)),
+"grid-row-start" => Ok(Some(emit_grid_line(tokens, "row", "start", span)?)),
+"grid-row-end" => Ok(Some(emit_grid_line(tokens, "row", "end", span)?)),
         _ => Ok(None),
     }
 }
@@ -215,4 +231,74 @@ fn emit_flex(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
         }
     }
     Err(unsupported("flex", tokens, span))
+}
+/// Parse `grid-column` / `grid-row` shorthand: "span N", "A / B", or "N".
+fn emit_grid_span(tokens: &[TokenTree], axis: &str, span: Span) -> syn::Result<TokenStream2> {
+    let parts = split_values(tokens);
+    let (start, end) = match parts.len() {
+        1 => {
+            let p = &parts[0];
+            if let Some(kw) = keyword(p) {
+                if kw == "auto" {
+                    (quote! { ::gpui::GridPlacement::Auto }, quote! { ::gpui::GridPlacement::Auto })
+                } else {
+                    return Err(unsupported("grid span", p, span));
+                }
+            } else if let Some(n) = parse_number(&p[0]) {
+                (quote! { ::gpui::GridPlacement::Line(#n as i16) }, quote! { ::gpui::GridPlacement::Auto })
+            } else {
+                return Err(unsupported("grid span", p, span));
+            }
+        }
+        2 => {
+            let s = parse_grid_placement(&parts[0], span)?;
+            let e = parse_grid_placement(&parts[1], span)?;
+            (s, e)
+        }
+        _ => return Err(unsupported("grid span", tokens, span)),
+    };
+    Ok(quote! {
+        s.grid_location.get_or_insert_with(::core::default::Default::default).#axis =
+            ::core::ops::Range { start: #start, end: #end };
+    })
+}
+
+/// Parse `grid-column-start` / `grid-row-start` etc.
+fn emit_grid_line(tokens: &[TokenTree], axis: &str, end: &str, span: Span) -> syn::Result<TokenStream2> {
+    let p = if let Some(kw) = keyword(tokens) {
+        if kw == "auto" {
+            quote! { ::gpui::GridPlacement::Auto }
+        } else {
+            return Err(unsupported("grid line", tokens, span));
+        }
+    } else if let Some(n) = parse_number(&tokens[0]) {
+        quote! { ::gpui::GridPlacement::Line(#n as i16) }
+    } else {
+        return Err(unsupported("grid line", tokens, span));
+    };
+    Ok(quote! {
+        s.grid_location.get_or_insert_with(::core::default::Default::default).#axis.#end = #p;
+    })
+}
+
+fn parse_grid_placement(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    if let Some(kw) = keyword(tokens) {
+        if kw == "auto" {
+            return Ok(quote! { ::gpui::GridPlacement::Auto });
+        }
+    }
+    // Check for "span N"
+    if tokens.len() >= 2 {
+        if let TokenTree::Ident(id) = &tokens[0] {
+            if id.to_string() == "span" {
+                if let Some(n) = parse_number(&tokens[1]) {
+                    return Ok(quote! { ::gpui::GridPlacement::Span(#n as u16) });
+                }
+            }
+        }
+    }
+    if let Some(n) = parse_number(&tokens[0]) {
+        return Ok(quote! { ::gpui::GridPlacement::Line(#n as i16) });
+    }
+    Err(unsupported("grid placement", tokens, span))
 }

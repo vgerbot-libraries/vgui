@@ -12,7 +12,15 @@ pub(crate) fn emit(
     span: Span,
 ) -> syn::Result<Option<TokenStream2>> {
     match prop {
-        "background" | "background-color" => {
+        "background" => {
+            // Try linear-gradient(...) first, fall back to solid color
+            if let Some(ts) = try_parse_linear_gradient(tokens, span)? {
+                return Ok(Some(ts));
+            }
+            let c = emit_color(tokens, span)?;
+            Ok(Some(quote! { s.background = Some((#c).into()); }))
+        }
+        "background-color" => {
             let c = emit_color(tokens, span)?;
             Ok(Some(quote! { s.background = Some((#c).into()); }))
         }
@@ -148,4 +156,82 @@ fn corner(name: &str, tokens: &[TokenTree], span: Span) -> syn::Result<TokenStre
     let v = emit_as_absolute(&len, "border-radius", span)?;
     let ident = Ident::new(name, span);
     Ok(quote! { s.corner_radii.#ident = Some(#v); })
+}
+
+/// Try to parse `linear-gradient(angle_or_dir, color1, color2)`.
+/// Returns `None` if tokens don't start with `linear-gradient(`.
+fn try_parse_linear_gradient(tokens: &[TokenTree], span: Span) -> syn::Result<Option<TokenStream2>> {
+    // Must start with "linear-gradient(...)" or "linear_gradient(...)"
+    // In token stream, "linear-gradient" is: Ident("linear"), Punct('-'), Ident("gradient"), Group('(...)')
+    if tokens.is_empty() {
+        return Ok(None);
+    }
+    // Check for "linear-gradient" pattern (3 tokens: ident, punct, ident)
+    let group_idx = if tokens.len() >= 4
+        && matches!(&tokens[0], TokenTree::Ident(id) if id.to_string() == "linear")
+        && matches!(&tokens[1], TokenTree::Punct(p) if p.as_char() == '-')
+        && matches!(&tokens[2], TokenTree::Ident(id) if id.to_string() == "gradient")
+    {
+        3
+    } else if tokens.len() >= 2
+        && matches!(&tokens[0], TokenTree::Ident(id) if id.to_string() == "linear_gradient")
+    {
+        1
+    } else {
+        return Ok(None);
+    };
+    let TokenTree::Group(g) = &tokens[group_idx] else { return Ok(None); };
+    if g.delimiter() != proc_macro2::Delimiter::Parenthesis {
+        return Ok(None);
+    }
+    let args: Vec<TokenTree> = g.stream().into_iter().collect();
+    // Split args by commas at top level
+    let parts = split_values(&args);
+    if parts.len() < 3 {
+        return Err(syn::Error::new(span, "linear-gradient requires at least 3 arguments: angle/dir, from-color, to-color"));
+    }
+    // Parse angle/direction from first arg
+    let angle = parse_gradient_angle(&parts[0], span)?;
+    // Parse two colors
+    let from = emit_color(&parts[1], span)?;
+    let to = emit_color(&parts[2], span)?;
+    Ok(Some(quote! {
+        s.background = ::std::option::Option::Some(::gpui::linear_gradient(
+            #angle,
+            ::gpui::linear_color_stop(::gpui::Hsla::from(#from), 0.0),
+            ::gpui::linear_color_stop(::gpui::Hsla::from(#to), 1.0),
+        ).into());
+    }))
+}
+
+/// Parse gradient angle: "90deg", "to right", "to left", "to top", "to bottom"
+fn parse_gradient_angle(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    // "to right" / "to left" / "to top" / "to bottom"
+    if tokens.len() == 2 {
+        if let TokenTree::Ident(id) = &tokens[0] {
+            if id.to_string() == "to" {
+                if let TokenTree::Ident(dir) = &tokens[1] {
+                    return Ok(match dir.to_string().as_str() {
+                        "right" => quote! { 90f32 },
+                        "left" => quote! { 270f32 },
+                        "top" => quote! { 0f32 },
+                        "bottom" => quote! { 180f32 },
+                        _ => return Err(syn::Error::new(span, format!("unsupported gradient direction: to {}", dir))),
+                    });
+                }
+            }
+        }
+    }
+    // "90deg"
+    if tokens.len() == 1 {
+        if let TokenTree::Literal(lit) = &tokens[0] {
+            let s = lit.to_string();
+            if let Some(deg) = s.strip_suffix("deg") {
+                if let Ok(n) = deg.parse::<f32>() {
+                    return Ok(quote! { #n });
+                }
+            }
+        }
+    }
+    Err(syn::Error::new(span, "expected gradient angle (e.g. 90deg) or direction (e.g. to right)"))
 }

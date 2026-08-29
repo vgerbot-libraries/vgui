@@ -57,6 +57,7 @@ impl TextKind {
 /// scope slot so its editing state persists across re-renders.
 pub struct TextInput {
     kind: TextKind,
+    multiline: bool,
     value: String,
     placeholder: Option<SharedString>,
     disabled: bool,
@@ -87,6 +88,7 @@ impl TextInput {
     pub fn new(cx: &mut Context<Self>) -> Self {
         Self {
             kind: TextKind::Text,
+            multiline: false,
             value: String::new(),
             placeholder: None,
             disabled: false,
@@ -119,6 +121,7 @@ impl TextInput {
     /// is not overwritten — the user's in-progress edit wins.
     pub fn sync_from_props(&mut self, props: TextInputProps, _cx: &mut Context<Self>) {
         self.kind = props.kind;
+        self.multiline = props.multiline;
         if props.placeholder.is_some() {
             self.placeholder = props.placeholder;
         }
@@ -335,7 +338,12 @@ impl TextInput {
         }
         // Ignore tab/newline — handled by on_key_down (Tab = focus traversal,
         // Enter = commit).
-        if text == "\t" || text == "\n" {
+        // Ignore tab — handled by on_key_down (Tab = focus traversal).
+        // Newline: ignore for single-line (Enter = commit), allow for multiline.
+        if text == "\t" {
+            return;
+        }
+        if text == "\n" && !self.multiline {
             return;
         }
         let filtered = self.filter_text(text);
@@ -437,7 +445,12 @@ impl TextInput {
                 cx.notify();
             }
             "enter" => {
-                self.fire_on_change(cx);
+                if self.multiline {
+                    self.replace_range(None, "\n", cx);
+                    cx.notify();
+                } else {
+                    self.fire_on_change(cx);
+                }
             }
             "escape" => {
                 if self.picker_open {
@@ -850,11 +863,15 @@ impl Render for TextInput {
             .relative()
             .px_2()
             .py_1()
-            .min_h(px(28.))
+            .min_h(if self.multiline { px(80.) } else { px(28.) })
             .border_1()
             .border_color(hsla(0.0, 0.0, 0.6, 0.4))
             .rounded(px(4.))
-            .bg(gpui::white())
+            .bg(gpui::white());
+        if self.multiline {
+            div = div.whitespace_normal();
+        }
+        div = div
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
@@ -1112,6 +1129,7 @@ impl EntityInputHandler for TextInput {
 /// Props for constructing a text-based `<input>`.
 pub struct TextInputProps {
     pub kind: TextKind,
+    pub multiline: bool,
     pub value: String,
     pub placeholder: Option<SharedString>,
     pub disabled: bool,
@@ -1134,6 +1152,57 @@ pub fn text_input(props: TextInputProps) -> Entity<TextInput> {
     let entity = get_or_create_view(|cx| cx.new(|cx| TextInput::new(cx)));
     with_root_cx(|cx| {
         entity.update(cx, |view, cx| view.sync_from_props(props, cx));
+        let handle = entity.focus_handle(cx);
+        if let Some(id) = &id {
+            crate::label::register_label_target(id, handle.clone());
+        }
+        crate::label::register_in_label_scope(handle);
+    });
+    entity
+}
+
+/// Props for constructing a `<textarea>`.
+pub struct TextAreaProps {
+    pub value: String,
+    pub placeholder: Option<SharedString>,
+    pub disabled: bool,
+    pub readonly: bool,
+    pub on_input: Option<Box<dyn FnMut(&str, &mut App)>>,
+    pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
+    pub style: Option<Css>,
+    pub class: Option<TwStyle>,
+    pub id: Option<String>,
+    pub tabindex: Option<isize>,
+}
+
+/// Get-or-create the persistent `TextInput` entity for a `<textarea>`,
+/// configured for multi-line editing.
+pub fn text_area(props: TextAreaProps) -> Entity<TextInput> {
+    let id = props.id.clone();
+    let entity = get_or_create_view(|cx| cx.new(|cx| TextInput::new(cx)));
+    with_root_cx(|cx| {
+        entity.update(cx, |view, cx| {
+            view.sync_from_props(
+                TextInputProps {
+                    kind: TextKind::Text,
+                    multiline: true,
+                    value: props.value,
+                    placeholder: props.placeholder,
+                    disabled: props.disabled,
+                    readonly: props.readonly,
+                    min: None,
+                    max: None,
+                    step: None,
+                    on_input: props.on_input,
+                    on_change: props.on_change,
+                    style: props.style,
+                    class: props.class,
+                    id: props.id,
+                    tabindex: props.tabindex,
+                },
+                cx,
+            );
+        });
         let handle = entity.focus_handle(cx);
         if let Some(id) = &id {
             crate::label::register_label_target(id, handle.clone());

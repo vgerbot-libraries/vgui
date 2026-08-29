@@ -15,13 +15,14 @@ mod root;
 mod style;
 
 pub use crate::child::{click, into_child, IntoViewChild};
-pub use crate::control::{for_each, for_each_or, show, show_when};
+pub use crate::control::{details, dialog, for_each, for_each_or, progress, show, show_when};
 pub use crate::input_text::{
-    input_cb, str_change_cb, text_input, TextKind, TextInputProps,
+    input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInputProps,
 };
 pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
-    range_input, FileProps, RadioProps, RangeProps,
+    range_input, select, FileProps, RadioProps, RangeProps, SelectProps,
+    str_select_change_cb,
 };
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit};
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};

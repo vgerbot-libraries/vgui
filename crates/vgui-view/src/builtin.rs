@@ -12,6 +12,15 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "label" {
         return emit_label(el);
     }
+    if name == "textarea" {
+        return emit_textarea(el);
+    }
+    if name == "select" {
+        return emit_select(el);
+    }
+    if name == "wbr" {
+        return Ok(quote! { ::gpui::Empty });
+    }
     let mut src = None;
     let mut id = None;
     let mut style = None;
@@ -20,6 +29,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut focus = None;
     let mut class = None;
     let mut tabindex = None;
+    let mut object_fit = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     for attr in &el.attrs {
@@ -33,7 +43,20 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Class => class = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
-            AttrKind::Ident(id) => unknown.push(id.clone()),
+            AttrKind::Ident(id) => {
+                let id_name = id.to_string();
+                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>/<dialog>
+                if (name == "a" && id_name == "href")
+                    || ((name == "progress" || name == "meter") && (id_name == "value" || id_name == "max"))
+                    || ((name == "details" || name == "dialog") && id_name == "open")
+                {
+                    // ignore — consumed in the tag match
+                } else if name == "img" && id_name == "object_fit" {
+                    object_fit = Some(attr);
+                } else {
+                    unknown.push(id.clone());
+                }
+            }
             AttrKind::Type => {
                 return Err(syn::Error::new(attr.span, "`type` attribute is only valid on <input>"))
             }
@@ -49,12 +72,121 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         ));
     }
     let mut ctor = match name.as_str() {
-        "div" | "span" | "p" => quote! { ::gpui::div() },
+        // Pure div aliases (semantic containers)
+        "div" | "span" | "p"
+        | "header" | "footer" | "nav" | "main" | "section" | "article" | "aside"
+        | "address" | "form" | "fieldset" | "legend" | "figure" | "figcaption"
+        | "pre" | "blockquote" | "q" => quote! { ::gpui::div() },
+        // Headings h1-h6 with default font-size (rem) and font-weight
+        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
+            let (size, weight) = match name.as_str() {
+                "h1" => (2.0f32, 600.0f32),
+                "h2" => (1.5, 600.0),
+                "h3" => (1.25, 600.0),
+                "h4" => (1.0, 600.0),
+                "h5" => (0.875, 600.0),
+                "h6" => (0.85, 500.0),
+                _ => unreachable!(),
+            };
+            quote! { ::gpui::div().text_size(::gpui::rems(#size)).font_weight(::gpui::FontWeight(#weight)) }
+        }
+        // Text formatting tags
+        "strong" | "b" => quote! { ::gpui::div().font_weight(::gpui::FontWeight::BOLD) },
+        "em" | "i" => quote! { ::gpui::div().italic() },
+        "u" => quote! { ::gpui::div().underline() },
+        "s" | "del" | "strike" => quote! { ::gpui::div().line_through() },
+        "mark" => quote! { ::gpui::div().text_bg(::gpui::hsla(60./360., 1., 0.5, 1.)) },
+        "small" => quote! { ::gpui::div().text_size(::gpui::rems(0.875)) },
+        "code" | "kbd" | "samp" | "var" => quote! { ::gpui::div().font_family("monospace") },
+        "cite" | "abbr" | "dfn" | "bdi" | "bdo" | "time" => quote! { ::gpui::div() },
+        // Void elements
+        "br" => quote! { ::gpui::div().h(::gpui::px(1. * 16.)) },
+        "hr" => quote! { ::gpui::div().w_full().h(::gpui::px(1.)).bg(::gpui::hsla(0., 0., 0.5, 1.)) },
+        // Link
+        "a" => quote! { ::gpui::div().cursor_pointer().text_color(::gpui::hsla(220./360., 1., 0.5, 1.)) },
+        // Lists
+        "ul" | "ol" => quote! { ::gpui::div().flex_col() },
+        "li" => quote! { ::gpui::div() },
+        "dl" => quote! { ::gpui::div().flex_col() },
+        "dt" => quote! { ::gpui::div().font_weight(::gpui::FontWeight::BOLD) },
+        "dd" => quote! { ::gpui::div().pl(::gpui::px(16.)) },
+        // Summary (clickable header for details)
+        "summary" => quote! { ::gpui::div().cursor_pointer() },
+        // Button (existing)
         "button" => quote! { ::gpui::div().cursor_pointer() },
+        // Image (existing)
         "img" => {
             let src = src.ok_or_else(|| syn::Error::new(el.tag.span(), "<img> requires src"))?;
             let v = attr_tokens(&src.value);
             quote! { ::gpui::img(#v) }
+        }
+        // SVG (uses gpui::svg() element, similar to img)
+        "svg" => {
+            let src = src.ok_or_else(|| syn::Error::new(el.tag.span(), "<svg> requires src"))?;
+            let v = attr_tokens(&src.value);
+            quote! { ::gpui::svg().path(#v) }
+        }
+        // Progress bar
+        "progress" => {
+            let value = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "value" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { 0f64 });
+            let max = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "max" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { 1f64 });
+            quote! { ::vgui::progress(#value, #max) }
+        }
+        // Meter (similar to progress)
+        "meter" => {
+            let value = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "value" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { 0f64 });
+            let max = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "max" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { 1f64 });
+            quote! { ::vgui::progress(#value, #max) }
+        }
+        // Details/summary collapsible container
+        "details" => {
+            let open = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "open" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { false });
+            let kids = emit_children(&el.children)?;
+            quote! { ::vgui::details(#open, ::gpui::div(), {
+                let mut __p = ::gpui::div().flex_col();
+                #(let __c = #kids; __p = __p.child(__c);)*
+                __p
+            }) }
+        }
+        // Dialog modal overlay
+        "dialog" => {
+            let open = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "open" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { false });
+            let kids = emit_children(&el.children)?;
+            quote! { ::vgui::dialog(#open, {
+                let mut __p = ::gpui::div();
+                #(let __c = #kids; __p = __p.child(__c);)*
+                __p
+            }) }
         }
         other => {
             return Err(syn::Error::new(
@@ -63,9 +195,23 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             ))
         }
     };
-    if name != "img" {
+    if name != "img" && name != "svg" {
         if let Some(src) = src {
             return Err(syn::Error::new(src.span, "src is only valid on <img>"));
+        }
+    }
+    // Apply object-fit to img elements
+    if name == "img" {
+        if let Some(of) = object_fit {
+            let v = match string_lit_static(&of.value).map(|s| s.to_string()).as_deref() {
+                Some("fill") => quote! { ::gpui::ObjectFit::Fill },
+                Some("contain") => quote! { ::gpui::ObjectFit::Contain },
+                Some("cover") => quote! { ::gpui::ObjectFit::Cover },
+                Some("scale-down") => quote! { ::gpui::ObjectFit::ScaleDown },
+                Some("none") => quote! { ::gpui::ObjectFit::None },
+                _ => return Err(syn::Error::new(of.span, "invalid object-fit value; expected fill/contain/cover/scale-down/none")),
+            };
+            ctor = quote! { #ctor.object_fit(#v) };
         }
     }
 
@@ -174,7 +320,13 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     for (ev, handler, span) in events {
         ctor = emit_event(ctor, &ev, handler, span)?;
     }
-    let kids = emit_children(&el.children)?;
+    let is_void = matches!(name.as_str(), "br" | "hr");
+    let handles_children = matches!(name.as_str(), "details" | "dialog");
+    let kids = if is_void || handles_children {
+        Vec::new()
+    } else {
+        emit_children(&el.children)?
+    };
     Ok(quote! {{
         let mut el = #ctor;
         #(el = el.child(#kids);)*
@@ -196,11 +348,15 @@ fn emit_event(
         "scroll" => Ok(quote! { #ctor.on_scroll_wheel(#handler) }),
         "key_down" => Ok(quote! { #ctor.on_key_down(#handler) }),
         "key_up" => Ok(quote! { #ctor.on_key_up(#handler) }),
-        "hover" => Ok(quote! { #ctor.on_hover(#handler) }),
+        "modifiers_changed" => Ok(quote! { #ctor.on_modifiers_changed(#handler) }),
+        "mouse_down_out" => Ok(quote! { #ctor.on_mouse_down_out(#handler) }),
+        "mouse_up_out" => Ok(quote! { #ctor.on_mouse_up_out(::gpui::MouseButton::Left, #handler) }),
+        "any_mouse_down" => Ok(quote! { #ctor.on_any_mouse_down(#handler) }),
+        "any_mouse_up" => Ok(quote! { #ctor.on_any_mouse_up(#handler) }),
         other => Err(syn::Error::new(
             span,
             format!(
-                "unsupported event `on:{other}`; supported: click, mouse_down, mouse_up, mouse_move, scroll, key_down, key_up, hover"
+                "unsupported event `on:{other}`; supported: click, mouse_down, mouse_up, mouse_move, scroll, key_down, key_up, hover, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down, any_mouse_up"
             ),
         )),
     }
@@ -565,6 +721,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             Ok(quote! {
                 ::vgui::text_input(::vgui::TextInputProps {
                     kind: #kind_variant,
+                    multiline: false,
                     value: #value_expr,
                     placeholder: #placeholder_expr,
                     disabled: #disabled_expr,
@@ -786,6 +943,269 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
 }
 
 // ── <label> ──────────────────────────────────────────────────────────
+
+fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
+    // Reject children — <select> uses options attribute, not child <option> elements.
+    if !el.children.is_empty() {
+        return Err(syn::Error::new(
+            el.tag.span(),
+            "<select> cannot have children; use options={...} attribute instead",
+        ));
+    }
+
+    let mut style = None;
+    let mut class = None;
+
+    let mut on_change = None;
+    let mut options = None;
+    let mut value = None;
+    let mut disabled = None;
+
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            AttrKind::Id => {}
+            AttrKind::On(ev) => {
+                let ev_name = ev.to_string();
+                let handler = attr_tokens(&attr.value);
+                match ev_name.as_str() {
+                    "change" => on_change = Some(handler),
+                    other => return Err(syn::Error::new(attr.span, format!("unsupported event `on:{other}` on <select>"))),
+                }
+            }
+            AttrKind::Ident(id2) => {
+                let name = id2.to_string();
+                match name.as_str() {
+                    "options" => options = Some(&attr.value),
+                    "value" => value = Some(&attr.value),
+                    "disabled" => disabled = Some(&attr.value),
+                    "name" => {} // accepted but unused
+                    other => {
+                        return Err(syn::Error::new(
+                            id2.span(),
+                            format!("unknown attribute `{other}` on <select>"),
+                        ));
+                    }
+                }
+            }
+            AttrKind::Src => {
+                return Err(syn::Error::new(attr.span, "src is not valid on <select>"));
+            }
+            AttrKind::Type => {
+                return Err(syn::Error::new(attr.span, "`type` is not valid on <select>"));
+            }
+            AttrKind::For => {
+                return Err(syn::Error::new(attr.span, "`for` is not valid on <select>"));
+            }
+            AttrKind::Tabindex => {} // accepted but unused
+            AttrKind::Hover | AttrKind::Active | AttrKind::Focus => {
+                return Err(syn::Error::new(attr.span, "hover/active/focus are not supported on <select>"));
+            }
+        }
+    }
+
+    let options_expr = match options {
+        Some(v) => attr_tokens(v),
+        None => quote! { ::std::vec::Vec::new() },
+    };
+    let value_expr = match value {
+        Some(v) => {
+            let e = attr_tokens(v);
+            quote! { ::std::string::ToString::to_string(&(#e)) }
+        }
+        None => quote! { ::std::string::String::new() },
+    };
+    let disabled_expr = match disabled {
+        Some(v) => bool_expr(v),
+        None => quote! { false },
+    };
+    let on_change_expr = match on_change {
+        Some(h) => quote! { ::std::option::Option::Some(::vgui::str_select_change_cb(#h)) },
+        None => quote! { ::std::option::Option::None },
+    };
+    let style_expr = match style {
+        Some(a) => {
+            let v = attr_tokens(&a.value);
+            quote! { ::std::option::Option::Some(#v) }
+        }
+        None => quote! { ::std::option::Option::None::<::vgui::Css> },
+    };
+    let class_expr = match class {
+        Some(a) => {
+            let v = attr_tokens(&a.value);
+            quote! { ::std::option::Option::Some(::vgui::tw!(#v)) }
+        }
+        None => quote! { ::std::option::Option::None::<::vgui::TwStyle> },
+    };
+
+    Ok(quote! {{
+        let __props = ::vgui::SelectProps {
+            options: #options_expr,
+            value: #value_expr,
+            disabled: #disabled_expr,
+            on_change: #on_change_expr,
+        };
+        let mut __el = ::vgui::select(__props);
+        if let ::std::option::Option::Some(__s) = #style_expr {
+            __el = __s.apply(__el);
+        }
+        if let ::std::option::Option::Some(__tw) = #class_expr {
+            (__tw.base)(__el.style());
+            if let ::std::option::Option::Some(__h) = __tw.hover {
+                __el = __el.hover(move |mut s| { __h(&mut s); s });
+            }
+            if let ::std::option::Option::Some(__f) = __tw.focus {
+                __el = __el.focus(move |mut s| { __f(&mut s); s });
+            }
+            if let ::std::option::Option::Some(__a) = __tw.active {
+                __el = __el.active(move |mut s| { __a(&mut s); s });
+            }
+        }
+        __el
+    }})
+}
+
+fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
+    // Reject children — <textarea> is a void element.
+    if !el.children.is_empty() {
+        return Err(syn::Error::new(
+            el.tag.span(),
+            "<textarea> is a void element and cannot have children",
+        ));
+    }
+
+    let mut style = None;
+    let mut class = None;
+    let mut id = None;
+    let mut tabindex = None;
+    let mut on_input = None;
+    let mut on_change = None;
+    let mut value = None;
+    let mut placeholder = None;
+    let mut disabled = None;
+    let mut readonly = None;
+
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            AttrKind::Id => id = Some(attr),
+            AttrKind::Tabindex => tabindex = Some(attr),
+            AttrKind::On(ev) => {
+                let ev_name = ev.to_string();
+                let handler = attr_tokens(&attr.value);
+                match ev_name.as_str() {
+                    "input" => on_input = Some(handler),
+                    "change" => on_change = Some(handler),
+                    _ => return Err(syn::Error::new(attr.span, format!("unsupported event `on:{ev_name}` on <textarea>"))),
+                }
+            }
+            AttrKind::Ident(id2) => {
+                let name = id2.to_string();
+                match name.as_str() {
+                    "value" => value = Some(&attr.value),
+                    "placeholder" => placeholder = Some(&attr.value),
+                    "disabled" => disabled = Some(&attr.value),
+                    "readonly" => readonly = Some(&attr.value),
+                    "rows" | "name" => {} // accepted but unused
+                    other => {
+                        return Err(syn::Error::new(
+                            id2.span(),
+                            format!("unknown attribute `{other}` on <textarea>"),
+                        ));
+                    }
+                }
+            }
+            AttrKind::Src => {
+                return Err(syn::Error::new(attr.span, "src is not valid on <textarea>"));
+            }
+            AttrKind::Type => {
+                return Err(syn::Error::new(attr.span, "`type` is not valid on <textarea>"));
+            }
+            AttrKind::For => {
+                return Err(syn::Error::new(attr.span, "`for` is not valid on <textarea>"));
+            }
+            AttrKind::Hover | AttrKind::Active | AttrKind::Focus => {
+                return Err(syn::Error::new(attr.span, "hover/active/focus are not supported on <textarea>"));
+            }
+        }
+    }
+
+    let value_expr = match value {
+        Some(v) => {
+            let e = attr_tokens(v);
+            quote! { ::std::string::ToString::to_string(&(#e)) }
+        }
+        None => quote! { ::std::string::String::new() },
+    };
+    let placeholder_expr = match placeholder {
+        Some(v) => {
+            let e = attr_tokens(v);
+            quote! { ::std::option::Option::Some(::std::convert::Into::into(#e)) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
+    let disabled_expr = match disabled {
+        Some(v) => bool_expr(v),
+        None => quote! { false },
+    };
+    let readonly_expr = match readonly {
+        Some(v) => bool_expr(v),
+        None => quote! { false },
+    };
+    let on_input_expr = match on_input {
+        Some(h) => quote! { ::std::option::Option::Some(::vgui::input_cb(#h)) },
+        None => quote! { ::std::option::Option::None },
+    };
+    let on_change_expr = match on_change {
+        Some(h) => quote! { ::std::option::Option::Some(::vgui::str_change_cb(#h)) },
+        None => quote! { ::std::option::Option::None },
+    };
+    let style_expr = match style {
+        Some(a) => {
+            let v = attr_tokens(&a.value);
+            quote! { ::std::option::Option::Some(#v) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
+    let class_expr = match class {
+        Some(a) => {
+            let v = attr_tokens(&a.value);
+            quote! { ::std::option::Option::Some(::vgui::tw!(#v)) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
+    let tabindex_expr_val = match tabindex {
+        Some(v) => {
+            let e = tabindex_expr(&v.value);
+            quote! { ::std::option::Option::Some(#e) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
+    let id_expr = match id {
+        Some(a) => {
+            let v = attr_tokens(&a.value);
+            quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&(#v))) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
+
+    Ok(quote! {
+        ::vgui::text_area(::vgui::TextAreaProps {
+            value: #value_expr,
+            placeholder: #placeholder_expr,
+            disabled: #disabled_expr,
+            readonly: #readonly_expr,
+            on_input: #on_input_expr,
+            on_change: #on_change_expr,
+            style: #style_expr,
+            class: #class_expr,
+            id: #id_expr,
+            tabindex: #tabindex_expr_val,
+        })
+    })
+}
 
 fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
     let mut for_attr = None;

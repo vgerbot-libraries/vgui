@@ -85,8 +85,8 @@ pub(crate) fn parse_element_or_fragment(
             }));
         }
         if is_punct(&tokens[*i], '>') {
-            // Void element: `<input>` without `/>` — treat as self-closing.
-            if tag.to_string() == "input" {
+            // Void/self-closing element: `<input>`, `<br>`, `<hr>`, `<wbr>` without `/>` — treat as self-closing.
+            if matches!(tag.to_string().as_str(), "input" | "br" | "hr" | "wbr") {
                 *i += 1;
                 return Ok(Node::Element(Element {
                     tag,
