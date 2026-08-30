@@ -250,12 +250,12 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                 ev.to_string().as_str(),
                 "click"
                     | "hover"
-                    | "mouse_down"
-                    | "mouse_up"
-                    | "mouse_move"
+                    | "keydown"
+                    | "keyup"
+                    | "pointerdown"
+                    | "pointerup"
+                    | "pointermove"
                     | "scroll"
-                    | "key_down"
-                    | "key_up"
             )
         });
     // hover is on InteractiveElement, not Stateful. active/on_click/on_hover need Stateful.
@@ -400,21 +400,24 @@ fn emit_event(
 ) -> syn::Result<TokenStream2> {
     match ev.to_string().as_str() {
         "click" => Ok(quote! { #ctor.on_click(#handler) }),
-        "mouse_down" => Ok(quote! { #ctor.on_mouse_down(::gpui::MouseButton::Left, #handler) }),
-        "mouse_up" => Ok(quote! { #ctor.on_mouse_up(::gpui::MouseButton::Left, #handler) }),
-        "mouse_move" => Ok(quote! { #ctor.on_mouse_move(#handler) }),
         "scroll" => Ok(quote! { #ctor.on_scroll_wheel(#handler) }),
-        "key_down" => Ok(quote! { #ctor.on_key_down(#handler) }),
-        "key_up" => Ok(quote! { #ctor.on_key_up(#handler) }),
         "modifiers_changed" => Ok(quote! { #ctor.on_modifiers_changed(#handler) }),
         "mouse_down_out" => Ok(quote! { #ctor.on_mouse_down_out(#handler) }),
         "mouse_up_out" => Ok(quote! { #ctor.on_mouse_up_out(::gpui::MouseButton::Left, #handler) }),
         "any_mouse_down" => Ok(quote! { #ctor.on_any_mouse_down(#handler) }),
-        "any_mouse_up" => Ok(quote! { #ctor.on_any_mouse_up(#handler) }),
+        // Web-aligned DOM events (normalized vgui event structs).
+        "keydown" => Ok(quote! { #ctor.on_key_down(::vgui::__dom_key_down(#handler)) }),
+        "keyup" => Ok(quote! { #ctor.on_key_up(::vgui::__dom_key_up(#handler)) }),
+        "pointerdown" => Ok(quote! { #ctor.on_any_mouse_down(::vgui::__dom_pointer_down(#handler)) }),
+        "pointerup" => Ok(quote! { #ctor.capture_any_mouse_up(::vgui::__dom_pointer_up(#handler)) }),
+        "pointermove" => Ok(quote! { #ctor.on_mouse_move(::vgui::__dom_pointer_move(#handler)) }),
+        // Window-level resize: register the handler into the render scope and
+        // return the element unchanged (not an element event).
+        "resize" => Ok(quote! { { ::vgui::__register_resize_handler(#handler); #ctor } }),
         other => Err(syn::Error::new(
             span,
             format!(
-                "unsupported event `on:{other}`; supported: click, mouse_down, mouse_up, mouse_move, scroll, key_down, key_up, hover, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down, any_mouse_up"
+                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down"
             ),
         )),
     }

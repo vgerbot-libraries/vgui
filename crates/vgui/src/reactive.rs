@@ -93,6 +93,21 @@ fn try_current() -> Option<Current> {
     CURRENT.with(|c| c.borrow().as_ref().cloned())
 }
 
+/// Register an `on:resize` handler into the current render scope. Called by
+/// macro-emitted `on:resize` code. No-op outside a real render scope (tests),
+/// so `on:resize` in test `view!`s won't panic.
+#[doc(hidden)]
+pub fn __register_resize_handler(
+    handler: impl Fn(&crate::event::ResizeEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+) {
+    if let Some(cur) = try_current() {
+        cur.scope
+            .borrow_mut()
+            .resize_handlers
+            .push(Rc::new(handler));
+    }
+}
+
 fn current() -> Current {
     CURRENT.with(|c| {
         c.borrow()

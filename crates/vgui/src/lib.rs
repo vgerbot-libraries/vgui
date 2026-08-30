@@ -12,6 +12,7 @@ pub use vgui_tailwind::tw;
 pub use vgui_view::view;
 
 mod child;
+mod event;
 mod control;
 mod input_text;
 mod input_widgets;
@@ -42,6 +43,10 @@ pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::ref_handle::NodeRef;
 pub use crate::root::{mount, VguiRoot};
+pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent};
+// Hidden macro-facing converters wrapping user closures into gpui listeners.
+pub use crate::event::{__dom_key_down, __dom_key_up, __dom_pointer_down, __dom_pointer_up, __dom_pointer_move};
+pub use crate::reactive::__register_resize_handler;
 pub use crate::style::{ApplyStyle, Css, TwStyle};
 pub use crate::style::{IntoTwStyle, TwClass, TwClassSource};
 pub use crate::tw_dynamic::tw_dynamic;

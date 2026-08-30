@@ -14,6 +14,10 @@ pub struct Scope {
     pub(crate) memos: Vec<Rc<dyn Fn(&mut Context<VguiRoot>)>>,
     pub(crate) memo_deps: Vec<Vec<gpui::EntityId>>,
     pub(crate) effects: Vec<EffectSlot>,
+    /// `on:resize` handlers registered during the current render. Cleared and
+    /// refilled on every render, then invoked by the window-bounds observer.
+    pub(crate) resize_handlers:
+        Vec<Rc<dyn Fn(&crate::event::ResizeEvent, &mut gpui::Window, &mut gpui::App)>>,
 }
 
 pub(crate) struct EffectSlot {
@@ -31,6 +35,9 @@ pub(crate) enum Slot {
 pub struct VguiRoot {
     pub(crate) scope: Rc<RefCell<Scope>>,
     render: Box<dyn FnMut() -> AnyElement>,
+    /// Window-bounds observer subscription (registered once on first render,
+    /// dispatches `on:resize` handlers on viewport-size change).
+    resize_sub: Option<gpui::Subscription>,
 }
 
 impl VguiRoot {
@@ -47,10 +54,12 @@ impl VguiRoot {
             memos: Vec::new(),
             memo_deps: Vec::new(),
             effects: Vec::new(),
+            resize_handlers: Vec::new(),
         }));
         Self {
             scope,
             render: Box::new(move || render().into_any_element()),
+            resize_sub: None,
         }
     }
 
@@ -82,8 +91,21 @@ impl VguiRoot {
 }
 
 impl Render for VguiRoot {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.scope.borrow_mut().index = 0;
+        // Refill `on:resize` handlers from this render's `view!` tree.
+        self.scope.borrow_mut().resize_handlers.clear();
+        // Register the window-bounds observer once; it dispatches the current
+        // render's resize handlers on viewport-size change.
+        if self.resize_sub.is_none() {
+            self.resize_sub = Some(cx.observe_window_bounds(window, |root, window, cx| {
+                let ev = ::vgui::event::ResizeEvent::from_window(window);
+                let handlers = root.scope.borrow().resize_handlers.clone();
+                for h in handlers {
+                    h(&ev, window, cx);
+                }
+            }));
+        }
         enter_scope(self.scope.clone(), cx);
         let el = (self.render)();
         exit_scope();

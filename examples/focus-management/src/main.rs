@@ -14,6 +14,7 @@ fn app() -> impl gpui::IntoElement {
     let (radio_val, set_radio) = create_signal(0i32);
     let (field1, set_field1) = create_signal(String::new());
     let (field2, set_field2) = create_signal(String::new());
+    let (size_sig, set_size) = create_signal((0f64, 0f64));
 
     // Individual setters for radio on:change closures (each needs its own
     // WriteSignal clone with a 'static lifetime).
@@ -25,8 +26,10 @@ fn app() -> impl gpui::IntoElement {
     let set_dialog_close_btn = set_dialog_open.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#505050] w-[600px] h-[500px] text-white">
-            <h2 class="text-lg font-bold">{"Focus Management Demo"}</h2>
+        <div class="flex flex-col gap-4 p-6 bg-[#505050] w-[600px] h-[500px] text-white"
+            on:resize={move |ev: &ResizeEvent, _w, _cx| { set_size.update(_cx, |_| (ev.width, ev.height)); }}
+        >
+            <span class="text-sm text-[#0f0]">{format!("{:.0} x {:.0}", size_sig.get().0, size_sig.get().1)}</span>
 
             // ── Dialog with focus trap + restore ──────────────────────
             <div class="flex flex-col gap-2">
@@ -36,6 +39,8 @@ fn app() -> impl gpui::IntoElement {
                 <button
                     class="px-3 py-2 bg-[#0066cc] hover:bg-[#004499] rounded text-sm"
                     on:click={click(move |cx| set_dialog_open_btn.set(cx, true))}
+                    on:pointerdown={move |_ev: &PointerEvent, _w, _cx| {}}
+                    on:keydown={move |_ev: &KeyboardEvent, _w, _cx| {}}
                 >
                     {"Open Dialog"}
                 </button>
