@@ -508,6 +508,8 @@ impl Render for RangeInput {
                 hover,
                 focus,
                 active,
+                animation: _,
+                transition: _,
             } = class;
             base(div.style());
             if let Some(h) = hover {

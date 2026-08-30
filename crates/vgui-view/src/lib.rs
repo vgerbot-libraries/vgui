@@ -9,6 +9,7 @@ mod emit;
 mod control;
 mod component;
 mod builtin;
+mod provider;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Ident, Span, TokenStream as TokenStream2, TokenTree};
@@ -56,6 +57,7 @@ pub(crate) enum AttrKind {
     Tabindex,
     For,
     Ref,
+    Animate,
 }
 
 pub(crate) enum AttrValue {
@@ -92,6 +94,9 @@ pub(crate) fn emit_element(el: &Element) -> syn::Result<TokenStream2> {
     }
     if name == "For" {
         return control::emit_for(el);
+    }
+    if name == "Provider" {
+        return provider::emit_provider(el);
     }
     if name
         .chars()

@@ -35,6 +35,8 @@ pub struct TwStyle {
     pub hover: Option<Box<dyn Fn(&mut gpui::StyleRefinement) + 'static>>,
     pub focus: Option<Box<dyn Fn(&mut gpui::StyleRefinement) + 'static>>,
     pub active: Option<Box<dyn Fn(&mut gpui::StyleRefinement) + 'static>>,
+    pub animation: Option<crate::animation::TwAnimation>,
+    pub transition: Option<crate::animation::TwTransition>,
 }
 
 impl TwStyle {

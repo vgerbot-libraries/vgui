@@ -58,6 +58,8 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
                 hover: ::std::option::Option::None,
                 focus: ::std::option::Option::None,
                 active: ::std::option::Option::None,
+                animation: ::std::option::Option::None,
+                transition: ::std::option::Option::None,
             }
         });
     }
@@ -67,12 +69,45 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
     let mut focus_stmts = Vec::new();
     let mut active_stmts = Vec::new();
 
+    // Animation / transition / timing config (collected from base-variant classes).
+    let mut animation_name: Option<String> = None;
+    let mut transition_props: Option<&str> = None;
+    let mut duration_ms: Option<u64> = None;
+    let mut easing_kind: Option<&str> = None;
+    let mut delay_ms: Option<u64> = None;
+
     for class in &classes {
         let parsed = parse_class(class);
         let parsed = match parsed {
             Some(p) => p,
             None => continue, // skip unknown classes silently
         };
+        let util = parsed.utility.as_str();
+
+        // Animation/transition/timing classes are never variant-prefixed.
+        if parsed.variant == Variant::Base {
+            if let Some(name) = parse_animate_name(util) {
+                animation_name = Some(name.to_string());
+                continue;
+            }
+            if let Some(props) = parse_transition_props(util) {
+                transition_props = Some(props);
+                continue;
+            }
+            if let Some(ms) = parse_duration(util) {
+                duration_ms = Some(ms);
+                continue;
+            }
+            if let Some(ms) = parse_delay(util) {
+                delay_ms = Some(ms);
+                continue;
+            }
+            if let Some(e) = parse_easing(util) {
+                easing_kind = Some(e);
+                continue;
+            }
+        }
+
         let stmt = emit_class(&parsed)?;
         match parsed.variant {
             Variant::Base => base_stmts.push(stmt),
@@ -103,14 +138,112 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
         quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#active_stmts)* })) }
     };
 
+    let animation_tokens = if let Some(name) = &animation_name {
+        let dur = duration_ms.unwrap_or_else(|| default_duration(name));
+        let ease = format_ident(easing_kind.unwrap_or("EaseInOut"));
+        let delay = delay_ms.unwrap_or(0);
+        quote! {
+            ::std::option::Option::Some(::vgui::TwAnimation {
+                name: ::std::string::ToString::to_string(#name),
+                duration: ::std::time::Duration::from_millis(#dur),
+                easing: ::vgui::Easing::#ease,
+                delay: ::std::time::Duration::from_millis(#delay),
+                repeat: true,
+            })
+        }
+    } else {
+        quote! { ::std::option::Option::None }
+    };
+
+    let transition_tokens = if let Some(props) = transition_props {
+        let dur = duration_ms.unwrap_or(150);
+        let ease = format_ident(easing_kind.unwrap_or("EaseInOut"));
+        let delay = delay_ms.unwrap_or(0);
+        let props_ident = format_ident(props);
+        quote! {
+            ::std::option::Option::Some(::vgui::TwTransition {
+                properties: ::vgui::TransitionProperties::#props_ident,
+                duration: ::std::time::Duration::from_millis(#dur),
+                easing: ::vgui::Easing::#ease,
+                delay: ::std::time::Duration::from_millis(#delay),
+            })
+        }
+    } else {
+        quote! { ::std::option::Option::None }
+    };
+
     Ok(quote! {
         ::vgui::TwStyle {
             base: #base,
             hover: #hover,
             focus: #focus,
             active: #active,
+            animation: #animation_tokens,
+            transition: #transition_tokens,
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Animation / transition / timing class parsing (compile-time)
+// ---------------------------------------------------------------------------
+
+/// Match `animate-pulse` / `animate-bounce` / `animate-ping` / `animate-spin`.
+/// Returns the keyframe name (`"pulse"`, `"bounce"`, `"ping"`, `"spin"`).
+fn parse_animate_name(util: &str) -> Option<&'static str> {
+    match util {
+        "animate-pulse" => Some("pulse"),
+        "animate-bounce" => Some("bounce"),
+        "animate-ping" => Some("ping"),
+        "animate-spin" => Some("spin"),
+        _ => None,
+    }
+}
+
+/// Match `transition` / `transition-all` / `transition-opacity` / `transition-colors`.
+/// Returns the [`TransitionProperties`] variant name. `transition-shadow` and
+/// `transition-transform` are recognized but unsupported (no-op).
+fn parse_transition_props(util: &str) -> Option<&'static str> {
+    match util {
+        "transition" | "transition-all" => Some("ALL"),
+        "transition-opacity" => Some("OPACITY"),
+        "transition-colors" => Some("COLORS"),
+        // Recognized but unsupported — skip silently.
+        "transition-shadow" | "transition-transform" => None,
+        _ => None,
+    }
+}
+
+/// Match `duration-NNN` (milliseconds).
+fn parse_duration(util: &str) -> Option<u64> {
+    util.strip_prefix("duration-")?.parse::<u64>().ok()
+}
+
+/// Match `delay-NNN` (milliseconds).
+fn parse_delay(util: &str) -> Option<u64> {
+    util.strip_prefix("delay-")?.parse::<u64>().ok()
+}
+
+/// Match `ease-linear` / `ease-in` / `ease-out` / `ease-in-out`.
+fn parse_easing(util: &str) -> Option<&'static str> {
+    match util {
+        "ease-linear" => Some("Linear"),
+        "ease-in" => Some("EaseIn"),
+        "ease-out" => Some("EaseOut"),
+        "ease-in-out" => Some("EaseInOut"),
+        _ => None,
+    }
+}
+
+/// Default cycle duration (ms) per keyframe name.
+fn default_duration(name: &str) -> u64 {
+    match name {
+        "pulse" => 2000,
+        "bounce" => 1000,
+        "ping" => 1000,
+        "spin" => 1000,
+        _ => 1000,
+    }
 }
 
 fn extract_string_literal(input: &TokenStream2) -> syn::Result<String> {

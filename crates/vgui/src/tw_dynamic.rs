@@ -29,8 +29,37 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
     let mut focus: Vec<ParsedClass> = Vec::new();
     let mut active: Vec<ParsedClass> = Vec::new();
 
+    let mut animation_name: Option<String> = None;
+    let mut transition_props: Option<crate::animation::TransitionProperties> = None;
+    let mut duration_ms: Option<u64> = None;
+    let mut easing_kind: Option<crate::animation::Easing> = None;
+    let mut delay_ms: Option<u64> = None;
+
     for class in classes.split_whitespace() {
         if let Some(parsed) = parse_class(class) {
+            let util = parsed.utility.as_str();
+            if parsed.variant == Variant::Base {
+                if let Some(name) = parse_animate_name(util) {
+                    animation_name = Some(name.to_string());
+                    continue;
+                }
+                if let Some(props) = parse_transition_props(util) {
+                    transition_props = Some(props);
+                    continue;
+                }
+                if let Some(ms) = parse_duration(util) {
+                    duration_ms = Some(ms);
+                    continue;
+                }
+                if let Some(ms) = parse_delay(util) {
+                    delay_ms = Some(ms);
+                    continue;
+                }
+                if let Some(e) = parse_easing(util) {
+                    easing_kind = Some(e);
+                    continue;
+                }
+            }
             match parsed.variant {
                 Variant::Base => base.push(parsed),
                 Variant::Hover => hover.push(parsed),
@@ -80,11 +109,92 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
         }) as Box<dyn Fn(&mut StyleRefinement) + 'static>)
     };
 
+    let animation = animation_name.map(|name| {
+        let dur = duration_ms.unwrap_or_else(|| default_duration(&name));
+        let easing = easing_kind.unwrap_or(crate::animation::Easing::EaseInOut);
+        let delay = delay_ms.unwrap_or(0);
+        crate::animation::TwAnimation {
+            name,
+            duration: std::time::Duration::from_millis(dur),
+            easing,
+            delay: std::time::Duration::from_millis(delay),
+            repeat: true,
+        }
+    });
+
+    let transition = transition_props.map(|props| {
+        let dur = duration_ms.unwrap_or(150);
+        let easing = easing_kind.unwrap_or(crate::animation::Easing::EaseInOut);
+        let delay = delay_ms.unwrap_or(0);
+        crate::animation::TwTransition {
+            properties: props,
+            duration: std::time::Duration::from_millis(dur),
+            easing,
+            delay: std::time::Duration::from_millis(delay),
+        }
+    });
+
     TwStyle {
         base: base_fn,
         hover: hover_fn,
         focus: focus_fn,
         active: active_fn,
+        animation,
+        transition,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Animation / transition / timing class parsing (runtime mirror)
+// ---------------------------------------------------------------------------
+
+fn parse_animate_name(util: &str) -> Option<&'static str> {
+    match util {
+        "animate-pulse" => Some("pulse"),
+        "animate-bounce" => Some("bounce"),
+        "animate-ping" => Some("ping"),
+        "animate-spin" => Some("spin"),
+        _ => None,
+    }
+}
+
+fn parse_transition_props(util: &str) -> Option<crate::animation::TransitionProperties> {
+    use crate::animation::TransitionProperties;
+    match util {
+        "transition" | "transition-all" => Some(TransitionProperties::ALL),
+        "transition-opacity" => Some(TransitionProperties::OPACITY),
+        "transition-colors" => Some(TransitionProperties::COLORS),
+        "transition-shadow" | "transition-transform" => None,
+        _ => None,
+    }
+}
+
+fn parse_duration(util: &str) -> Option<u64> {
+    util.strip_prefix("duration-")?.parse::<u64>().ok()
+}
+
+fn parse_delay(util: &str) -> Option<u64> {
+    util.strip_prefix("delay-")?.parse::<u64>().ok()
+}
+
+fn parse_easing(util: &str) -> Option<crate::animation::Easing> {
+    use crate::animation::Easing;
+    match util {
+        "ease-linear" => Some(Easing::Linear),
+        "ease-in" => Some(Easing::EaseIn),
+        "ease-out" => Some(Easing::EaseOut),
+        "ease-in-out" => Some(Easing::EaseInOut),
+        _ => None,
+    }
+}
+
+fn default_duration(name: &str) -> u64 {
+    match name {
+        "pulse" => 2000,
+        "bounce" => 1000,
+        "ping" => 1000,
+        "spin" => 1000,
+        _ => 1000,
     }
 }
 

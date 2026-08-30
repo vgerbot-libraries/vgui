@@ -11,8 +11,10 @@ pub use vgui_css::theme;
 pub use vgui_tailwind::tw;
 pub use vgui_view::view;
 
+mod animation;
 mod child;
 mod event;
+mod context;
 mod control;
 mod input_text;
 mod input_widgets;
@@ -28,6 +30,7 @@ mod web;
 pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
+pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, portal};
 pub use crate::control::{details, for_each, for_each_or, progress, show, show_when};
 pub use crate::input_text::{
@@ -40,6 +43,7 @@ pub use crate::input_widgets::{
 };
 pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit};
+pub use crate::context::{__provider_scope_enter, __provider_scope_exit};
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::ref_handle::NodeRef;
 pub use crate::root::{mount, VguiRoot};
@@ -48,6 +52,10 @@ pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent};
 pub use crate::event::{__dom_key_down, __dom_key_up, __dom_pointer_down, __dom_pointer_up, __dom_pointer_move};
 pub use crate::reactive::__register_resize_handler;
 pub use crate::style::{ApplyStyle, Css, TwStyle};
+pub use crate::animation::{
+    apply_animation, apply_animation_expr, apply_transition, interpolate_refinement, Easing,
+    TwAnimation, TwTransition, TransitionProperties,
+};
 pub use crate::style::{IntoTwStyle, TwClass, TwClassSource};
 pub use crate::tw_dynamic::tw_dynamic;
 pub use crate::theme::{set_theme, with_theme, CssValue, Theme};

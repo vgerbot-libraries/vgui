@@ -19,6 +19,7 @@
 - [Tailwind Classes (`tw!`)](./styling/tailwind-classes.md)
 - [Component Variants (`variants!`)](./styling/variants.md)
 - [CSS Property Reference](./styling/css-reference.md)
+- [Animations & Transitions](./styling/animations.md)
 
 # Elements & Components
 
@@ -39,6 +40,7 @@
 - [Focus Management](./examples/focus-management.md)
 - [ref Demo](./examples/ref-demo.md)
 - [Context](./examples/context.md)
+- [Animation](./examples/animation.md)
 
 # Reference
 

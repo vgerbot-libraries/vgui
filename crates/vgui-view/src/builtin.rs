@@ -48,6 +48,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut tabindex = None;
     let mut ref_attr = None;
     let mut object_fit = None;
+    let mut animate = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     for attr in &el.attrs {
@@ -60,6 +61,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
             AttrKind::Ref => ref_attr = Some(attr),
+            AttrKind::Animate => animate = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
@@ -314,19 +316,26 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         let v = attr_tokens(&style.value);
         ctor = quote! { ::vgui::ApplyStyle::apply_to(#v, #ctor) };
     }
+    let mut __class_value: Option<TokenStream2> = None;
     if let Some(class) = class {
         let v = attr_tokens(&class.value);
+        __class_value = Some(v.clone());
         ctor = quote! {{
             let __tw = ::vgui::tw!(#v);
+            let ::vgui::TwStyle { base, hover, focus, active, animation: _, transition } = __tw;
             let mut __el = #ctor;
-            (__tw.base)(__el.style());
-            if let ::std::option::Option::Some(__h) = __tw.hover {
-                __el = __el.hover(move |mut s| { __h(&mut s); s });
+            (base)(__el.style());
+            // When a transition is configured, hover is driven by the transition
+            // wrapper (applied after children); skip the static .hover() here.
+            if !(transition.is_some() && hover.is_some()) {
+                if let ::std::option::Option::Some(__h) = hover {
+                    __el = __el.hover(move |mut s| { __h(&mut s); s });
+                }
             }
-            if let ::std::option::Option::Some(__f) = __tw.focus {
+            if let ::std::option::Option::Some(__f) = focus {
                 __el = __el.focus(move |mut s| { __f(&mut s); s });
             }
-            if let ::std::option::Option::Some(__a) = __tw.active {
+            if let ::std::option::Option::Some(__a) = active {
                 __el = __el.active(move |mut s| { __a(&mut s); s });
             }
             __el
@@ -344,6 +353,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         let v = attr_tokens(&focus.value);
         ctor = quote! { #ctor.focus(|s| #v.refine(s)) };
     }
+    let __animate_expr: Option<TokenStream2> = animate.map(|a| attr_tokens(&a.value));
     for (ev, handler, span) in events {
         ctor = emit_event(ctor, &ev, handler, span)?;
     }
@@ -354,10 +364,42 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     } else {
         emit_children(&el.children)?
     };
+    let anim_wrap = if let Some(ae) = &__animate_expr {
+        // Explicit animate={...} attribute — applied last, after children.
+        quote! { ::gpui::IntoElement::into_any_element(::vgui::apply_animation_expr(el, #ae)) }
+    } else if let Some(cv) = &__class_value {
+        quote! {{
+            let __tw = ::vgui::tw!(#cv);
+            let ::vgui::TwStyle { base: __b, hover: __h, focus: _, active: _, animation: __anim, transition: __trans } = __tw;
+            if let ::std::option::Option::Some(__a) = __anim {
+                ::gpui::IntoElement::into_any_element(::vgui::apply_animation(el, &__a))
+            } else if let ::std::option::Option::Some(__t) = __trans {
+                if __h.is_some() {
+                    let mut __bs = ::gpui::StyleRefinement::default();
+                    (__b)(&mut __bs);
+                    let mut __hs = __bs.clone();
+                    if let ::std::option::Option::Some(__hh) = &__h {
+                        __hh(&mut __hs);
+                    }
+                    let (__hovered, __set_hovered) = ::vgui::create_signal(false);
+                    let __el = el.on_hover(move |__is_hovered, _, __cx| {
+                        __set_hovered.update(__cx, |__hh| *__hh = *__is_hovered);
+                    });
+                    ::gpui::IntoElement::into_any_element(::vgui::apply_transition(__el, __t, __bs, __hs, __hovered))
+                } else {
+                    ::gpui::IntoElement::into_any_element(el)
+                }
+            } else {
+                ::gpui::IntoElement::into_any_element(el)
+            }
+        }}
+    } else {
+        quote! { el }
+    };
     Ok(quote! {{
         let mut el = #ctor;
         #(el = el.child(#kids);)*
-        el
+        #anim_wrap
     }})
 }
 
@@ -554,15 +596,16 @@ fn chain_div_extras(
         let v = attr_tokens(&class.value);
         ctor = quote! {{
             let __tw = ::vgui::tw!(#v);
+            let ::vgui::TwStyle { base, hover, focus, active, animation: _, transition: _ } = __tw;
             let mut __el = #ctor;
-            (__tw.base)(__el.style());
-            if let ::std::option::Option::Some(__h) = __tw.hover {
+            (base)(__el.style());
+            if let ::std::option::Option::Some(__h) = hover {
                 __el = __el.hover(move |mut s| { __h(&mut s); s });
             }
-            if let ::std::option::Option::Some(__f) = __tw.focus {
+            if let ::std::option::Option::Some(__f) = focus {
                 __el = __el.focus(move |mut s| { __f(&mut s); s });
             }
-            if let ::std::option::Option::Some(__a) = __tw.active {
+            if let ::std::option::Option::Some(__a) = active {
                 __el = __el.active(move |mut s| { __a(&mut s); s });
             }
             __el
@@ -688,6 +731,9 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::For => {
                 return Err(syn::Error::new(attr.span, "`for` is not valid on <input>"));
+            }
+            AttrKind::Animate => {
+                return Err(syn::Error::new(attr.span, "`animate` is not supported on <input>"));
             }
         }
     }
@@ -1084,6 +1130,9 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Ref => {
                 return Err(syn::Error::new(attr.span, "ref is not supported on <select>; use a wrapping <div ref={...}> instead"));
             }
+            AttrKind::Animate => {
+                return Err(syn::Error::new(attr.span, "`animate` is not supported on <select>"));
+            }
         }
     }
 
@@ -1214,6 +1263,9 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Ref => {
                 return Err(syn::Error::new(attr.span, "ref is not supported on <textarea>; use a wrapping <div ref={...}> instead"));
             }
+            AttrKind::Animate => {
+                return Err(syn::Error::new(attr.span, "`animate` is not supported on <textarea>"));
+            }
         }
     }
 
@@ -1323,6 +1375,9 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Src => {
                 return Err(syn::Error::new(attr.span, "src is not valid on <label>"))
+            }
+            AttrKind::Animate => {
+                return Err(syn::Error::new(attr.span, "`animate` is not supported on <label>"))
             }
         }
     }

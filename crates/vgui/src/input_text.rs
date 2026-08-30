@@ -959,6 +959,8 @@ impl Render for TextInput {
                 hover,
                 focus,
                 active,
+                animation: _,
+                transition: _,
             } = class;
             base(div.style());
             if let Some(h) = hover {
