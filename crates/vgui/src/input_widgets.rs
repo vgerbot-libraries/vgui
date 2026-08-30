@@ -1,8 +1,8 @@
 use gpui::{
-    canvas, fill, px, quad, size, App, AppContext, BorderStyle, Bounds, Context, Entity,
-    FocusHandle, Focusable, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, PathPromptOptions, Point, Render,
-    SharedString, Stateful, StatefulInteractiveElement, Styled, Window, hsla,
+    canvas, deferred, fill, px, quad, size, App, AppContext, BorderStyle, Bounds,
+    Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement, KeyDownEvent,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, PathPromptOptions,
+    Point, Render, SharedString, Stateful, StatefulInteractiveElement, Styled, Window, hsla,
 };
 
 use crate::reactive::{get_or_create_slot, get_or_create_view, try_get_or_create_slot, with_root_cx};
@@ -726,35 +726,35 @@ pub fn str_select_change_cb(
     Box::new(f)
 }
 
-/// Render a simple select dropdown. Returns a `Stateful<Div>` so the macro
-/// can chain style/class/id uniformly.
+/// Render a select dropdown with a popover option list. Returns a
+/// `Stateful<Div>` so the macro can chain style/class/id uniformly.
+///
+/// Clicking the trigger toggles the popover; clicking an option fires
+/// `on:change` and closes it; clicking outside or pressing Escape closes it.
 pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
     let options = std::rc::Rc::new(props.options);
     let selected = props.value;
     let disabled = props.disabled;
     let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
-    let open = std::cell::Cell::new(false);
-    // Persistent focus handle so a wrapping <label> can focus this select.
-    // Falls back to `None` outside a reactive scope (standalone tests).
+    // Open state is a signal so toggling it during an event handler triggers
+    // a re-render of the root (the popover appears/disappears reactively).
+    let (open_read, open_write) = crate::reactive::create_signal(false);
+
+    // Persistent focus handle so a wrapping <label> can focus this select and
+    // so the trigger receives keyboard events (Escape to close). Falls back to
+    // `None` outside a reactive scope (standalone tests).
     let handle = try_get_or_create_slot(|cx| cx.focus_handle());
     if let Some(h) = &handle {
-        let options_for_label = options.clone();
-        let selected_for_label = selected.clone();
-        let on_change_for_label = on_change.clone();
+        let open_write_for_label = open_write.clone();
         crate::label::register_in_label_scope_with_action(
             h.clone(),
             Some(std::rc::Rc::new(move |_window: &mut Window, cx: &mut App| {
                 if disabled {
                     return;
                 }
-                if let Some(idx) = options_for_label.iter().position(|(v, _)| *v == selected_for_label) {
-                    let next = (idx + 1) % options_for_label.len();
-                    if let Some((v, _)) = options_for_label.get(next) {
-                        if let Some(cb) = on_change_for_label.borrow_mut().as_mut() {
-                            cb(v, cx);
-                        }
-                    }
-                }
+                // Clicking a wrapping <label>'s text opens the popover,
+                // mirroring native <label><select> behavior.
+                open_write_for_label.set(cx, true);
             }) as std::rc::Rc<dyn Fn(&mut Window, &mut App)>),
         );
     }
@@ -773,11 +773,18 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
 
     let mut el = gpui::div()
         .id(("select", crate::reactive::next_auto_id()))
-        .cursor_pointer();
+        .cursor_pointer()
+        .relative();
     if let Some(h) = &handle {
         el = el.track_focus(h);
     }
-    el
+
+    let open = open_read.get() && !disabled;
+
+    let open_read_click = open_read.clone();
+    let open_write_click = open_write.clone();
+    let handle_click = handle.clone();
+    el = el
         .px_2()
         .py_1()
         .min_h(px(28.))
@@ -787,22 +794,142 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
         .bg(gpui::white())
         .text_color(gpui::black())
         .text_size(px(14.))
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .child(SharedString::from(display_label))
+        .child(SharedString::from("\u{25BE}"))
         .on_mouse_down(
             MouseButton::Left,
-            move |_event: &MouseDownEvent, _window: &mut Window, _cx: &mut App| {
+            move |_event: &MouseDownEvent, window: &mut Window, cx: &mut App| {
                 if disabled {
                     return;
                 }
-                // Simple cycle-through on click for now
-                if let Some(idx) = options.iter().position(|(v, _)| *v == selected) {
-                    let next = (idx + 1) % options.len();
-                    if let Some((v, _)) = options.get(next) {
-                        if let Some(cb) = on_change.borrow_mut().as_mut() {
-                            cb(v, _cx);
-                        }
+                // Toggle the popover. Focusing the trigger on open lets
+                // Escape (handled below) close it.
+                let now_open = !open_read_click.get();
+                open_write_click.set(cx, now_open);
+                if now_open {
+                    if let Some(h) = &handle_click {
+                        h.focus(window, cx);
                     }
                 }
-                _cx.stop_propagation();
+                cx.stop_propagation();
             },
-        )
+        );
+
+    if open {
+        let open_write_key = open_write.clone();
+        el = el.on_key_down(move |event: &KeyDownEvent, _window, cx: &mut App| {
+            if event.keystroke.key == "escape" {
+                open_write_key.set(cx, false);
+                cx.stop_propagation();
+            }
+        });
+
+        // The popover is an absolute child of the (relative) trigger,
+        // anchored below it via `top(px(32.))` — matching the date-picker
+        // popup convention in `input_text.rs`. `deferred` paints it above
+        // all non-deferred elements so it isn't clipped by following siblings.
+        // Click-outside is handled by `on_mouse_down_out` on the popover itself
+        // (see `render_select_popover`): it fires in the capture phase when the
+        // mouse is geometrically outside the popover's bounds, so clicks on
+        // options (inside the popover) are never intercepted.
+        el = el.child(deferred(render_select_popover(
+            options.as_slice(),
+            &selected,
+            &on_change,
+            &open_write,
+        )));
+    }
+
+    el
+}
+
+/// Type of the `on:change` callback stored in `SelectProps::on_change`.
+type SelectChange = Box<dyn FnMut(&str, &mut App)>;
+
+/// Render the absolute popover listing `options` below the trigger.
+///
+/// Anchored to the (relative) trigger via `absolute` + `top`, matching the
+/// date-picker popup convention in `input_text.rs`. Each option is a
+/// stateful row that fires `on_change` and closes the popover on click,
+/// stopping propagation so the trigger's toggle handler does not re-open it.
+fn render_select_popover(
+    options: &[(String, String)],
+    selected: &str,
+    on_change: &std::rc::Rc<std::cell::RefCell<Option<SelectChange>>>,
+    open_write: &crate::reactive::WriteSignal<bool>,
+) -> Stateful<gpui::Div> {
+    // Stateful (with an id) so `overflow_y_scroll` is available for long
+    // option lists; the id is unique per render via `next_auto_id`.
+    let open_write_out = open_write.clone();
+    let mut list = gpui::div()
+        .id(("select-popover", crate::reactive::next_auto_id()))
+        .absolute()
+        .top(px(32.))
+        .left_0()
+        .min_w(px(160.))
+        .max_h(px(240.))
+        .overflow_y_scroll()
+        .py_1()
+        .bg(gpui::white())
+        .border_1()
+        .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+        .rounded(px(4.))
+        .shadow_md()
+        .flex()
+        .flex_col()
+        // Close the popover when the mouse is pressed outside its bounds.
+        // `on_mouse_down_out` fires in the CAPTURE phase and checks
+        // `!hitbox.contains(mouse_position)` geometrically — so clicks on
+        // options (which are inside the popover's bounds) never trigger this.
+        // `stop_propagation` prevents the trigger's bubble-phase `on_mouse_down`
+        // from toggling the popover back open when the trigger itself is clicked.
+        .on_mouse_down_out(move |_event: &MouseDownEvent, _window, cx: &mut App| {
+            open_write_out.set(cx, false);
+            cx.stop_propagation();
+        });
+
+    for (idx, (val, label)) in options.iter().enumerate() {
+        let is_selected = val == selected;
+        let val_for_cb = val.clone();
+        let on_change_for_cb = on_change.clone();
+        let open_write_for_cb = open_write.clone();
+        let bg = if is_selected {
+            hsla(0.6, 0.8, 0.5, 1.0)
+        } else {
+            gpui::transparent_black()
+        };
+        let fg = if is_selected {
+            gpui::white()
+        } else {
+            gpui::black()
+        };
+        list = list.child(
+            gpui::div()
+                .id(("select-option", idx as u64))
+                .w_full()
+                .px_2()
+                .py_1()
+                .text_size(px(14.))
+                .text_color(fg)
+                .bg(bg)
+                .cursor_pointer()
+                .child(SharedString::from(label.clone()))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    move |_event: &MouseDownEvent, _window, cx: &mut App| {
+                        if let Some(cb) = on_change_for_cb.borrow_mut().as_mut() {
+                            cb(&val_for_cb, cx);
+                        }
+                        open_write_for_cb.set(cx, false);
+                        cx.stop_propagation();
+                    },
+                ),
+        );
+    }
+
+    list
 }
