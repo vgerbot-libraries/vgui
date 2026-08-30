@@ -102,6 +102,7 @@ Attributes appear inside the opening tag as `name=value` pairs. Values can be:
 | `type`        | `type="text"`       | `<input>` only          | Selects the input widget kind.            |
 | `src`         | `src={path}`        | `<img>`, `<svg>` only   | Image/SVG path.                           |
 | `for`         | `for="id"`          | `<label>` only          | Associates label with input by id.        |
+| `ref`         | `ref={node_ref}`    | All elements            | Binds a `NodeRef` handle for imperative ops (focus, scroll, bounds). |
 
 ### Event handlers
 
@@ -186,3 +187,23 @@ Common interpolatable values:
 - `format!(...)` — rendered as text.
 - Any `impl IntoElement` — rendered as a child element.
 - Component function calls returning `impl IntoElement`.
+
+## Refs
+
+The `ref={node_ref}` attribute binds a [`NodeRef`](../elements/refs.md) handle
+to an element, enabling imperative operations like `focus()`, `scroll_to()`,
+and `bounds()`. This is vgui's equivalent of SolidJS's `ref`.
+
+```rust
+let my_ref = NodeRef::new();
+view! {
+    <div ref={my_ref.clone()}>
+        {"content"}
+    </div>
+}
+// Later, in an event handler:
+// my_ref.focus(window, cx);
+// my_ref.scroll_to_bottom();
+```
+
+See [Refs & NodeRef](../elements/refs.md) for the full API.

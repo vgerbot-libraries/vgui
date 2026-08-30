@@ -123,6 +123,7 @@ Card {
 | `type="text"`      | `r#type`       | Raw identifier (Rust keyword escaping).  |
 | `tabindex={0}`     | `tabindex`     |                                          |
 | `for="id"`         | `r#for`        | Raw identifier.                          |
+| `ref={node_ref}`    | `r#ref`        | Opt-in: component must have a `r#ref: NodeRef` field. |
 
 ## Event Mapping
 

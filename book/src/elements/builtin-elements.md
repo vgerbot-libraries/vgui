@@ -134,7 +134,8 @@ All built-in elements support these attributes:
 | `id`         | `id="my-id"`        | Sets the gpui element id.                      |
 | `tabindex`   | `tabindex={0}`      | `≥0` sets tab order; `<0` is focusable only.   |
 | `on:event`   | `on:click={handler}`| Event handler (see [view! macro](../concepts/view-macro.md)). |
+| `ref`         | `ref={node_ref}`    | Binds a `NodeRef` handle for imperative ops (focus, scroll, bounds). See [Refs](./refs.md). |
 
-Elements that have `on:click`, `hover`, `active`, `focus`, `class`, or
-`tabindex` but no explicit `id` automatically receive a stable auto-generated
-id (see [Auto IDs](../concepts/reactivity.md#auto-ids)).
+Elements that have `on:click`, `hover`, `active`, `focus`, `class`,
+`tabindex`, or `ref` but no explicit `id` automatically receive a stable
+auto-generated id (see [Auto IDs](../concepts/reactivity.md#auto-ids)).

@@ -26,6 +26,7 @@
 - [Control Flow](./elements/control-flow.md)
 - [Input Elements](./elements/inputs.md)
 - [Other Components](./elements/other-components.md)
+- [Refs & NodeRef](./elements/refs.md)
 - [Custom Components](./custom-components.md)
 
 # Examples
@@ -36,6 +37,7 @@
 - [Tags Demo](./examples/tags-demo.md)
 - [Theming](./examples/theming.md)
 - [Focus Management](./examples/focus-management.md)
+- [ref Demo](./examples/ref-demo.md)
 
 # Reference
 
