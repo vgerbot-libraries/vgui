@@ -304,7 +304,9 @@ view! {
 ```
 
 When `<label>` wraps an input, clicking anywhere on the label focuses the first
-focusable child input.
+focusable child input. This works with all input types: text-based inputs
+(`text`, `password`, `email`, …), `textarea`, `range`, `checkbox`, `radio`,
+`file`, and `select`.
 
 `<label>` supports all standard styling attributes (`style`, `class`, `hover`,
 `active`, `focus`, `id`, `tabindex`) and event handlers.

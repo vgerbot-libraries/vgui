@@ -5,7 +5,7 @@ use gpui::{
     SharedString, Stateful, StatefulInteractiveElement, Styled, Window, hsla,
 };
 
-use crate::reactive::{get_or_create_slot, get_or_create_view, with_root_cx};
+use crate::reactive::{get_or_create_slot, get_or_create_view, try_get_or_create_slot, with_root_cx};
 use crate::style::{Css, TwStyle};
 use std::sync::Arc;
 // ── Radio group scope ───────────────────────────────────────────────
@@ -61,7 +61,25 @@ pub struct CheckboxProps {
 pub fn checkbox(props: CheckboxProps) -> Stateful<gpui::Div> {
     let checked = props.checked;
     let disabled = props.disabled;
-    let on_change = std::cell::RefCell::new(props.on_change);
+    let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
+
+    // Persistent focus handle so a wrapping <label> can focus this checkbox.
+    // Falls back to `None` outside a reactive scope (standalone tests).
+    let handle = try_get_or_create_slot(|cx| cx.focus_handle());
+    if let Some(h) = &handle {
+        let on_change_for_label = on_change.clone();
+        crate::label::register_in_label_scope_with_action(
+            h.clone(),
+            Some(std::rc::Rc::new(move |_window: &mut Window, cx: &mut App| {
+                if disabled {
+                    return;
+                }
+                if let Some(cb) = on_change_for_label.borrow_mut().as_mut() {
+                    cb(!checked, cx);
+                }
+            }) as std::rc::Rc<dyn Fn(&mut Window, &mut App)>),
+        );
+    }
 
     let box_color = if disabled {
         hsla(0.0, 0.0, 0.8, 1.0)
@@ -76,12 +94,14 @@ pub fn checkbox(props: CheckboxProps) -> Stateful<gpui::Div> {
         hsla(0.6, 0.6, 0.5, 1.0)
     };
 
-    gpui::div()
+    let mut el = gpui::div()
         .id(("checkbox", crate::reactive::next_auto_id()))
         .cursor_pointer()
-        .size(px(18.))
-        .rounded(px(4.))
-        .bg(box_color)
+        .size(px(18.));
+    if let Some(h) = &handle {
+        el = el.track_focus(h);
+    }
+    el
         .border_1()
         .border_color(border_color)
         .flex()
@@ -96,6 +116,7 @@ pub fn checkbox(props: CheckboxProps) -> Stateful<gpui::Div> {
                 if let Some(cb) = on_change.borrow_mut().as_mut() {
                     cb(!checked, cx);
                 }
+                cx.stop_propagation();
             },
         )
         .child(if checked {
@@ -129,13 +150,25 @@ pub struct RadioProps {
 pub fn radio(props: RadioProps) -> Stateful<gpui::Div> {
     let checked = props.checked;
     let disabled = props.disabled;
-    let on_change = std::cell::RefCell::new(props.on_change);
+    let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
 
     // Persistent focus handle for this radio instance.
     let handle = get_or_create_slot(|cx| cx.focus_handle());
 
-    // Register with the current <radiogroup> scope (no-op if outside one).
     register_in_radio_scope(handle.clone());
+    // Register with a wrapping <label> scope (no-op if outside one).
+    let on_change_for_label = on_change.clone();
+    crate::label::register_in_label_scope_with_action(
+        handle.clone(),
+        Some(std::rc::Rc::new(move |_window: &mut Window, cx: &mut App| {
+            if disabled {
+                return;
+            }
+            if let Some(cb) = on_change_for_label.borrow_mut().as_mut() {
+                cb(true, cx);
+            }
+        }) as std::rc::Rc<dyn Fn(&mut Window, &mut App)>),
+    );
 
     let border_color = if disabled {
         hsla(0.0, 0.0, 0.7, 1.0)
@@ -180,6 +213,7 @@ pub fn radio(props: RadioProps) -> Stateful<gpui::Div> {
             if let Some(cb) = on_change.borrow_mut().as_mut() {
                 cb(true, cx);
             }
+            cx.stop_propagation();
         },
     );
 
@@ -584,12 +618,44 @@ pub struct FileProps {
 /// style/class and emits children (the label) as `.child(..)`.
 pub fn file_input(props: FileProps) -> Stateful<gpui::Div> {
     let multiple = props.multiple;
-    let on_change = std::cell::RefCell::new(props.on_change);
+    let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
+
+    // Persistent focus handle so a wrapping <label> can focus this file input.
+    // Falls back to `None` outside a reactive scope (standalone tests).
+    let handle = try_get_or_create_slot(|cx| cx.focus_handle());
+    if let Some(h) = &handle {
+        let on_change_for_label = on_change.clone();
+        crate::label::register_in_label_scope_with_action(
+            h.clone(),
+            Some(std::rc::Rc::new(move |window: &mut Window, cx: &mut App| {
+                let receiver = cx.prompt_for_paths(PathPromptOptions {
+                    files: true,
+                    directories: false,
+                    multiple,
+                    prompt: None,
+                });
+                let mut on_change = on_change_for_label.borrow_mut().take();
+                window
+                    .spawn(cx, async move |cx| {
+                        if let Ok(Ok(Some(paths))) = receiver.await {
+                            if let Some(cb) = on_change.as_mut() {
+                                cx.update(|_window, cx| cb(paths, cx)).ok();
+                            }
+                        }
+                    })
+                    .detach();
+            }) as std::rc::Rc<dyn Fn(&mut Window, &mut App)>),
+        );
+    }
 
     let id = ("file-input", crate::reactive::next_auto_id());
-    let div = gpui::div()
+    let mut el = gpui::div()
         .id(id)
-        .cursor_pointer()
+        .cursor_pointer();
+    if let Some(h) = &handle {
+        el = el.track_focus(h);
+    }
+    let div = el
         .px_3()
         .py_1()
         .rounded(px(4.))
@@ -614,6 +680,7 @@ pub fn file_input(props: FileProps) -> Stateful<gpui::Div> {
                         }
                     })
                     .detach();
+                cx.stop_propagation();
             },
         );
     div
@@ -662,11 +729,35 @@ pub fn str_select_change_cb(
 /// Render a simple select dropdown. Returns a `Stateful<Div>` so the macro
 /// can chain style/class/id uniformly.
 pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
-    let options = props.options;
+    let options = std::rc::Rc::new(props.options);
     let selected = props.value;
     let disabled = props.disabled;
-    let on_change = std::cell::RefCell::new(props.on_change);
+    let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
     let open = std::cell::Cell::new(false);
+    // Persistent focus handle so a wrapping <label> can focus this select.
+    // Falls back to `None` outside a reactive scope (standalone tests).
+    let handle = try_get_or_create_slot(|cx| cx.focus_handle());
+    if let Some(h) = &handle {
+        let options_for_label = options.clone();
+        let selected_for_label = selected.clone();
+        let on_change_for_label = on_change.clone();
+        crate::label::register_in_label_scope_with_action(
+            h.clone(),
+            Some(std::rc::Rc::new(move |_window: &mut Window, cx: &mut App| {
+                if disabled {
+                    return;
+                }
+                if let Some(idx) = options_for_label.iter().position(|(v, _)| *v == selected_for_label) {
+                    let next = (idx + 1) % options_for_label.len();
+                    if let Some((v, _)) = options_for_label.get(next) {
+                        if let Some(cb) = on_change_for_label.borrow_mut().as_mut() {
+                            cb(v, cx);
+                        }
+                    }
+                }
+            }) as std::rc::Rc<dyn Fn(&mut Window, &mut App)>),
+        );
+    }
 
     let display_label = options
         .iter()
@@ -680,11 +771,13 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
         hsla(0.0, 0.0, 0.6, 0.4)
     };
 
-    let _ = open; // TODO: popup dropdown
-
-    gpui::div()
+    let mut el = gpui::div()
         .id(("select", crate::reactive::next_auto_id()))
-        .cursor_pointer()
+        .cursor_pointer();
+    if let Some(h) = &handle {
+        el = el.track_focus(h);
+    }
+    el
         .px_2()
         .py_1()
         .min_h(px(28.))
@@ -694,7 +787,6 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
         .bg(gpui::white())
         .text_color(gpui::black())
         .text_size(px(14.))
-        .child(SharedString::from(display_label))
         .on_mouse_down(
             MouseButton::Left,
             move |_event: &MouseDownEvent, _window: &mut Window, _cx: &mut App| {
@@ -710,6 +802,7 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
                         }
                     }
                 }
+                _cx.stop_propagation();
             },
         )
 }

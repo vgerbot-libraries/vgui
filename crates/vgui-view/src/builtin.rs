@@ -1436,22 +1436,26 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             el
         }})
     } else {
-        // Wrapping case — collect first focus handle from children.
+        // Wrapping case — collect first LabelTarget from children.
         Ok(quote! {{
             ::vgui::__label_scope_enter();
             let mut el = #ctor;
             #(el = el.child(#kids);)*
             let __target = ::vgui::label_scope_exit();
-            if let ::std::option::Option::Some(__h) = __target {
+            if let ::std::option::Option::Some(__t) = __target {
+                let __h = __t.focus_handle;
+                let __a = __t.click_action;
                 el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, cx| {
                     window.focus(&__h, cx);
+                    if let ::std::option::Option::Some(__action) = &__a {
+                        __action(window, cx);
+                    }
                 });
             }
             el
         }})
     }
 }
-
 // ── <dialog> / <portal> / <floating> ─────────────────────────────────
 
 /// Emit a `<dialog>` modal overlay. Allowed attributes: `open` (bool, default

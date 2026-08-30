@@ -18,6 +18,8 @@ fn app() -> impl gpui::IntoElement {
     let (number_val, set_number) = create_signal(String::new());
     let (date_val, set_date) = create_signal(String::new());
     let sr0 = set_radio.clone();
+    let sr0b = set_radio.clone();
+    let scb = set_checked.clone();
     let sr1 = set_radio.clone();
     let sr2 = set_radio.clone();
 
@@ -152,6 +154,30 @@ fn app() -> impl gpui::IntoElement {
 
             // Hidden input (renders nothing)
             <input type="hidden" value="invisible" />
+
+            // Wrapping label with checkbox (click label to focus checkbox)
+            <label class="flex flex-row gap-2 items-center">
+                <input type="checkbox" checked={checked.get()} on:change={move |v: bool, cx: &mut App| scb.set(cx, v)} />
+                <span class="text-sm">{"Wrapped checkbox"}</span>
+            </label>
+
+            // Wrapping label with radio
+            <label class="flex flex-row gap-2 items-center">
+                <input type="radio" checked={radio_val.get() == 0} on:change={move |_v: bool, cx: &mut App| sr0b.set(cx, 0)} />
+                <span class="text-sm">{"Wrapped radio A"}</span>
+            </label>
+
+            // Wrapping label with select
+            <label class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Wrapped select"}</span>
+                <select options={vec![("a".to_string(), "Apple".to_string()), ("b".to_string(), "Banana".to_string())]} value={"a".to_string()} on:change={move |v: &str, _cx: &mut App| eprintln!("select: {v}") } />
+            </label>
+
+            // Wrapping label with file input
+            <label class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Wrapped file input"}</span>
+                <input type="file" value="Choose file..." on:change={move |paths: Vec<std::path::PathBuf>, _cx: &mut App| { if let Some(p) = paths.first() { eprintln!("file: {:?}", p); } }} />
+            </label>
         </div>
     }
 }

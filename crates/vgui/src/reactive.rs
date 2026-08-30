@@ -345,6 +345,37 @@ pub(crate) fn get_or_create_slot<T: Clone + 'static>(
     value
 }
 
+/// Like `get_or_create_slot`, but returns `None` when no reactive scope is
+/// active (e.g. constructing elements in standalone tests). The factory is
+/// only called when a scope is active.
+pub(crate) fn try_get_or_create_slot<T: Clone + 'static>(
+    factory: impl FnOnce(&mut gpui::Context<VguiRoot>) -> T,
+) -> Option<T> {
+    let cur = try_current()?;
+    let mut scope = cur.scope.borrow_mut();
+    let index = scope.index;
+    if index < scope.slots.len() {
+        let stored = match &scope.slots[index] {
+            Slot::Widget(stored) => stored.clone(),
+            _ => panic!("vgui state slot {index} changed type"),
+        };
+        scope.index += 1;
+        drop(scope);
+        return stored
+            .downcast_ref::<T>()
+            .cloned()
+            .map(Some)
+            .unwrap_or_else(|| panic!("vgui state slot {index} changed type"));
+    }
+    drop(scope);
+    let cx = unsafe { &mut *cur.cx };
+    let value = factory(cx);
+    let mut scope = cur.scope.borrow_mut();
+    scope.slots.push(Slot::Widget(std::sync::Arc::new(value.clone())));
+    scope.index += 1;
+    Some(value)
+}
+
 /// Bind a [`crate::ref_handle::NodeRef`] to the current reactive scope slot,
 /// creating the `FocusHandle` and `ScrollHandle` on first render and returning
 /// them on subsequent renders. Called by `view!` macro-emitted code when a
