@@ -38,6 +38,7 @@
 - [Theming](./examples/theming.md)
 - [Focus Management](./examples/focus-management.md)
 - [ref Demo](./examples/ref-demo.md)
+- [Context](./examples/context.md)
 
 # Reference
 

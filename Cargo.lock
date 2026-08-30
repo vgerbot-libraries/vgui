@@ -5741,6 +5741,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-animation"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "vgui-context"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-counter"
 version = "0.1.0"
 dependencies = [
