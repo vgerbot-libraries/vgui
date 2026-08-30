@@ -116,6 +116,19 @@ The `on:close` closure takes `Fn(&mut App)` directly — no `click()` wrapper
 needed, unlike `on:click`. This is because `on:close` is a vgui abstraction,
 not a gpui event.
 
+### Focus Management
+
+The dialog implements two accessibility features:
+
+- **Focus trap:** Tab and Shift+Tab cycle within the dialog content. Focus
+  cannot escape to background elements.
+- **Focus restore:** When the dialog opens, the previously focused element is
+  saved. When the dialog closes (via Escape, click-outside, or `on:close`),
+  focus is restored to that element.
+
+Focus moves to the dialog content when it opens. The trap and restore are
+automatic — no extra attributes or callbacks are needed.
+
 ### Portal rendering
 
 The dialog paints on a deferred layer (priority 100), so it floats above all

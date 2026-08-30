@@ -5736,6 +5736,8 @@ dependencies = [
  "vgui-tailwind",
  "vgui-tailwind-core",
  "vgui-view",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -5755,6 +5757,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "vgui-focus-management"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -35,6 +35,7 @@
 - [Inputs Demo](./examples/inputs.md)
 - [Tags Demo](./examples/tags-demo.md)
 - [Theming](./examples/theming.md)
+- [Focus Management](./examples/focus-management.md)
 
 # Reference
 

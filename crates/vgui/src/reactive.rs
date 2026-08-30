@@ -292,6 +292,39 @@ pub(crate) fn get_or_create_view<T: gpui::Render + 'static>(
     entity
 }
 
+/// Get-or-create a persistent value cached in a reactive scope slot.
+/// Same slot-caching mechanism as `get_or_create_view`, but for any
+/// `Clone + 'static` type (e.g., `FocusHandle`, `Arc<DialogFocusState>`).
+pub(crate) fn get_or_create_slot<T: Clone + 'static>(
+    factory: impl FnOnce(&mut gpui::Context<VguiRoot>) -> T,
+) -> T {
+    let cur = current();
+    {
+        let mut scope = cur.scope.borrow_mut();
+        let index = scope.index;
+        if index < scope.slots.len() {
+            let stored = match &scope.slots[index] {
+                Slot::Widget(stored) => stored.clone(),
+                _ => panic!("vgui state slot {index} changed type"),
+            };
+            scope.index += 1;
+            drop(scope);
+            return stored
+                .downcast_ref::<T>()
+                .cloned()
+                .unwrap_or_else(|| panic!("vgui state slot {index} changed type"));
+        }
+    }
+    let cx = unsafe { &mut *cur.cx };
+    let value = factory(cx);
+    {
+        let mut scope = cur.scope.borrow_mut();
+        scope.slots.push(Slot::Widget(std::sync::Arc::new(value.clone())));
+        scope.index += 1;
+    }
+    value
+}
+
 pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) -> ReadSignal<T> {
     let cur = current();
     {

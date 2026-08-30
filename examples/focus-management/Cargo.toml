@@ -1,5 +1,5 @@
 [package]
-name = "vgui"
+name = "vgui-focus-management"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,16 +9,14 @@ description.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-[dependencies]
-gpui.workspace = true
-vgui-css.workspace = true
-vgui-view.workspace = true
-vgui-tailwind.workspace = true
-vgui-tailwind-core.workspace = true
+[[bin]]
+name = "focus-management"
+path = "src/main.rs"
 
-[dev-dependencies]
-trybuild = "1"
+[dependencies]
+vgui.workspace = true
+gpui.workspace = true
+gpui-platform.workspace = true
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-web-sys = { version = "0.3", features = ["Window", "Event", "KeyboardEvent", "EventTarget"] }
 wasm-bindgen = "0.2"

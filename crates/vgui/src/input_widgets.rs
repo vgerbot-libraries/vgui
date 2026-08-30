@@ -1,12 +1,51 @@
 use gpui::{
-    canvas, fill, px, quad, size, App, AppContext, BorderStyle, Bounds, Context, Entity, Focusable,
-    InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, ParentElement, PathPromptOptions, Point, Render, SharedString, Stateful,
-    StatefulInteractiveElement, Styled, Window, hsla,
+    canvas, fill, px, quad, size, App, AppContext, BorderStyle, Bounds, Context, Entity,
+    FocusHandle, Focusable, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, PathPromptOptions, Point, Render,
+    SharedString, Stateful, StatefulInteractiveElement, Styled, Window, hsla,
 };
 
-use crate::reactive::{get_or_create_view, with_root_cx};
+use crate::reactive::{get_or_create_slot, get_or_create_view, with_root_cx};
 use crate::style::{Css, TwStyle};
+use std::sync::Arc;
+// ── Radio group scope ───────────────────────────────────────────────
+//
+// A thread_local stack mirroring `label.rs`'s `SCOPE_STACK`. While a
+// `<radiogroup>` is rendering, child `radio()` calls register their
+// `FocusHandle`s into the shared vector so `radiogroup()`'s arrow-key
+// handler can move focus between them.
+
+thread_local! {
+    static RADIO_SCOPE: std::cell::RefCell<Vec<Arc<std::cell::RefCell<Vec<FocusHandle>>>>> =
+        std::cell::RefCell::new(Vec::new());
+}
+
+/// Push a new handle-collection onto the radio scope stack. Returns the
+/// shared handle vector for passing to `radiogroup()`.
+#[doc(hidden)]
+pub fn __radiogroup_scope_enter() -> Arc<std::cell::RefCell<Vec<FocusHandle>>> {
+    let handles = Arc::new(std::cell::RefCell::new(Vec::new()));
+    RADIO_SCOPE.with(|s| s.borrow_mut().push(handles.clone()));
+    handles
+}
+
+/// Pop the radio scope stack.
+#[doc(hidden)]
+pub fn __radiogroup_scope_exit() {
+    RADIO_SCOPE.with(|s| {
+        s.borrow_mut().pop();
+    });
+}
+
+/// Register a radio's `FocusHandle` with the current radiogroup scope.
+/// No-op if not inside a `<radiogroup>`.
+pub(crate) fn register_in_radio_scope(handle: FocusHandle) {
+    RADIO_SCOPE.with(|s| {
+        if let Some(top) = s.borrow_mut().last_mut() {
+            top.borrow_mut().push(handle);
+        }
+    });
+}
 
 // ── Checkbox ─────────────────────────────────────────────────────────
 
@@ -81,10 +120,22 @@ pub struct RadioProps {
 }
 
 /// Render a radio button. Returns a `Stateful<Div>`.
+///
+/// Each radio instance owns a persistent `FocusHandle` (cached in a reactive
+/// scope slot) so focus survives re-renders. When inside a `<radiogroup>`,
+/// the handle is registered for arrow-key navigation and roving tabindex
+/// applies: the checked radio is a tab stop, unchecked radios are focusable
+/// but not reachable via Tab. Disabled radios are not focusable at all.
 pub fn radio(props: RadioProps) -> Stateful<gpui::Div> {
     let checked = props.checked;
     let disabled = props.disabled;
     let on_change = std::cell::RefCell::new(props.on_change);
+
+    // Persistent focus handle for this radio instance.
+    let handle = get_or_create_slot(|cx| cx.focus_handle());
+
+    // Register with the current <radiogroup> scope (no-op if outside one).
+    register_in_radio_scope(handle.clone());
 
     let border_color = if disabled {
         hsla(0.0, 0.0, 0.7, 1.0)
@@ -97,8 +148,9 @@ pub fn radio(props: RadioProps) -> Stateful<gpui::Div> {
         hsla(0.0, 0.0, 1.0, 1.0)
     };
 
-    gpui::div()
+    let mut div = gpui::div()
         .id(("radio", crate::reactive::next_auto_id()))
+        .track_focus(&handle)
         .cursor_pointer()
         .size(px(18.))
         .rounded(px(9.))
@@ -107,27 +159,87 @@ pub fn radio(props: RadioProps) -> Stateful<gpui::Div> {
         .border_color(border_color)
         .flex()
         .items_center()
-        .justify_center()
-        .on_mouse_down(
-            MouseButton::Left,
-            move |_event: &MouseDownEvent, _window: &mut Window, cx: &mut App| {
-                if disabled {
-                    return;
-                }
-                if let Some(cb) = on_change.borrow_mut().as_mut() {
-                    cb(true, cx);
-                }
-            },
-        )
-        .child(if checked {
-            gpui::div()
-                .size(px(10.))
-                .rounded(px(5.))
-                .bg(hsla(0.6, 0.8, 0.5, 1.0))
-                .into_any_element()
+        .justify_center();
+
+    // Roving tabindex: checked radio is a tab stop; unchecked is focusable
+    // but not a tab stop. Disabled radios are not focusable at all.
+    if !disabled {
+        if checked {
+            div = div.tab_index(0);
         } else {
-            gpui::Empty.into_any_element()
+            div = div.focusable().tab_stop(false);
+        }
+    }
+
+    div = div.on_mouse_down(
+        MouseButton::Left,
+        move |_event: &MouseDownEvent, _window: &mut Window, cx: &mut App| {
+            if disabled {
+                return;
+            }
+            if let Some(cb) = on_change.borrow_mut().as_mut() {
+                cb(true, cx);
+            }
+        },
+    );
+
+    div.child(if checked {
+        gpui::div()
+            .size(px(10.))
+            .rounded(px(5.))
+            .bg(hsla(0.6, 0.8, 0.5, 1.0))
+            .into_any_element()
+    } else {
+        gpui::Empty.into_any_element()
+    })
+}
+
+/// Render a radio group with roving tabindex. Only the checked radio is a
+/// tab stop; arrow keys move focus between radios in the group.
+///
+/// `handles` is the shared vector populated by child `radio()` calls during
+/// render (via `__radiogroup_scope_enter`/`register_in_radio_scope`). By the
+/// time the key handler runs, all handles are collected.
+pub fn radiogroup(
+    handles: Arc<std::cell::RefCell<Vec<FocusHandle>>>,
+    content: impl gpui::IntoElement,
+) -> gpui::AnyElement {
+    let handles_for_keys = handles.clone();
+    gpui::div()
+        .id(("radiogroup", crate::reactive::next_auto_id()))
+        .tab_group()
+        .on_key_down(move |event: &KeyDownEvent, window: &mut Window, cx: &mut gpui::App| {
+            let handles = handles_for_keys.borrow();
+            if handles.is_empty() {
+                return;
+            }
+            let focused = window.focused(cx);
+            let current_idx = focused
+                .as_ref()
+                .and_then(|f| handles.iter().position(|h| h == f));
+            match event.keystroke.key.as_str() {
+                "left" | "up" => {
+                    let next_idx = match current_idx {
+                        Some(0) => handles.len() - 1,
+                        Some(i) => i - 1,
+                        None => 0,
+                    };
+                    window.focus(&handles[next_idx], cx);
+                    cx.stop_propagation();
+                }
+                "right" | "down" => {
+                    let next_idx = match current_idx {
+                        Some(i) => (i + 1) % handles.len(),
+                        None => 0,
+                    };
+                    window.focus(&handles[next_idx], cx);
+                    cx.stop_propagation();
+                }
+                _ => {}
+            }
         })
+        .child(content)
+        .into_any_element()
 }
 
 // ── Range (slider) ───────────────────────────────────────────────────

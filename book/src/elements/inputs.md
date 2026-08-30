@@ -109,6 +109,32 @@ view! {
 The checkbox renders as an 18×18px rounded box with a checkmark (✓) when
 checked. The radio renders as a similar box (radio-specific styling is planned).
 
+### Radio Groups (Roving Tabindex)
+
+Wrap radios in a `<radiogroup>` to enable roving tabindex:
+
+```rust
+view! {
+    <radiogroup>
+        <input type="radio" checked={sel.get() == 0}
+            on:change={move |_, cx| set_sel.set(cx, 0)} />
+        <input type="radio" checked={sel.get() == 1}
+            on:change={move |_, cx| set_sel.set(cx, 1)} />
+        <input type="radio" checked={sel.get() == 2}
+            on:change={move |_, cx| set_sel.set(cx, 2)} />
+    </radiogroup>
+}
+```
+
+Inside `<radiogroup>`:
+- Only the checked radio is a tab stop (Tab moves to it, then Tab again
+  leaves the group).
+- Arrow keys (←/↑/→/↓) move focus between radios in the group.
+- Clicking a radio focuses it and fires `on:change`.
+
+`<radiogroup>` takes no attributes. Radios outside a `<radiogroup>` behave
+as standalone focusable elements (the checked radio is a tab stop).
+
 ## Range Slider
 
 ```rust

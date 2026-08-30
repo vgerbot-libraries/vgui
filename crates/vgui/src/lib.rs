@@ -20,8 +20,9 @@ mod label;
 pub mod prelude;
 mod reactive;
 mod root;
-mod tw_dynamic;
 mod style;
+mod tw_dynamic;
+mod web;
 pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
@@ -32,9 +33,10 @@ pub use crate::input_text::{
 };
 pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
-    range_input, select, FileProps, RadioProps, RangeProps, SelectProps,
+    radiogroup, range_input, select, FileProps, RadioProps, RangeProps, SelectProps,
     str_select_change_cb,
 };
+pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit};
 pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::root::{mount, VguiRoot};
@@ -53,6 +55,13 @@ pub use crate::theme::{
     __var_keyword, __var_length, __var_line_height, __var_number, __weight_from_name,
     __weight_from_number,
 };
+
+/// Web (WASM) platform helper. Call from the `#[wasm_bindgen(start)]`
+/// entry point to prevent browser keyboard defaults (Tab focus escape,
+/// Space scroll, etc.) when running in a browser canvas.
+///
+/// On non-WASM targets this is a no-op.
+pub use crate::web::intercept_keyboard_events;
 
 // Internal test helpers — not part of the public API. Exposed so integration
 // tests can simulate a render scope without spinning up a full gpui App.

@@ -27,6 +27,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "floating" {
         return emit_floating(el);
     }
+    if name == "radiogroup" {
+        return emit_radiogroup(el);
+    }
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -1412,4 +1415,25 @@ fn emit_floating(el: &Element) -> syn::Result<TokenStream2> {
         #(let __c = #kids; __p = __p.child(__c);)*
         __p
     }) })
+}
+
+/// Emit a `<radiogroup>` container with roving tabindex. Children are
+/// rendered within a radio scope so their `FocusHandle`s are collected for
+/// arrow-key navigation. No special attributes.
+fn emit_radiogroup(el: &Element) -> syn::Result<TokenStream2> {
+    // Reject attributes — <radiogroup> takes no attributes in v1.
+    if let Some(attr) = el.attrs.first() {
+        return Err(syn::Error::new(
+            attr.span,
+            "unsupported attribute on <radiogroup>; it takes no attributes",
+        ));
+    }
+    let kids = emit_children(&el.children)?;
+    Ok(quote! { {
+        let __handles = ::vgui::__radiogroup_scope_enter();
+        let mut __content = ::gpui::div();
+        #(let __c = #kids; __content = __content.child(__c);)*
+        ::vgui::__radiogroup_scope_exit();
+        ::vgui::radiogroup(__handles, __content)
+    } })
 }

@@ -114,6 +114,7 @@ fn main() {
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn start() {
     gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
     run();
 }
 ```
@@ -128,6 +129,14 @@ pub fn start() {
   returns immediately (non-blocking). `run_embedded` returns an
   `ApplicationHandle` that keeps the app alive; `mem::forget` prevents it from
   being dropped when `start()` returns.
+- `vgui::intercept_keyboard_events()` — **required** in every WASM `start()`.
+  Installs `window`-level listeners that call `preventDefault()` and
+  `stopPropagation()` on all keyboard events, preventing the browser from
+  stealing focus (Tab) or scrolling (Space/arrows) when the canvas doesn't
+  handle a key. gpui_web's own listeners on the IME mirror `<textarea>` fire
+  first (target + early bubble), so gpui still receives every keystroke; the
+  `window` listener only suppresses the browser default after gpui has
+  processed it. On non-WASM targets this function is a no-op.
 - `gpui_platform::web_init()` — sets up panic hooks and logging for WASM.
 
 ## 2. Building WASM for the book

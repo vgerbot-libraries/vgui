@@ -93,5 +93,6 @@ fn main() {
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn start() {
     gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
     run();
 }
