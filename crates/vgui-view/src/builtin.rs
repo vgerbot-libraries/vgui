@@ -46,6 +46,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut focus = None;
     let mut class = None;
     let mut tabindex = None;
+    let mut ref_attr = None;
     let mut object_fit = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
@@ -58,6 +59,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Active => active = Some(attr),
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
+            AttrKind::Ref => ref_attr = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
@@ -258,7 +260,8 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         });
     // hover is on InteractiveElement, not Stateful. active/on_click/on_hover need Stateful.
     let needs_id = id.is_none()
-        && (active.is_some()
+        && (ref_attr.is_some()
+            || active.is_some()
             || focus.is_some()
             || tabindex.is_some()
             || class.is_some()
@@ -287,6 +290,20 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                 __el = __el.tab_index(__tabindex);
             } else {
                 __el = __el.focusable();
+            }
+            __el
+        }};
+    }
+
+    if let Some(ref_attr) = ref_attr {
+        let v = attr_tokens(&ref_attr.value);
+        ctor = quote! {{
+            let __ref = #v;
+            let __bound = ::vgui::__bind_ref(&__ref);
+            let mut __el = #ctor;
+            if __bound {
+                __el = __el.track_focus(&__ref.focus_handle());
+                __el = __el.track_scroll(&__ref.scroll_handle());
             }
             __el
         }};
@@ -456,6 +473,7 @@ fn chain_div_extras(
     hover: Option<&Attr>,
     active: Option<&Attr>,
     focus: Option<&Attr>,
+    ref_attr: Option<&Attr>,
     id: Option<&Attr>,
     tabindex: Option<&Attr>,
     force_id: bool,
@@ -476,6 +494,7 @@ fn chain_div_extras(
 
     let needs_id = id.is_none()
         && (force_id
+            || ref_attr.is_some()
             || active.is_some()
             || focus.is_some()
             || tabindex.is_some()
@@ -505,6 +524,20 @@ fn chain_div_extras(
                 __el = __el.tab_index(__tabindex);
             } else {
                 __el = __el.focusable();
+            }
+            __el
+        }};
+    }
+
+    if let Some(ref_attr) = ref_attr {
+        let v = attr_tokens(&ref_attr.value);
+        ctor = quote! {{
+            let __ref = #v;
+            let __bound = ::vgui::__bind_ref(&__ref);
+            let mut __el = #ctor;
+            if __bound {
+                __el = __el.track_focus(&__ref.focus_handle());
+                __el = __el.track_scroll(&__ref.scroll_handle());
             }
             __el
         }};
@@ -590,6 +623,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
     let mut focus = None;
     let mut class = None;
     let mut id = None;
+    let mut ref_attr = None;
     let mut tabindex = None;
     let mut events: Vec<(Ident, TokenStream2, Span)> = Vec::new();
     // input-specific
@@ -614,6 +648,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
             AttrKind::Id => id = Some(attr),
+            AttrKind::Ref => ref_attr = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => {
                 let ev_name = ev.to_string();
@@ -802,7 +837,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -828,7 +863,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
             Ok(quote! {{ #ctor }})
         }
 
@@ -934,7 +969,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     on_change: #on_change_expr,
                 })
             };
-            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
+            let ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
             // Use `value` attr as the button label text.
             if let Some(v) = value {
                 let label = attr_tokens(v);
@@ -957,7 +992,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             // Use `value` attr as button label text.
             let label = value.map(|v| attr_tokens(v));
 
-            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, false, &events);
+            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
 
             if let Some(label) = label {
                 Ok(quote! {{
@@ -1042,6 +1077,9 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Tabindex => {} // accepted but unused
             AttrKind::Hover | AttrKind::Active | AttrKind::Focus => {
                 return Err(syn::Error::new(attr.span, "hover/active/focus are not supported on <select>"));
+            }
+            AttrKind::Ref => {
+                return Err(syn::Error::new(attr.span, "ref is not supported on <select>; use a wrapping <div ref={...}> instead"));
             }
         }
     }
@@ -1170,6 +1208,9 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Hover | AttrKind::Active | AttrKind::Focus => {
                 return Err(syn::Error::new(attr.span, "hover/active/focus are not supported on <textarea>"));
             }
+            AttrKind::Ref => {
+                return Err(syn::Error::new(attr.span, "ref is not supported on <textarea>; use a wrapping <div ref={...}> instead"));
+            }
         }
     }
 
@@ -1256,6 +1297,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
     let mut active = None;
     let mut focus = None;
     let mut class = None;
+    let mut ref_attr = None;
     let mut tabindex = None;
     let mut events: Vec<(Ident, TokenStream2, Span)> = Vec::new();
     let mut unknown = Vec::new();
@@ -1269,6 +1311,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Active => active = Some(attr),
             AttrKind::Focus => focus = Some(attr),
             AttrKind::Class => class = Some(attr),
+            AttrKind::Ref => ref_attr = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id2) => unknown.push(id2.clone()),
@@ -1289,7 +1332,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
 
     // Label always needs an id because on_mouse_down requires Stateful.
     let mut ctor = quote! { ::gpui::div().cursor_pointer() };
-    ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, id, tabindex, true, &events);
+    ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, true, &events);
 
     let kids = emit_children(&el.children)?;
 

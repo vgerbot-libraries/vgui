@@ -11,6 +11,9 @@ pub(crate) fn emit_show(el: &Element) -> syn::Result<TokenStream2> {
         match &attr.kind {
             AttrKind::Ident(id) if id == "when" => when = Some(attr_tokens(&attr.value)),
             AttrKind::Ident(id) if id == "fallback" => fallback = Some(attr_tokens(&attr.value)),
+            AttrKind::Ref => {
+                return Err(syn::Error::new(attr.span, "ref is not supported on <Show>"))
+            }
             _ => {
                 return Err(syn::Error::new(
                     attr.span,
@@ -35,6 +38,9 @@ pub(crate) fn emit_for(el: &Element) -> syn::Result<TokenStream2> {
         match &attr.kind {
             AttrKind::Ident(id) if id == "each" => each = Some(attr_tokens(&attr.value)),
             AttrKind::Ident(id) if id == "fallback" => fallback = Some(attr_tokens(&attr.value)),
+            AttrKind::Ref => {
+                return Err(syn::Error::new(attr.span, "ref is not supported on <For>"))
+            }
             _ => return Err(syn::Error::new(attr.span, "unsupported attribute on <For>")),
         }
     }

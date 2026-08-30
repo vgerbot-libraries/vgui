@@ -34,6 +34,7 @@ pub(crate) fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Type => fields.push(quote! { r#type: #value }),
             AttrKind::Tabindex => fields.push(quote! { tabindex: #value }),
             AttrKind::For => fields.push(quote! { r#for: #value }),
+            AttrKind::Ref => fields.push(quote! { r#ref: #value }),
             AttrKind::On(ev) => {
                 let name = Ident::new(&format!("on_{ev}"), ev.span());
                 fields.push(quote! { #name: #value });

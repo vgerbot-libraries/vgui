@@ -89,6 +89,10 @@ pub(crate) fn exit_scope() {
     ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = None);
 }
 
+fn try_current() -> Option<Current> {
+    CURRENT.with(|c| c.borrow().as_ref().cloned())
+}
+
 fn current() -> Current {
     CURRENT.with(|c| {
         c.borrow()
@@ -97,6 +101,7 @@ fn current() -> Current {
             .expect("create_signal must run inside VguiRoot / Scope::enter")
     })
 }
+
 
 /// Run a closure with the current VguiRoot context. Panics if not inside a
 /// VguiRoot render (same precondition as `create_signal`).
@@ -323,6 +328,30 @@ pub(crate) fn get_or_create_slot<T: Clone + 'static>(
         scope.index += 1;
     }
     value
+}
+
+/// Bind a [`crate::ref_handle::NodeRef`] to the current reactive scope slot,
+/// creating the `FocusHandle` and `ScrollHandle` on first render and returning
+/// them on subsequent renders. Called by `view!` macro-emitted code when a
+/// `ref={node_ref}` attribute is present.
+///
+/// Returns `true` when the handles were bound (a reactive scope is active),
+/// or `false` when no scope is active (e.g. constructing elements in
+/// standalone tests). In the `false` case the `NodeRef` remains unbound and
+/// the caller should skip `track_focus`/`track_scroll`.
+#[doc(hidden)]
+pub fn __bind_ref(node_ref: &crate::ref_handle::NodeRef) -> bool {
+    if try_current().is_none() {
+        return false;
+    }
+    let handles: std::sync::Arc<crate::ref_handle::NodeRefHandles> = get_or_create_slot(|cx| {
+        std::sync::Arc::new(crate::ref_handle::NodeRefHandles {
+            focus: cx.focus_handle(),
+            scroll: gpui::ScrollHandle::new(),
+        })
+    });
+    node_ref.bind(&handles);
+    true
 }
 
 pub fn create_memo<T: Clone + PartialEq + 'static>(f: impl Fn() -> T + 'static) -> ReadSignal<T> {
