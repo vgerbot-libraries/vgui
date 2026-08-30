@@ -1,0 +1,5 @@
+error: only one `{..props}` spread is allowed per component
+ --> tests/ui/spread_multiple.rs:5:21
+  |
+5 |         <Comp {..a} {..b} />
+  |                     ^^^^^

@@ -58,6 +58,7 @@ pub(crate) enum AttrKind {
     For,
     Ref,
     Animate,
+    Spread,
 }
 
 pub(crate) enum AttrValue {

@@ -20,9 +20,19 @@ pub(crate) fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
         return Ok(quote! { #tag(::std::vec![#(#kids),*]) });
     }
     let mut fields = Vec::new();
+    let mut spread: Option<TokenStream2> = None;
     for attr in &el.attrs {
         let value = attr_tokens(&attr.value);
         match &attr.kind {
+            AttrKind::Spread => {
+                if spread.is_some() {
+                    return Err(syn::Error::new(
+                        attr.span,
+                        "only one `{..props}` spread is allowed per component",
+                    ));
+                }
+                spread = Some(value);
+            }
             AttrKind::Ident(id) => fields.push(quote! { #id: #value }),
             AttrKind::Id => fields.push(quote! { id: #value }),
             AttrKind::Src => fields.push(quote! { src: #value }),
@@ -46,5 +56,9 @@ pub(crate) fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
         let kids: Vec<TokenStream2> = children.iter().map(emit_child).collect::<Result<_, _>>()?;
         fields.push(quote! { children: ::std::vec![#(#kids),*] });
     }
-    Ok(quote! { #tag { #(#fields),* } })
+    if let Some(spread) = spread {
+        Ok(quote! { #tag { #(#fields,)* ..#spread } })
+    } else {
+        Ok(quote! { #tag { #(#fields),* } })
+    }
 }

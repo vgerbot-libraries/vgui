@@ -98,6 +98,29 @@ pub(crate) fn parse_element_or_fragment(
             *i += 1;
             break;
         }
+        // Detect spread syntax: `{..expr}` or `{...expr}` — a brace group
+        // whose inner token stream begins with two or more `.` puncts.
+        if let TokenTree::Group(g) = &tokens[*i] {
+            if g.delimiter() == Delimiter::Brace {
+                let inner: Vec<TokenTree> = g.stream().into_iter().collect();
+                if let Some(expr) = extract_spread(&inner) {
+                    let span = g.span();
+                    *i += 1;
+                    if expr.is_empty() {
+                        return Err(syn::Error::new(
+                            span,
+                            "spread requires an expression after `..`",
+                        ));
+                    }
+                    attrs.push(Attr {
+                        kind: AttrKind::Spread,
+                        value: AttrValue::Expr(expr),
+                        span,
+                    });
+                    continue;
+                }
+            }
+        }
         attrs.push(parse_attr(tokens, i)?);
     }
     let mut children = Vec::new();
@@ -140,6 +163,28 @@ pub(crate) fn parse_element_or_fragment(
 
 pub(crate) fn is_punct(tt: &TokenTree, ch: char) -> bool {
     matches!(tt, TokenTree::Punct(p) if p.as_char() == ch)
+}
+
+/// Check whether `inner` begins with two or more `.` puncts (spread syntax
+/// `{..expr}` or `{...expr}`). Returns `Some(expr_tokens)` — the tokens after
+/// the leading dots — when the dot count is ≥ 2, `None` otherwise.
+fn extract_spread(inner: &[TokenTree]) -> Option<TokenStream2> {
+    let mut dots = 0;
+    let mut start = 0;
+    for (idx, tt) in inner.iter().enumerate() {
+        if is_punct(tt, '.') {
+            dots += 1;
+            start = idx + 1;
+        } else {
+            break;
+        }
+    }
+    if dots >= 2 {
+        let expr: TokenStream2 = inner[start..].iter().cloned().collect();
+        Some(expr)
+    } else {
+        None
+    }
 }
 
 pub(crate) fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Attr> {

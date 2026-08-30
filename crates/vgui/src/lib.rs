@@ -25,6 +25,7 @@ mod reactive;
 mod ref_handle;
 mod root;
 mod style;
+mod spread;
 mod tw_dynamic;
 mod web;
 pub mod theme;
@@ -52,6 +53,7 @@ pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent};
 pub use crate::event::{__dom_key_down, __dom_key_up, __dom_pointer_down, __dom_pointer_up, __dom_pointer_move};
 pub use crate::reactive::__register_resize_handler;
 pub use crate::style::{ApplyStyle, Css, TwStyle};
+pub use crate::spread::Spread;
 pub use crate::animation::{
     apply_animation, apply_animation_expr, apply_transition, interpolate_refinement, Easing,
     TwAnimation, TwTransition, TransitionProperties,

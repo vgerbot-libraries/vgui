@@ -51,6 +51,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut animate = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
+    let mut spreads: Vec<TokenStream2> = Vec::new();
     for attr in &el.attrs {
         match &attr.kind {
             AttrKind::Src => src = Some(attr),
@@ -82,6 +83,15 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Type => {
                 return Err(syn::Error::new(attr.span, "`type` attribute is only valid on <input>"))
+            }
+            AttrKind::Spread => {
+                if !spreads.is_empty() {
+                    return Err(syn::Error::new(
+                        attr.span,
+                        "only one `{..props}` spread is allowed per element",
+                    ));
+                }
+                spreads.push(attr_tokens(&attr.value));
             }
             AttrKind::For => {
                 return Err(syn::Error::new(attr.span, "`for` is only valid on <label>"))
@@ -399,6 +409,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     Ok(quote! {{
         let mut el = #ctor;
         #(el = el.child(#kids);)*
+        #(el = ::vgui::Spread::spread(#spreads, el);)*
         #anim_wrap
     }})
 }
@@ -734,6 +745,9 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Animate => {
                 return Err(syn::Error::new(attr.span, "`animate` is not supported on <input>"));
+            }
+            AttrKind::Spread => {
+                return Err(syn::Error::new(attr.span, "spread attributes are not supported on <input>"));
             }
         }
     }
@@ -1133,6 +1147,9 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Animate => {
                 return Err(syn::Error::new(attr.span, "`animate` is not supported on <select>"));
             }
+            AttrKind::Spread => {
+                return Err(syn::Error::new(attr.span, "spread attributes are not supported on <select>"));
+            }
         }
     }
 
@@ -1266,6 +1283,9 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Animate => {
                 return Err(syn::Error::new(attr.span, "`animate` is not supported on <textarea>"));
             }
+            AttrKind::Spread => {
+                return Err(syn::Error::new(attr.span, "spread attributes are not supported on <textarea>"));
+            }
         }
     }
 
@@ -1378,6 +1398,9 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Animate => {
                 return Err(syn::Error::new(attr.span, "`animate` is not supported on <label>"))
+            }
+            AttrKind::Spread => {
+                return Err(syn::Error::new(attr.span, "spread attributes are not supported on <label>"));
             }
         }
     }

@@ -1,0 +1,5 @@
+error: spread attributes are not supported on <input>
+ --> tests/ui/spread_on_input.rs:5:28
+  |
+5 |         <input type="text" {..p} />
+  |                            ^^^^^

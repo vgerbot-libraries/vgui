@@ -136,6 +136,68 @@ For `<input>`, two additional events are available:
 | `on:input`   | `FnMut(&str, &mut App)`              | —                                  | —                         | —                        |
 | `on:change`  | `FnMut(&str, &mut App)`              | `FnMut(bool, &mut App)`            | `FnMut(f64, &mut App)`    | `FnMut(Vec<PathBuf>, &mut App)` |
 
+
+## Spread Attributes
+
+The `{..expr}` (or `{...expr}`) syntax spreads a props value onto an element
+or component — vgui's equivalent of SolidJS's `{...props}`. This enables the
+rest-props forwarding pattern.
+
+### On components (struct update syntax)
+
+For custom components, spread expands to Rust's struct update syntax:
+
+```rust
+view! { <Greeting {..props} /> }
+// → Greeting { ..props }
+
+view! { <Greeting {..props} name={"override"} /> }
+// → Greeting { name: "override", ..props }
+```
+
+Explicit fields always override the spread, regardless of source order — this
+is Rust's struct update rule (named fields win over `..base`). Only one spread
+is allowed per component (Rust struct update syntax permits a single `..base`).
+
+### On built-in elements (Spread trait)
+
+For built-in HTML elements (`<div>`, `<button>`, …), spread calls the
+`Spread<E>` trait after the element is built and children are attached:
+
+```rust
+view! { <div {..extras}>{"x"}</div> }
+// → let mut el = gpui::div();
+//   el = el.child("x");
+//   el = ::vgui::Spread::spread(extras, el);
+```
+
+Implement `Spread<E>` for your props type, where `E` is the concrete gpui
+element type after other attributes are applied:
+
+- Bare `<div {..p} />` → `E = gpui::Div`
+- With `class` / `on:click` / `ref` / `tabindex` / `id` / `active` / `focus` →
+  `E = gpui::Stateful<gpui::Div>`
+
+```rust
+struct DivExtras { bg: gpui::Hsla }
+
+impl ::vgui::Spread<gpui::Div> for DivExtras {
+    fn spread(self, el: gpui::Div) -> gpui::Div {
+        el.bg(self.bg)
+    }
+}
+```
+
+Explicit attributes are applied before `spread`, so they take precedence.
+
+### Limitations
+
+- **One spread per element** — both components and built-ins accept at most one
+  `{..expr}`. To merge multiple props sources, construct a single merged struct
+  in Rust.
+- **Not supported on `<input>`, `<select>`, `<textarea>`, `<label>`** — these
+  specialized elements reject spread attributes with a compile error.
+
 ## Children
 
 Children appear between the opening and closing tags. Each child is one of the

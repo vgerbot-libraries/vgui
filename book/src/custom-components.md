@@ -203,3 +203,95 @@ view! {
 > **Tip:** For simple components without attributes, prefer plain functions
 > that take arguments and return `impl IntoElement`. Use struct initializers
 > only when you need attribute-style syntax.
+
+## Spread & Rest Props
+
+The `{..expr}` spread syntax forwards a props value onto a component or
+built-in element. This is vgui's equivalent of SolidJS's `{...props}` and
+enables the rest-props forwarding pattern.
+
+### Forwarding pattern
+
+A wrapper component can forward its inner props sub-struct directly:
+
+```rust
+struct Outer {
+    label: String,
+    inner: Inner,
+}
+
+struct Inner {
+    text: String,
+    color: gpui::Hsla,
+}
+
+impl gpui::IntoElement for Outer {
+    type Element = gpui::AnyElement;
+    fn into_element(self) -> Self::Element {
+        view! {
+            <div>
+                <span>{self.label}</span>
+                <Inner {..self.inner} />
+            </div>
+        }
+        .into_element()
+    }
+}
+```
+
+`<Inner {..self.inner} />` expands to `Inner { ..self.inner }` — Rust's struct
+update syntax. The entire `inner` field is moved into the `Inner` initializer.
+
+### Split-props pattern
+
+Keep a "rest" sub-struct for forwarded props, separate from fields the wrapper
+consumes itself:
+
+```rust
+struct Card {
+    title: String,          // consumed by Card
+    rest: CardRest,         // forwarded to inner div
+}
+
+struct CardRest {
+    class: String,
+    style: vgui::Css,
+}
+
+impl gpui::IntoElement for Card {
+    type Element = gpui::AnyElement;
+    fn into_element(self) -> Self::Element {
+        view! {
+            <div {..self.rest}>
+                <h3>{self.title}</h3>
+            </div>
+        }
+        .into_element()
+    }
+}
+```
+
+Here `<div {..self.rest} />` calls `Spread<gpui::Div>` (or
+`Spread<gpui::Stateful<gpui::Div>>` depending on other attributes). Implement
+`Spread` for `CardRest` to apply `class` and `style` onto the div.
+
+### Override pattern
+
+Explicit fields always win over the spread, regardless of order:
+
+```rust
+view! { <Greeting {..props} name={"override"} /> }
+// → Greeting { name: "override", ..props }
+```
+
+This is Rust's struct update rule: named fields take precedence over `..base`.
+Use it to override individual fields from a spread props value.
+
+### Limitations
+
+- **One spread per element.** Rust struct update syntax permits a single
+  `..base`, so only one `{..expr}` is allowed. To merge multiple props sources,
+  construct a single merged struct in Rust.
+- **Built-in spread requires a `Spread<E>` impl.** See
+  [Spread Attributes](../concepts/view-macro.md#spread-attributes) in the
+  `view!` macro reference for the trait definition and element-type rules.
