@@ -10,6 +10,11 @@ This example demonstrates vgui's Context / Provider pattern — the
 SolidJS-equivalent of `createContext` / `useContext` / `<Provider>` for
 dependency injection down the element tree.
 
+The example is split across three files — `theme.rs` (the context type,
+marker, and a leaf consumer), `panel.rs` (a sub-component that both consumes
+and provides), and `main.rs` (the root provider and entry point) — to show
+that a `Context<T>` marker crosses file/module boundaries for free.
+
 It features:
 
 - `Context::new()` — a zero-sized, `const`-constructable typed marker stored
@@ -25,32 +30,29 @@ It features:
 
 ## Source Code
 
+`theme.rs` — the context type, marker, and leaf consumer:
+
 ```rust
-#![cfg_attr(target_family = "wasm", no_main)]
-
-use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
-
-#[cfg(not(target_family = "wasm"))]
-use gpui_platform::application;
-
-#[cfg(target_family = "wasm")]
-use gpui_platform::single_threaded_web;
 
 /// A theme mode propagated through the element tree via `<Provider>`.
 #[derive(Clone, PartialEq)]
-enum Mode {
+pub enum Mode {
     Light,
     Dark,
 }
 
 /// The context marker. Zero-sized, stored in a plain `static`.
-static MODE: Context<Mode> = Context::new();
+pub static MODE: Context<Mode> = Context::new();
 
 /// A box that reads the nearest `MODE` provider, falling back to `Light`
 /// when no provider is active. `css!` takes literal CSS, so the `if`/`else`
 /// picks one of two literal blocks — no dynamic interpolation needed.
-fn themed_box(label: &str) -> impl gpui::IntoElement {
+///
+/// This leaf consumer defines no provider of its own; it reads whatever
+/// ancestor provider was pushed in another module, proving a `Context<T>`
+/// marker crosses file boundaries for free.
+pub fn themed_box(label: &str) -> impl gpui::IntoElement {
     let mode = use_context_or(&MODE, || Mode::Light);
     let style = if matches!(mode, Mode::Dark) {
         css! {
@@ -73,6 +75,50 @@ fn themed_box(label: &str) -> impl gpui::IntoElement {
         <div style={style}>{label.to_string()}</div>
     }
 }
+```
+
+`panel.rs` — a sub-component in its own module that imports the marker from
+`theme.rs`, reads the ancestor provider, and nests its own override:
+
+```rust
+use crate::theme::{themed_box, Mode, MODE};
+use vgui::prelude::*;
+
+/// A sub-component living in its own module. It imports the `MODE` marker
+/// from `theme.rs`, reads the ancestor provider set in `main.rs`, and nests
+/// its own override provider — demonstrating that context resolution is
+/// per-render, not per-module.
+#[allow(non_snake_case)]
+pub fn ThemePanel() -> impl gpui::IntoElement {
+    view! {
+        <div class="flex flex-col gap-2">
+            {themed_box("panel: inherits root context")}
+            <Provider context={MODE} value={Mode::Dark}>
+                {themed_box("panel: overridden to dark")}
+            </Provider>
+        </div>
+    }
+}
+```
+
+`main.rs` — the root provider and dual entry point:
+
+```rust
+#![cfg_attr(target_family = "wasm", no_main)]
+
+mod panel;
+mod theme;
+
+use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
+use panel::ThemePanel;
+use theme::{themed_box, Mode, MODE};
+use vgui::prelude::*;
+
+#[cfg(not(target_family = "wasm"))]
+use gpui_platform::application;
+
+#[cfg(target_family = "wasm")]
+use gpui_platform::single_threaded_web;
 
 fn app() -> impl gpui::IntoElement {
     let (mode, set_mode) = create_signal(Mode::Light);
@@ -80,9 +126,7 @@ fn app() -> impl gpui::IntoElement {
         <Provider context={MODE} value={mode.get()}>
             <div class="flex flex-col p-4 gap-2 w-[400px] h-[400px]">
                 {themed_box("root context (toggles)")}
-                <Provider context={MODE} value={Mode::Dark}>
-                    {themed_box("overridden to dark")}
-                </Provider>
+                <ThemePanel />
                 <button class="p-2 bg-[#0066cc] text-white rounded"
                     on:click={click(move |cx| set_mode.update(cx, |m|
                         *m = match *m { Mode::Light => Mode::Dark, Mode::Dark => Mode::Light }))}>
@@ -172,6 +216,19 @@ one within its subtree. In the example, the root provider binds `MODE` to a
 signal-driven `Mode` (toggled by the button), while an inner provider
 overrides it to `Mode::Dark` — so the "overridden to dark" box stays dark
 regardless of the toggle, while the "root context" box follows the signal.
+
+### Cross-module context
+
+A `Context<T>` marker is a `static` keyed by `TypeId` on a thread-local
+provider stack. The stack is per-render, not per-module: a provider pushed
+in one file is visible to any descendant component constructed during that
+render, regardless of which module defines it. So a `use crate::theme::MODE`
+in `panel.rs` (or any other module) sees the nearest ancestor `<Provider>`
+that was entered in `main.rs` — no wiring, re-export, or parameter passing
+required. The three-file split in this example makes that flow visible in
+source: `theme.rs` owns the marker and a leaf consumer, `panel.rs` imports
+the marker and both consumes and provides, and `main.rs` pushes the root
+provider.
 
 ### Programmatic provider (`provide_context`)
 
