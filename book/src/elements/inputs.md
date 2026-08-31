@@ -277,18 +277,21 @@ view! {
 | `placeholder` | string                        | Placeholder text.               |
 | `disabled`    | bool                          | Disables editing.               |
 | `readonly`    | bool                          | Read-only mode.                 |
+| `rows`        | `u32`                         | Minimum visible line count.     |
 | `on:input`    | `FnMut(&str, &mut App)`       | Fires on every keystroke.       |
 | `on:change`   | `FnMut(&str, &mut App)`       | Fires on blur.                  |
 | `style`/`class`/`id`/`tabindex` | —               | Standard styling.               |
 
-`rows` and `name` are accepted but unused in v1. The textarea is a multi-line
-text input with the same cursor/selection/clipboard/IME support as text
-inputs.
+`name` is accepted but unused. When `rows` is set, the textarea's minimum
+height is `rows` times the line height plus 8px of vertical padding; without
+`rows` the minimum height is 80px. The textarea is a multi-line text input
+with the same cursor/selection/clipboard/IME support as text inputs.
 
 ## Submit/Button/Reset
 
 These render as clickable buttons (like `<button>`). The `value` attribute
-becomes the button label. `on:click` wires the handler.
+becomes the button label. `on:click` wires the handler. Without an explicit
+`tabindex` they default to `tabindex={0}` and are in Tab order.
 
 ```rust
 view! {
@@ -300,6 +303,7 @@ view! {
 
 > **Note:** `submit` and `reset` have no form semantics in vgui v1 — they
 > behave as buttons.
+
 
 ## Hidden
 

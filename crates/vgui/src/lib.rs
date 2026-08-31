@@ -33,7 +33,7 @@ pub mod theme;
 pub use crate::child::{click, into_child, IntoViewChild};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, portal};
-pub use crate::control::{details, for_each, for_each_or, progress, show, show_when};
+pub use crate::control::{details, for_each, for_each_or, meter, progress, show, show_when};
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInputProps,
 };

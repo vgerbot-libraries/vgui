@@ -47,6 +47,8 @@ All of these expand to `gpui::div()` with no additional default styling:
 | `<dt>`     | font-weight: bold         |
 | `<dd>`     | padding-left: 16px        |
 
+gpui has no `list-style`; draw numbering or bullets with text prefixes yourself.
+
 ## Link Elements
 
 | Tag     | Default styling                                    |
@@ -56,11 +58,17 @@ All of these expand to `gpui::div()` with no additional default styling:
 `<a>` supports the `href` attribute (accepted but not navigable in vgui v1 —
 use `on:click` for navigation actions).
 
+## Button Elements
+
+`<button>` expands to `gpui::div().cursor_pointer()` and defaults to
+`tabindex={0}` so it is in Tab order. An explicit `tabindex` overrides that
+default. Keyboard activation of `on:click` is handled by gpui.
+
 ## Media Elements
 
 | Tag      | Attributes  | Behavior                                   |
 | -------- | ----------- | ------------------------------------------ |
-| `<img>`  | `src` (required), `object_fit` | `gpui::img(src)`. `object_fit` accepts `fill`, `contain`, `cover`, `scale-down`, `none`. |
+| `<img>`  | `src` (required), `object_fit`, `alt` | `gpui::img(src)`. `object_fit` accepts `fill`, `contain`, `cover`, `scale-down`, `none`. `alt` is accepted and unused for a11y. |
 | `<svg>`  | `src` (required) | `gpui::svg().path(src)`                 |
 
 ### Void elements

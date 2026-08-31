@@ -68,12 +68,19 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
                 let id_name = id.to_string();
-                // Allow href on <a>, value/max on <progress>/<meter>, open on <details>,
-                // colspan/rowspan on <td>/<th>.
+                // Allow href on <a>, value/max on <progress>, value/max/min/low/high/optimum
+                // on <meter>, open on <details>, colspan/rowspan on <td>/<th>, alt on <img>
+                // (accepted, unused for a11y).
                 if (name == "a" && id_name == "href")
-                    || ((name == "progress" || name == "meter") && (id_name == "value" || id_name == "max"))
+                    || (name == "progress" && (id_name == "value" || id_name == "max"))
+                    || (name == "meter"
+                        && matches!(
+                            id_name.as_str(),
+                            "value" | "max" | "min" | "low" | "high" | "optimum"
+                        ))
                     || (name == "details" && id_name == "open")
                     || ((name == "td" || name == "th") && (id_name == "colspan" || id_name == "rowspan"))
+                    || (name == "img" && id_name == "alt")
                 {
                     // ignore — consumed in the tag match
                 } else if name == "img" && id_name == "object_fit" {
@@ -182,11 +189,17 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             }).unwrap_or(quote! { 1f64 });
             quote! { ::vgui::progress(#value, #max) }
         }
-        // Meter (similar to progress)
+        // Meter
         "meter" => {
             let value = el.attrs.iter().find_map(|a| {
                 if let AttrKind::Ident(id) = &a.kind {
                     if id.to_string() == "value" { return Some(attr_tokens(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { 0f64 });
+            let min = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "min" { return Some(attr_tokens(&a.value)); }
                 }
                 None
             }).unwrap_or(quote! { 0f64 });
@@ -196,7 +209,25 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                 }
                 None
             }).unwrap_or(quote! { 1f64 });
-            quote! { ::vgui::progress(#value, #max) }
+            let low = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "low" { return Some(f64_opt_expr(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { ::std::option::Option::None });
+            let high = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "high" { return Some(f64_opt_expr(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { ::std::option::Option::None });
+            let optimum = el.attrs.iter().find_map(|a| {
+                if let AttrKind::Ident(id) = &a.kind {
+                    if id.to_string() == "optimum" { return Some(f64_opt_expr(&a.value)); }
+                }
+                None
+            }).unwrap_or(quote! { ::std::option::Option::None });
+            quote! { ::vgui::meter(#value, #min, #max, #low, #high, #optimum) }
         }
         // Details/summary collapsible container
         "details" => {
@@ -296,6 +327,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     } else if needs_id {
         let name_lit = syn::LitStr::new(&name, el.tag.span());
         ctor = quote! { #ctor.id((#name_lit, ::vgui::next_auto_id())) };
+    }
+    if name == "button" && tabindex.is_none() {
+        ctor = quote! { #ctor.tab_index(0) };
     }
     if let Some(tabindex_attr) = tabindex {
         let idx = tabindex_expr(&tabindex_attr.value);
@@ -881,6 +915,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     class: #class_expr,
                     id: #id_expr,
                     tabindex: #tabindex_expr_val,
+                    rows: ::std::option::Option::None,
                 })
             })
         }
@@ -1061,6 +1096,10 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
 
             // Use `value` attr as button label text.
             let label = value.map(|v| attr_tokens(v));
+
+            if tabindex.is_none() {
+                ctor = quote! { #ctor.tab_index(0) };
+            }
 
             ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
 
@@ -1261,6 +1300,7 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
     let mut placeholder = None;
     let mut disabled = None;
     let mut readonly = None;
+    let mut rows = None;
 
     for attr in &el.attrs {
         match &attr.kind {
@@ -1284,7 +1324,8 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
                     "placeholder" => placeholder = Some(&attr.value),
                     "disabled" => disabled = Some(&attr.value),
                     "readonly" => readonly = Some(&attr.value),
-                    "rows" | "name" => {} // accepted but unused
+                    "rows" => rows = Some(&attr.value),
+                    "name" => {}
                     other => {
                         return Err(syn::Error::new(
                             id2.span(),
@@ -1375,6 +1416,13 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
         }
         None => quote! { ::std::option::Option::None },
     };
+    let rows_expr = match rows {
+        Some(v) => {
+            let e = attr_tokens(v);
+            quote! { ::std::option::Option::Some((#e) as u32) }
+        }
+        None => quote! { ::std::option::Option::None },
+    };
 
     Ok(quote! {
         ::vgui::text_area(::vgui::TextAreaProps {
@@ -1388,6 +1436,7 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             class: #class_expr,
             id: #id_expr,
             tabindex: #tabindex_expr_val,
+            rows: #rows_expr,
         })
     })
 }

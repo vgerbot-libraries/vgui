@@ -27,14 +27,27 @@ customize appearance.
 
 ## `<meter>` — Meter Gauge
 
-`<meter>` is an alias for `<progress>` — it accepts the same `value` and `max`
-attributes and renders identically:
+Renders a horizontal gauge. Fill width is `value` between `min` and `max`.
+When `low`, `high`, and `optimum` are all omitted the fill is the same blue
+as `<progress>`. Otherwise values inside `[low.unwrap_or(min),
+high.unwrap_or(max)]` are green and values outside that range are red.
 
 ```rust
 view! {
-    <meter value={0.7f64} max={1.0f64} />
+    <meter value={0.3f64} min={0f64} max={1f64} low={0.2f64} high={0.8f64} optimum={0.5f64} />
 }
 ```
+
+### Attributes
+
+| Attribute | Type         | Default | Description                         |
+| --------- | ------------ | ------- | ----------------------------------- |
+| `value`   | f64          | 0.0     | Current value.                      |
+| `min`     | f64          | 0.0     | Minimum of the range.               |
+| `max`     | f64          | 1.0     | Maximum of the range.               |
+| `low`     | `Option<f64>`| none    | Lower bound of the "good" range.    |
+| `high`    | `Option<f64>`| none    | Upper bound of the "good" range.    |
+| `optimum` | `Option<f64>`| none    | Presence (with `low`/`high`) selects green/red coloring. |
 
 ## `<details>` — Collapsible Container
 

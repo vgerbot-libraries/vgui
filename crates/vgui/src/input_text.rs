@@ -65,6 +65,7 @@ pub struct TextInput {
     min: Option<f64>,
     max: Option<f64>,
     step: Option<f64>,
+    rows: Option<u32>,
     cursor: usize,
     selection: Option<Range<usize>>,
     marked: Option<(Range<usize>, String)>,
@@ -96,6 +97,7 @@ impl TextInput {
             min: None,
             max: None,
             step: None,
+            rows: None,
             cursor: 0,
             selection: None,
             marked: None,
@@ -130,6 +132,7 @@ impl TextInput {
         self.min = props.min;
         self.max = props.max;
         self.step = props.step;
+        self.rows = props.rows;
         if !self.focused && props.value != self.value {
             self.value = props.value.clone();
             self.cursor = self.value.len();
@@ -863,7 +866,15 @@ impl Render for TextInput {
             .relative()
             .px_2()
             .py_1()
-            .min_h(if self.multiline { px(80.) } else { px(28.) })
+            .min_h(if self.multiline {
+                if let Some(rows) = self.rows {
+                    px(rows as f32 * f32::from(line_height).max(16.0) + 8.)
+                } else {
+                    px(80.)
+                }
+            } else {
+                px(28.)
+            })
             .border_1()
             .border_color(hsla(0.0, 0.0, 0.6, 0.4))
             .rounded(px(4.))
@@ -1145,6 +1156,7 @@ pub struct TextInputProps {
     pub class: Option<TwStyle>,
     pub id: Option<String>,
     pub tabindex: Option<isize>,
+    pub rows: Option<u32>,
 }
 
 /// Get-or-create the persistent `TextInput` entity and sync props.
@@ -1175,6 +1187,7 @@ pub struct TextAreaProps {
     pub class: Option<TwStyle>,
     pub id: Option<String>,
     pub tabindex: Option<isize>,
+    pub rows: Option<u32>,
 }
 
 /// Get-or-create the persistent `TextInput` entity for a `<textarea>`,
@@ -1201,6 +1214,7 @@ pub fn text_area(props: TextAreaProps) -> Entity<TextInput> {
                     class: props.class,
                     id: props.id,
                     tabindex: props.tabindex,
+                    rows: props.rows,
                 },
                 cx,
             );

@@ -65,6 +65,43 @@ pub fn progress(value: f64, max: f64) -> gpui::Div {
         )
 }
 
+/// Render a meter bar. Fill width is `value` between `min` and `max`.
+/// When `low`, `high`, and `optimum` are all omitted the fill is the same
+/// blue as [`progress`]. Otherwise values inside `[low.unwrap_or(min),
+/// high.unwrap_or(max)]` are green and values outside that range are red.
+pub fn meter(
+    value: f64,
+    min: f64,
+    max: f64,
+    low: Option<f64>,
+    high: Option<f64>,
+    optimum: Option<f64>,
+) -> gpui::Div {
+    let range = if max <= min { 1.0 } else { max - min };
+    let pct = ((value - min) / range).clamp(0.0, 1.0) as f32;
+    let good_low = low.unwrap_or(min);
+    let good_high = high.unwrap_or(max);
+    let fill = if low.is_none() && high.is_none() && optimum.is_none() {
+        gpui::hsla(0.6, 0.8, 0.5, 1.)
+    } else if value >= good_low && value <= good_high {
+        gpui::hsla(0.33, 0.8, 0.45, 1.)
+    } else {
+        gpui::hsla(0., 0.8, 0.5, 1.)
+    };
+    gpui::div()
+        .w_full()
+        .h(gpui::px(8.))
+        .rounded(gpui::px(4.))
+        .bg(gpui::hsla(0., 0., 0.85, 1.))
+        .overflow_hidden()
+        .child(
+            gpui::div()
+                .h_full()
+                .w(gpui::relative(pct))
+                .bg(fill)
+        )
+}
+
 /// Render a details/summary collapsible container.
 /// `open` controls visibility of the content. The summary is always visible.
 pub fn details(
