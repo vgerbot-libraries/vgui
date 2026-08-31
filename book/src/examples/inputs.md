@@ -19,21 +19,21 @@ demonstrates:
 - Date input (text-entry v1).
 - File picker with `on:change` (`Vec<PathBuf>`).
 - Submit button.
-- Hidden input.
+- Select wrapped in a `<label>` with reactive `value` and `on:change`.
 - `tabindex` for focus order.
 
 ## Source Code
 
 ```rust
-#![cfg_attr(target_family = "wasm", no_main)]
+#![cfg_attr(target_family="wasm", no_main)]
 
 use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(not(target_family="wasm"))]
 use gpui_platform::application;
 
-#[cfg(target_family = "wasm")]
+#[cfg(target_family="wasm")]
 use gpui_platform::single_threaded_web;
 
 fn app() -> impl gpui::IntoElement {
@@ -42,9 +42,12 @@ fn app() -> impl gpui::IntoElement {
     let (checked, set_checked) = create_signal(false);
     let (radio_val, set_radio) = create_signal(0i32);
     let (slider, set_slider) = create_signal(50.0f64);
+    let (sel_val, set_sel_val) = create_signal("a".to_string());
     let (number_val, set_number) = create_signal(String::new());
     let (date_val, set_date) = create_signal(String::new());
     let sr0 = set_radio.clone();
+    let sr0b = set_radio.clone();
+    let scb = set_checked.clone();
     let sr1 = set_radio.clone();
     let sr2 = set_radio.clone();
 
@@ -179,12 +182,44 @@ fn app() -> impl gpui::IntoElement {
 
             // Hidden input (renders nothing)
             <input type="hidden" value="invisible" />
+
+            // Wrapping label with checkbox (click label to focus checkbox)
+            <label class="flex flex-row gap-2 items-center">
+                <input type="checkbox" checked={checked.get()} on:change={move |v: bool, cx: &mut App| scb.set(cx, v)} />
+                <span class="text-sm">{"Wrapped checkbox"}</span>
+            </label>
+
+            // Wrapping label with radio
+            <label class="flex flex-row gap-2 items-center">
+                <input type="radio" checked={radio_val.get() == 0} on:change={move |_v: bool, cx: &mut App| sr0b.set(cx, 0)} />
+                <span class="text-sm">{"Wrapped radio A"}</span>
+            </label>
+
+            // Wrapping label with select
+            <label class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Wrapped select"}</span>
+                <select options={vec![("a".to_string(), "Apple".to_string()), ("b".to_string(), "Banana".to_string())]} value={sel_val.get()} on:change={move |v: &str, cx: &mut App| set_sel_val.set(cx, v.to_string())} />
+            </label>
+
+            <span class="text-sm text-[#0f0]">{format!("select: {}", sel_val.get())}</span>
+
+            // Wrapping label with file input
+            <label class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Wrapped file input"}</span>
+                <input type="file" value="Choose file..." on:change={move |paths: Vec<std::path::PathBuf>, _cx: &mut App| { if let Some(p) = paths.first() { eprintln!("file: {:?}", p); } }} />
+            </label>
         </div>
     }
 }
 
-fn main() {
-    Application::new().run(|cx: &mut App| {
+fn run() {
+    #[cfg(not(target_family="wasm"))]
+    let gpui_app = application();
+
+    #[cfg(target_family="wasm")]
+    let gpui_app = single_threaded_web();
+
+    let launch = |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(600.), px(700.0)), cx);
         cx.open_window(
             WindowOptions {
@@ -194,7 +229,26 @@ fn main() {
             |_, cx| vgui::mount(cx, app),
         )
         .unwrap();
-    });
+    };
+
+    #[cfg(not(target_family="wasm"))]
+    gpui_app.run(launch);
+
+    #[cfg(target_family="wasm")]
+    std::mem::forget(gpui_app.run_embedded(launch));
+}
+
+#[cfg(not(target_family="wasm"))]
+fn main() {
+    run();
+}
+
+#[cfg(target_family="wasm")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
+    run();
 }
 ```
 

@@ -60,6 +60,7 @@ The main crate. Key exports:
 | `range_input(RangeProps) -> Entity<RangeInput>` | Range slider.                  |
 | `file_input(FileProps) -> Stateful<Div>` | File picker button.                    |
 | `select(SelectProps) -> Stateful<Div>` | Select dropdown.                         |
+| `select_with_options(SelectProps, R) -> Stateful<Div>` | Select with per-option content renderer closure. |
 
 ### Props structs
 

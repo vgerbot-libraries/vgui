@@ -191,8 +191,11 @@ view! {
 
 ## Select
 
-`<select>` uses an `options` attribute (a `Vec<(String, String)>` of
-value-label pairs) rather than child `<option>` elements:
+`<select>` renders a dropdown with a popover option list. The `options` attribute
+is a `Vec<(String, String)>` of value-label pairs. The popover width always
+matches the trigger width; clicking the trigger toggles the popover, clicking an
+option fires `on:change` and closes it, and clicking outside or pressing Escape
+closes it.
 
 ```rust
 view! {
@@ -201,11 +204,40 @@ view! {
             ("1".to_string(), "One".to_string()),
             ("2".to_string(), "Two".to_string()),
         ]}
-        value={"1".to_string()}
+        value={sel.get()}
         on:change={move |v: &str, cx: &mut App| set_sel.set(cx, v.to_string())}
     />
 }
 ```
+
+### Custom option content
+
+To render rich content per option (icons, colored values, multi-line rows), pass
+a single closure child. The closure receives `(value: &str, label: &str)` and
+returns an element via `view! {}`. The same closure renders both the popover rows
+and the trigger's display of the selected option.
+
+```rust
+view! {
+    <select
+        options={vec![
+            ("1".to_string(), "One".to_string()),
+            ("2".to_string(), "Two".to_string()),
+        ]}
+        value={sel.get()}
+        on:change={move |v: &str, cx: &mut App| set_sel.set(cx, v.to_string())}
+    >
+        {move |value: &str, label: &str| view! {
+            <div class="flex items-center gap-2">
+                <span class="text-[#0f0]">{value.to_string()}</span>
+                <span>{label.to_string()}</span>
+            </div>
+        }}
+    </select>
+}
+```
+
+When no child closure is given, each option renders as plain label text.
 
 ### Attributes
 
@@ -217,8 +249,11 @@ view! {
 | `on:change`  | `FnMut(&str, &mut App)`       | Fires on selection change.     |
 | `style`/`class`/`id` | —                      | Standard styling.              |
 
-> **Note:** The select dropdown cycles through options on click in v1 — a
-> full popup dropdown is future work.
+### Child closure signature
+
+The optional child is a closure `Fn(&str, &str) -> impl IntoElement`. The first
+argument is the option's value, the second is its label. The closure must be
+`Fn` (not `FnMut`) because it is invoked from multiple render sites.
 
 ## Textarea
 

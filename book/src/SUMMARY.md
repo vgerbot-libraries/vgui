@@ -35,6 +35,7 @@
 - [Counter](./examples/counter.md)
 - [Todo List](./examples/todolist.md)
 - [Inputs Demo](./examples/inputs.md)
+- [Select Test](./examples/select-test.md)
 - [Tags Demo](./examples/tags-demo.md)
 - [Theming](./examples/theming.md)
 - [Focus Management](./examples/focus-management.md)
