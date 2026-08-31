@@ -269,6 +269,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                     | "pointerup"
                     | "pointermove"
                     | "scroll"
+                    | "dblclick"
+                    | "contextmenu"
+                    | "wheel"
             )
         });
     // hover is on InteractiveElement, not Stateful. active/on_click/on_hover need Stateful.
@@ -281,7 +284,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             || class_needs_id
             || events
                 .iter()
-                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover")));
+                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
 
     if let Some(id_attr) = id {
         let v = if let Some(lit) = string_lit_static(&id_attr.value) {
@@ -465,13 +468,16 @@ fn emit_event(
         "pointerdown" => Ok(quote! { #ctor.on_any_mouse_down(::vgui::__dom_pointer_down(#handler)) }),
         "pointerup" => Ok(quote! { #ctor.capture_any_mouse_up(::vgui::__dom_pointer_up(#handler)) }),
         "pointermove" => Ok(quote! { #ctor.on_mouse_move(::vgui::__dom_pointer_move(#handler)) }),
+        "dblclick" => Ok(quote! { #ctor.on_click(::vgui::__dom_dblclick(#handler)) }),
+        "contextmenu" => Ok(quote! { #ctor.on_aux_click(::vgui::__dom_contextmenu(#handler)) }),
+        "wheel" => Ok(quote! { #ctor.on_scroll_wheel(::vgui::__dom_wheel(#handler)) }),
         // Window-level resize: register the handler into the render scope and
         // return the element unchanged (not an element event).
         "resize" => Ok(quote! { { ::vgui::__register_resize_handler(#handler); #ctor } }),
         other => Err(syn::Error::new(
             span,
             format!(
-                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down"
+                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, wheel, dblclick, contextmenu, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down"
             ),
         )),
     }
@@ -559,7 +565,7 @@ fn chain_div_extras(
             || class_needs_id
             || events
                 .iter()
-                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover")));
+                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
 
     if let Some(id_attr) = id {
         let v = if let Some(lit) = string_lit_static(&id_attr.value) {

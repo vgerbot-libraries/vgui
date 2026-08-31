@@ -1,16 +1,20 @@
 //! Web-aligned DOM event layer.
 //!
-//! Normalized event structs ([`KeyboardEvent`], [`PointerEvent`], [`ResizeEvent`])
-//! carrying web-style field names, mapped from gpui's native events. Exposed to
-//! users via the `on:keydown` / `on:keyup` / `on:pointerdown` / `on:pointerup` /
-//! `on:pointermove` / `on:resize` `view!` attributes, which hand user closures
-//! references to these pure-data structs.
+//! Normalized event structs ([`KeyboardEvent`], [`PointerEvent`], [`ResizeEvent`],
+//! [`WheelEvent`]) carrying web-style field names, mapped from gpui's native
+//! events. Exposed to users via the `on:keydown` / `on:keyup` / `on:pointerdown`
+//! / `on:pointerup` / `on:pointermove` / `on:resize` / `on:wheel` / `on:dblclick`
+//! / `on:contextmenu` `view!` attributes, which hand user closures references to
+//! these pure-data structs.
 //!
 //! Propagation control stays on the gpui objects the handler still receives
 //! (`cx.stop_propagation()`, `window.prevent_default()`); these structs carry no
 //! methods and duplicate no dispatch machinery.
 
-use gpui::{Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Size, Window};
+use gpui::{
+    Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Size,
+    Window, px,
+};
 
 /// The physical input type that produced a [`PointerEvent`].
 ///
@@ -78,6 +82,17 @@ pub struct PointerEvent {
 pub struct ResizeEvent {
     pub width: f64,
     pub height: f64,
+}
+
+/// A web-style wheel event (`on:wheel`).
+#[derive(Clone, Debug)]
+pub struct WheelEvent {
+    pub delta_x: f64,
+    pub delta_y: f64,
+    pub shift_key: bool,
+    pub ctrl_key: bool,
+    pub alt_key: bool,
+    pub meta_key: bool,
 }
 
 // ── keyboard normalization ──────────────────────────────────────────
@@ -265,6 +280,13 @@ impl PointerEvent {
             is_primary: true,
         }
     }
+
+    pub(crate) fn from_click_mouse_up(e: &gpui::ClickEvent) -> Option<Self> {
+        match e {
+            gpui::ClickEvent::Mouse(mouse) => Some(Self::from_mouse_up(&mouse.up)),
+            gpui::ClickEvent::Keyboard(_) | gpui::ClickEvent::Touch(_) => None,
+        }
+    }
 }
 
 // ── resize normalization ────────────────────────────────────────────
@@ -279,6 +301,21 @@ impl ResizeEvent {
 
     pub(crate) fn from_window(window: &Window) -> Self {
         Self::from_size(window.viewport_size())
+    }
+}
+
+impl WheelEvent {
+    pub(crate) fn from_scroll_wheel(e: &gpui::ScrollWheelEvent) -> Self {
+        let delta = e.delta.pixel_delta(px(16.));
+        let (shift_key, ctrl_key, alt_key, meta_key) = mods(e.modifiers);
+        Self {
+            delta_x: f64::from(delta.x),
+            delta_y: f64::from(delta.y),
+            shift_key,
+            ctrl_key,
+            alt_key,
+            meta_key,
+        }
     }
 }
 
@@ -321,6 +358,36 @@ pub fn __dom_pointer_move<H: Fn(&PointerEvent, &mut Window, &mut gpui::App) + 's
     h: H,
 ) -> impl Fn(&MouseMoveEvent, &mut Window, &mut gpui::App) + 'static {
     move |e, w, cx| h(&PointerEvent::from_mouse_move(e), w, cx)
+}
+
+pub fn __dom_wheel<H: Fn(&WheelEvent, &mut Window, &mut gpui::App) + 'static>(
+    h: H,
+) -> impl Fn(&gpui::ScrollWheelEvent, &mut Window, &mut gpui::App) + 'static {
+    move |e, w, cx| h(&WheelEvent::from_scroll_wheel(e), w, cx)
+}
+
+pub fn __dom_dblclick<H: Fn(&PointerEvent, &mut Window, &mut gpui::App) + 'static>(
+    h: H,
+) -> impl Fn(&gpui::ClickEvent, &mut Window, &mut gpui::App) + 'static {
+    move |e, w, cx| {
+        if e.click_count() >= 2 {
+            if let Some(p) = PointerEvent::from_click_mouse_up(e) {
+                h(&p, w, cx);
+            }
+        }
+    }
+}
+
+pub fn __dom_contextmenu<H: Fn(&PointerEvent, &mut Window, &mut gpui::App) + 'static>(
+    h: H,
+) -> impl Fn(&gpui::ClickEvent, &mut Window, &mut gpui::App) + 'static {
+    move |e, w, cx| {
+        if e.is_secondary() {
+            if let Some(p) = PointerEvent::from_click_mouse_up(e) {
+                h(&p, w, cx);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -455,5 +522,64 @@ mod tests {
         let ev = ResizeEvent::from_size(s);
         assert_eq!(ev.width, 800.0);
         assert_eq!(ev.height, 600.0);
+    }
+
+    #[test]
+    fn wheel_event_from_pixel_and_line_delta() {
+        let e = gpui::ScrollWheelEvent {
+            position: pt(0.0, 0.0),
+            delta: gpui::ScrollDelta::Pixels(pt(3.0, -8.0)),
+            modifiers: Modifiers {
+                shift: true,
+                control: true,
+                alt: false,
+                platform: true,
+                function: false,
+            },
+            touch_phase: gpui::TouchPhase::default(),
+        };
+        let w = WheelEvent::from_scroll_wheel(&e);
+        assert_eq!(w.delta_x, 3.0);
+        assert_eq!(w.delta_y, -8.0);
+        assert!(w.shift_key && w.ctrl_key && w.meta_key);
+        assert!(!w.alt_key);
+
+        let e = gpui::ScrollWheelEvent {
+            position: pt(0.0, 0.0),
+            delta: gpui::ScrollDelta::Lines(Point { x: 1.0, y: -2.0 }),
+            modifiers: Modifiers::default(),
+            touch_phase: gpui::TouchPhase::default(),
+        };
+        let w = WheelEvent::from_scroll_wheel(&e);
+        assert_eq!(w.delta_x, 16.0);
+        assert_eq!(w.delta_y, -32.0);
+    }
+
+    #[test]
+    fn from_click_mouse_up_ignores_keyboard_and_touch() {
+        let up = MouseUpEvent {
+            button: MouseButton::Left,
+            position: pt(1.0, 2.0),
+            modifiers: Modifiers::default(),
+            click_count: 2,
+        };
+        let down = MouseDownEvent {
+            button: MouseButton::Left,
+            position: pt(1.0, 2.0),
+            modifiers: Modifiers::default(),
+            click_count: 2,
+            first_mouse: false,
+        };
+        let e = gpui::ClickEvent::Mouse(gpui::MouseClickEvent { down, up });
+        let p = PointerEvent::from_click_mouse_up(&e).unwrap();
+        assert_eq!(p.click_count, 2);
+        assert_eq!(p.client_x, 1.0);
+        assert_eq!(p.client_y, 2.0);
+
+        let e = gpui::ClickEvent::Keyboard(gpui::KeyboardClickEvent::default());
+        assert!(PointerEvent::from_click_mouse_up(&e).is_none());
+
+        let e = gpui::ClickEvent::Touch(gpui::TouchClickEvent::default());
+        assert!(PointerEvent::from_click_mouse_up(&e).is_none());
     }
 }

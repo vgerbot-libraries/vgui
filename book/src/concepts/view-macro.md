@@ -111,17 +111,20 @@ Events use the `on:event={handler}` syntax. Supported events:
 | Event                 | Handler signature                                          |
 | --------------------- | --------------------------------------------------------- |
 | `on:click`            | `Fn(&ClickEvent, &mut Window, &mut App)`                  |
-| `on:mouse_down`       | `Fn(&MouseDownEvent, &mut Window, &mut App)`              |
-| `on:mouse_up`         | `Fn(&MouseUpEvent, &mut Window, &mut App)`                |
-| `on:mouse_move`       | `Fn(&MouseMoveEvent, &mut Window, &mut App)`              |
+| `on:keydown`          | `Fn(&KeyboardEvent, &mut Window, &mut App)`               |
+| `on:keyup`            | `Fn(&KeyboardEvent, &mut Window, &mut App)`               |
+| `on:pointerdown`      | `Fn(&PointerEvent, &mut Window, &mut App)`                |
+| `on:pointerup`        | `Fn(&PointerEvent, &mut Window, &mut App)`                |
+| `on:pointermove`      | `Fn(&PointerEvent, &mut Window, &mut App)`                |
+| `on:resize`           | `Fn(&ResizeEvent, &mut Window, &mut App)`                 |
 | `on:scroll`           | `Fn(&ScrollWheelEvent, &mut Window, &mut App)`            |
-| `on:key_down`         | `Fn(&KeyDownEvent, &mut Window, &mut App)`                |
-| `on:key_up`           | `Fn(&KeyUpEvent, &mut Window, &mut App)`                  |
+| `on:wheel`            | `Fn(&WheelEvent, &mut Window, &mut App)`                  |
+| `on:dblclick`         | `Fn(&PointerEvent, &mut Window, &mut App)`                |
+| `on:contextmenu`      | `Fn(&PointerEvent, &mut Window, &mut App)`                |
 | `on:modifiers_changed`| `Fn(&ModifiersChangedEvent, &mut Window, &mut App)`       |
 | `on:mouse_down_out`   | `Fn(&MouseDownEvent, &mut Window, &mut App)`              |
 | `on:mouse_up_out`     | `Fn(&MouseUpEvent, &mut Window, &mut App)`                |
 | `on:any_mouse_down`   | `Fn(&MouseDownEvent, &mut Window, &mut App)`              |
-| `on:any_mouse_up`     | `Fn(&MouseUpEvent, &mut Window, &mut App)`                |
 
 For `on:click`, the `click` helper wraps a simpler closure:
 

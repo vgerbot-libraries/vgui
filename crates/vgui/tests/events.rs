@@ -1,11 +1,11 @@
 //! Integration test for the web-aligned DOM event attributes.
 //!
 //! Builds a `view!` tree exercising every new `on:` event name
-//! (`keydown`, `keyup`, `pointerdown`, `pointerup`, `pointermove`, `resize`)
-//! outside a real gpui render scope. `on:resize` no-ops when no scope is
-//! active (`try_current` is `None`), so it must not panic. The other events
-//! wire into gpui `InteractiveElement` listeners and must compile and build
-//! without panicking.
+//! (`keydown`, `keyup`, `pointerdown`, `pointerup`, `pointermove`, `resize`,
+//! `dblclick`, `contextmenu`, `wheel`) outside a real gpui render scope.
+//! `on:resize` no-ops when no scope is active (`try_current` is `None`), so it
+//! must not panic. The other events wire into gpui `InteractiveElement`
+//! listeners and must compile and build without panicking.
 
 use gpui::{Element, ElementId};
 use vgui::prelude::*;
@@ -37,9 +37,9 @@ impl Drop for RenderScope {
 #[test]
 fn dom_events_compile_and_produce_element() {
     let _scope = RenderScope;
-    // keydown/keyup/pointerdown/pointerup/pointermove are on InteractiveElement
-    // (not Stateful), so they don't force an auto-id. The proof here is that
-    // the macro wiring compiles and the element builds without panicking.
+    // keydown/keyup/pointerdown/pointerup/pointermove/wheel/contextmenu are on
+    // InteractiveElement (not Stateful), so they don't force an auto-id.
+    // dblclick uses on_click and therefore needs Stateful+id, same as click.
     let el = view! {
         <div
             on:keydown={move |_e: &KeyboardEvent, _w, _cx| {}}
@@ -48,6 +48,9 @@ fn dom_events_compile_and_produce_element() {
             on:pointerup={move |_e: &PointerEvent, _w, _cx| {}}
             on:pointermove={move |_e: &PointerEvent, _w, _cx| {}}
             on:resize={move |_e: &ResizeEvent, _w, _cx| {}}
+            on:dblclick={move |_e: &PointerEvent, _w, _cx| {}}
+            on:contextmenu={move |_e: &PointerEvent, _w, _cx| {}}
+            on:wheel={move |_e: &WheelEvent, _w, _cx| {}}
         >
             {"events"}
         </div>
