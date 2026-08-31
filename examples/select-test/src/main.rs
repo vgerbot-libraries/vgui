@@ -21,7 +21,14 @@ fn app() -> impl gpui::IntoElement {
                 ]}
                 value={val.get()}
                 on:change={move |v: &str, cx: &mut App| set_val.set(cx, v.to_string())}
-            />
+            >
+                {move |value: &str, label: &str| view! {
+                    <div class="flex items-center gap-2">
+                        <span class="text-[#0f0]">{value.to_string()}</span>
+                        <span>{label.to_string()}</span>
+                    </div>
+                }}
+            </select>
             <span class="text-sm text-[#0f0]">{format!("selected: {}", val.get())}</span>
         </div>
     }

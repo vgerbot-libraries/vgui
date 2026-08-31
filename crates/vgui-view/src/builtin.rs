@@ -2,7 +2,8 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 
 use crate::emit::{attr_tokens, emit_children, string_lit_static};
-use crate::{Attr, AttrKind, AttrValue, Element};
+use crate::{Attr, AttrKind, AttrValue, Element, Node};
+use crate::control::looks_like_closure;
 
 pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let name = el.tag.to_string();
@@ -1084,12 +1085,29 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
 // ── <label> ──────────────────────────────────────────────────────────
 
 fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
-    // Reject children — <select> uses options attribute, not child <option> elements.
-    if !el.children.is_empty() {
-        return Err(syn::Error::new(
-            el.tag.span(),
-            "<select> cannot have children; use options={...} attribute instead",
-        ));
+    // <select> takes either no children (plain label text) or a single closure
+    // child `{ move |value, label| view! { ... } }` that renders each option's
+    // content (and the trigger's selected content).
+    let mut render_closure = None;
+    match el.children.len() {
+        0 => {}
+        1 => match &el.children[0] {
+            Node::Interp(expr) if looks_like_closure(expr) => {
+                render_closure = Some(expr.clone());
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    el.tag.span(),
+                    "<select> child must be a single closure like {move |value, label| view! { ... }}; for plain options omit children",
+                ));
+            }
+        },
+        _ => {
+            return Err(syn::Error::new(
+                el.tag.span(),
+                "<select> child must be a single closure like {move |value, label| view! { ... }}; for plain options omit children",
+            ));
+        }
     }
 
     let mut style = None;
@@ -1187,6 +1205,10 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
         None => quote! { ::std::option::Option::None::<::vgui::TwStyle> },
     };
 
+    let select_call = match &render_closure {
+        Some(c) => quote! { ::vgui::select_with_options(__props, #c) },
+        None => quote! { ::vgui::select(__props) },
+    };
     Ok(quote! {{
         let __props = ::vgui::SelectProps {
             options: #options_expr,
@@ -1194,7 +1216,7 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             disabled: #disabled_expr,
             on_change: #on_change_expr,
         };
-        let mut __el = ::vgui::select(__props);
+        let mut __el = #select_call;
         if let ::std::option::Option::Some(__s) = #style_expr {
             __el = __s.apply(__el);
         }

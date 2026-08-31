@@ -76,7 +76,7 @@ pub(crate) fn emit_for(el: &Element) -> syn::Result<TokenStream2> {
     }
 }
 
-fn looks_like_closure(expr: &TokenStream2) -> bool {
+pub(crate) fn looks_like_closure(expr: &TokenStream2) -> bool {
     let s = expr.to_string();
     s.contains('|') || s.contains("move")
 }

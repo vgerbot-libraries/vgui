@@ -13,6 +13,7 @@ fn app() -> impl gpui::IntoElement {
     let (open, set_open) = create_signal(false);
     let (text, set_text) = create_signal("Hello".to_string());
     let (show_dialog, set_show_dialog) = create_signal(false);
+    let (sel_val, set_sel_val) = create_signal("1".to_string());
     let dismiss_dialog = set_show_dialog.clone();
     let close_dialog_btn = set_show_dialog.clone();
 
@@ -106,10 +107,9 @@ fn app() -> impl gpui::IntoElement {
 
             <select
                 options={vec![("1".to_string(), "One".to_string()), ("2".to_string(), "Two".to_string())]}
-                value={"1".to_string()}
-                on:change={move |v: &str, _cx: &mut App| {}}
+                value={sel_val.get()}
+                on:change={move |v: &str, cx: &mut App| set_sel_val.set(cx, v.to_string())}
             />
-
             <hr />
 
             <details open={open.get()}>

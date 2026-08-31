@@ -1,5 +1,5 @@
 use gpui::{
-    canvas, deferred, fill, px, quad, size, App, AppContext, BorderStyle, Bounds,
+    canvas, deferred, fill, px, quad, size, AnyElement, App, AppContext, BorderStyle, Bounds,
     Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement, KeyDownEvent,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, PathPromptOptions,
     Point, Render, SharedString, Stateful, StatefulInteractiveElement, Styled, Window, hsla,
@@ -732,6 +732,26 @@ pub fn str_select_change_cb(
 /// Clicking the trigger toggles the popover; clicking an option fires
 /// `on:change` and closes it; clicking outside or pressing Escape closes it.
 pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
+    select_inner(props, None)
+}
+
+/// Like `select`, but each option's content (in both the trigger and the
+/// popover rows) is rendered by `render`, a closure `(value, label) -> element`.
+/// `value` stays the option's string value; `label` is its `(value, label)`
+/// tuple label. When no renderer is needed, use `select` (plain label text).
+pub fn select_with_options<R, E>(props: SelectProps, render: R) -> Stateful<gpui::Div>
+where
+    R: Fn(&str, &str) -> E + 'static,
+    E: gpui::IntoElement + 'static,
+{
+    let render: SelectRender = {
+        let r = std::rc::Rc::new(render);
+        std::rc::Rc::new(move |v, l| gpui::IntoElement::into_any_element(r(v, l)))
+    };
+    select_inner(props, Some(render))
+}
+
+fn select_inner(props: SelectProps, render: Option<SelectRender>) -> Stateful<gpui::Div> {
     let options = std::rc::Rc::new(props.options);
     let selected = props.value;
     let disabled = props.disabled;
@@ -798,7 +818,16 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
         .flex_row()
         .items_center()
         .justify_between()
-        .child(SharedString::from(display_label))
+        .child(if let Some(r) = render.as_ref() {
+            gpui::div()
+                .flex_1()
+                .min_w_0()
+                .overflow_hidden()
+                .child(r(&selected, &display_label))
+                .into_any_element()
+        } else {
+            SharedString::from(display_label).into_any_element()
+        })
         .child(SharedString::from("\u{25BE}"))
         .on_mouse_down(
             MouseButton::Left,
@@ -841,6 +870,7 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
             &selected,
             &on_change,
             &open_write,
+            &render,
         )));
     }
 
@@ -849,6 +879,10 @@ pub fn select(props: SelectProps) -> Stateful<gpui::Div> {
 
 /// Type of the `on:change` callback stored in `SelectProps::on_change`.
 type SelectChange = Box<dyn FnMut(&str, &mut App)>;
+
+/// A boxed per-option content renderer: `(value, label) -> AnyElement`.
+/// `None` means plain label text (the default `select` path).
+type SelectRender = std::rc::Rc<dyn Fn(&str, &str) -> gpui::AnyElement>;
 
 /// Render the absolute popover listing `options` below the trigger.
 ///
@@ -861,6 +895,7 @@ fn render_select_popover(
     selected: &str,
     on_change: &std::rc::Rc<std::cell::RefCell<Option<SelectChange>>>,
     open_write: &crate::reactive::WriteSignal<bool>,
+    render: &Option<SelectRender>,
 ) -> Stateful<gpui::Div> {
     // Stateful (with an id) so `overflow_y_scroll` is available for long
     // option lists; the id is unique per render via `next_auto_id`.
@@ -870,7 +905,7 @@ fn render_select_popover(
         .absolute()
         .top(px(32.))
         .left_0()
-        .min_w(px(160.))
+        .w_full()
         .max_h(px(240.))
         .overflow_y_scroll()
         .py_1()
@@ -917,7 +952,11 @@ fn render_select_popover(
                 .text_color(fg)
                 .bg(bg)
                 .cursor_pointer()
-                .child(SharedString::from(label.clone()))
+                .child(if let Some(r) = render.as_ref() {
+                    r(val, label)
+                } else {
+                    SharedString::from(label.clone()).into_any_element()
+                })
                 .on_mouse_down(
                     MouseButton::Left,
                     move |_event: &MouseDownEvent, _window, cx: &mut App| {

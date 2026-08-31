@@ -15,6 +15,7 @@ fn app() -> impl gpui::IntoElement {
     let (checked, set_checked) = create_signal(false);
     let (radio_val, set_radio) = create_signal(0i32);
     let (slider, set_slider) = create_signal(50.0f64);
+    let (sel_val, set_sel_val) = create_signal("a".to_string());
     let (number_val, set_number) = create_signal(String::new());
     let (date_val, set_date) = create_signal(String::new());
     let sr0 = set_radio.clone();
@@ -170,8 +171,10 @@ fn app() -> impl gpui::IntoElement {
             // Wrapping label with select
             <label class="flex flex-col gap-1">
                 <span class="text-sm text-[#888]">{"Wrapped select"}</span>
-                <select options={vec![("a".to_string(), "Apple".to_string()), ("b".to_string(), "Banana".to_string())]} value={"a".to_string()} on:change={move |v: &str, _cx: &mut App| eprintln!("select: {v}") } />
+                <select options={vec![("a".to_string(), "Apple".to_string()), ("b".to_string(), "Banana".to_string())]} value={sel_val.get()} on:change={move |v: &str, cx: &mut App| set_sel_val.set(cx, v.to_string())} />
             </label>
+
+            <span class="text-sm text-[#0f0]">{format!("select: {}", sel_val.get())}</span>
 
             // Wrapping label with file input
             <label class="flex flex-col gap-1">
