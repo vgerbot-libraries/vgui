@@ -1,4 +1,4 @@
-use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, StyleRefinement, Styled};
+use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, Overflow, StyleRefinement, Styled};
 
 use crate::{css, set_theme, theme, tw, twc, ApplyStyle, IntoTwStyle, Theme, TwClass, tw_dynamic, variants};
 
@@ -481,4 +481,46 @@ fn variants_no_base() {
     assert_eq!(probe.0.background, Some(gpui::rgb(0xff0000).into()));
     // no base => padding untouched
     assert_eq!(probe.0.padding.top, None);
+}
+
+#[test]
+fn css_flex_two_and_three_value() {
+    let two = css! { flex: 2 0; }.apply(Probe(Default::default()));
+    assert_eq!(two.0.flex_grow, Some(2.));
+    assert_eq!(two.0.flex_shrink, Some(0.));
+    assert_eq!(two.0.flex_basis, Some(Length::from(px(0.))));
+
+    let three = css! { flex: 1 1 40px; }.apply(Probe(Default::default()));
+    assert_eq!(three.0.flex_grow, Some(1.));
+    assert_eq!(three.0.flex_shrink, Some(1.));
+    assert_eq!(three.0.flex_basis, Some(Length::from(px(40.))));
+}
+
+#[test]
+fn css_overflow_clip_and_auto() {
+    let clip = css! { overflow: clip; }.apply(Probe(Default::default()));
+    assert_eq!(clip.0.overflow.x, Some(Overflow::Clip));
+    assert_eq!(clip.0.overflow.y, Some(Overflow::Clip));
+
+    let auto = css! { overflow: auto; }.apply(Probe(Default::default()));
+    assert_eq!(auto.0.overflow.x, Some(Overflow::Scroll));
+    assert_eq!(auto.0.overflow.y, Some(Overflow::Scroll));
+}
+
+#[test]
+fn css_border_top() {
+    let probe = css! { border-top: 2px solid #ff0000; }.apply(Probe(Default::default()));
+    assert!(probe.0.border_widths.top.is_some());
+    assert_eq!(probe.0.border_widths.right, None);
+    assert_eq!(probe.0.border_widths.bottom, None);
+    assert_eq!(probe.0.border_widths.left, None);
+}
+
+#[test]
+fn css_box_shadow_arbitrary() {
+    let probe = css! { box-shadow: 2px 4px 6px #000000; }.apply(Probe(Default::default()));
+    let shadows = probe.0.box_shadow.as_ref().expect("box_shadow");
+    assert_eq!(shadows[0].offset.x, px(2.));
+    assert_eq!(shadows[0].offset.y, px(4.));
+    assert_eq!(shadows[0].blur_radius, px(6.));
 }

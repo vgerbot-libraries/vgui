@@ -4,7 +4,7 @@ use quote::quote;
 use crate::color::emit_color;
 use crate::keywords::{emit_cursor, emit_shadow};
 use crate::parse::{hyphen_keyword, keyword, unsupported};
-use crate::value::{emit_as_absolute, number_value, parse_length, split_values};
+use crate::value::{emit_as_absolute, emit_length, number_value, parse_length, split_values, LengthKind};
 
 pub(crate) fn emit(
     prop: &str,
@@ -62,7 +62,15 @@ pub(crate) fn emit(
                 s.border_widths.left = Some(#v);
             }))
         }
-        "border" => Ok(Some(emit_border(tokens, span)?)),
+        "border-top-width" => Ok(Some(border_side_width("top", tokens, span)?)),
+        "border-right-width" => Ok(Some(border_side_width("right", tokens, span)?)),
+        "border-bottom-width" => Ok(Some(border_side_width("bottom", tokens, span)?)),
+        "border-left-width" => Ok(Some(border_side_width("left", tokens, span)?)),
+        "border" => Ok(Some(emit_border(tokens, span, None)?)),
+        "border-top" => Ok(Some(emit_border(tokens, span, Some("top"))?)),
+        "border-right" => Ok(Some(emit_border(tokens, span, Some("right"))?)),
+        "border-bottom" => Ok(Some(emit_border(tokens, span, Some("bottom"))?)),
+        "border-left" => Ok(Some(emit_border(tokens, span, Some("left"))?)),
         "border-radius" => {
             let len = parse_length(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
             let v = emit_as_absolute(&len, prop, span)?;
@@ -82,11 +90,7 @@ pub(crate) fn emit(
             let v = emit_cursor(&kw, span)?;
             Ok(Some(quote! { s.mouse_cursor = Some(#v); }))
         }
-        "box-shadow" => {
-            let kw = keyword(tokens).ok_or_else(|| unsupported(prop, tokens, span))?;
-            let v = emit_shadow(&kw, span)?;
-            Ok(Some(quote! { s.box_shadow = Some(#v); }))
-        }
+        "box-shadow" => Ok(Some(emit_box_shadow(tokens, span)?)),
         _ => Ok(None),
     }
 }
@@ -106,7 +110,11 @@ pub(crate) fn emit_interp(
     }
 }
 
-fn emit_border(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+fn emit_border(
+    tokens: &[TokenTree],
+    span: Span,
+    side: Option<&str>,
+) -> syn::Result<TokenStream2> {
     let parts = split_values(tokens);
     let mut width = None;
     let mut style = None;
@@ -138,17 +146,108 @@ fn emit_border(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
     let width = width.ok_or_else(|| unsupported("border", tokens, span))?;
     let w = emit_as_absolute(&width, "border", span)?;
     let style = style.unwrap_or(quote! { ::gpui::BorderStyle::Solid });
-    let mut out = quote! {
-        s.border_widths.top = Some(#w);
-        s.border_widths.right = Some(#w);
-        s.border_widths.bottom = Some(#w);
-        s.border_widths.left = Some(#w);
-        s.border_style = Some(#style);
+    let mut out = if let Some(side) = side {
+        let ident = Ident::new(side, span);
+        quote! {
+            s.border_widths.#ident = Some(#w);
+            s.border_style = Some(#style);
+        }
+    } else {
+        quote! {
+            s.border_widths.top = Some(#w);
+            s.border_widths.right = Some(#w);
+            s.border_widths.bottom = Some(#w);
+            s.border_widths.left = Some(#w);
+            s.border_style = Some(#style);
+        }
     };
     if let Some(c) = color {
         out.extend(quote! { s.border_color = Some((#c).into()); });
     }
     Ok(out)
+}
+
+fn border_side_width(side: &str, tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    let len = parse_length(tokens).ok_or_else(|| unsupported("border-width", tokens, span))?;
+    let v = emit_as_absolute(&len, "border-width", span)?;
+    let ident = Ident::new(side, span);
+    Ok(quote! { s.border_widths.#ident = Some(#v); })
+}
+
+fn emit_box_shadow(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    if let Some(kw) = keyword(tokens) {
+        if matches!(kw.as_str(), "none" | "sm" | "md" | "lg" | "xl") {
+            let v = emit_shadow(&kw, span)?;
+            return Ok(quote! { s.box_shadow = Some(#v); });
+        }
+    }
+    emit_shadow_arbitrary(tokens, span)
+}
+
+fn emit_shadow_px(len: &crate::value::LengthVal, span: Span) -> syn::Result<TokenStream2> {
+    match &len.kind {
+        LengthKind::Px => Ok(emit_length(len)),
+        LengthKind::Interp(expr) => {
+            Ok(quote! { ::core::convert::Into::<::gpui::Pixels>::into(#expr) })
+        }
+        _ => Err(syn::Error::new(span, "box-shadow lengths must be px")),
+    }
+}
+
+fn emit_shadow_arbitrary(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    let parts = split_values(tokens);
+    if parts.is_empty() {
+        return Err(unsupported("box-shadow", tokens, span));
+    }
+    let mut i = 0;
+    let inset = if keyword(&parts[0]).as_deref() == Some("inset") {
+        i = 1;
+        true
+    } else {
+        false
+    };
+    let mut lens = Vec::new();
+    while i < parts.len() {
+        if let Some(len) = parse_length(&parts[i]) {
+            lens.push(len);
+            i += 1;
+        } else {
+            break;
+        }
+    }
+    if lens.len() < 2 || lens.len() > 4 {
+        return Err(unsupported("box-shadow", tokens, span));
+    }
+    let ox = emit_shadow_px(&lens[0], span)?;
+    let oy = emit_shadow_px(&lens[1], span)?;
+    let blur = if lens.len() >= 3 {
+        emit_shadow_px(&lens[2], span)?
+    } else {
+        quote! { ::gpui::px(0.) }
+    };
+    let spread = if lens.len() >= 4 {
+        emit_shadow_px(&lens[3], span)?
+    } else {
+        quote! { ::gpui::px(0.) }
+    };
+    let color = if i < parts.len() {
+        let color_tokens: Vec<TokenTree> = parts[i..].iter().flatten().cloned().collect();
+        let c = emit_color(&color_tokens, span)?;
+        quote! { ::core::convert::Into::<::gpui::Hsla>::into(#c) }
+    } else {
+        quote! { ::gpui::hsla(0., 0., 0., 0.1) }
+    };
+    Ok(quote! {
+        s.box_shadow = Some(::std::vec![
+            ::gpui::BoxShadow {
+                color: #color,
+                offset: ::gpui::point(#ox, #oy),
+                blur_radius: #blur,
+                spread_radius: #spread,
+                inset: #inset,
+            }
+        ]);
+    })
 }
 
 fn corner(name: &str, tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {

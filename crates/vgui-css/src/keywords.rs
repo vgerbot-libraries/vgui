@@ -9,6 +9,8 @@ pub(crate) fn emit_overflow(kw: &str, span: Span) -> syn::Result<TokenStream2> {
         "hidden" => Ok(quote_spanned! {span=> ::gpui::Overflow::Hidden }),
         "scroll" => Ok(quote_spanned! {span=> ::gpui::Overflow::Scroll }),
         "visible" => Ok(quote_spanned! {span=> ::gpui::Overflow::Visible }),
+        "clip" => Ok(quote_spanned! {span=> ::gpui::Overflow::Clip }),
+        "auto" => Ok(quote_spanned! {span=> ::gpui::Overflow::Scroll }),
         other => Err(syn::Error::new(
             span,
             format!("unsupported CSS value for 'overflow': {other}"),

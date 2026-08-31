@@ -230,7 +230,30 @@ fn emit_flex(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
             });
         }
     }
-    Err(unsupported("flex", tokens, span))
+    let parts = split_values(tokens);
+    match parts.len() {
+        2 => {
+            let grow = number_value(&parts[0], "flex", span)?;
+            let shrink = number_value(&parts[1], "flex", span)?;
+            Ok(quote! {
+                s.flex_grow = Some(#grow as f32);
+                s.flex_shrink = Some(#shrink as f32);
+                s.flex_basis = Some(::core::convert::Into::<::gpui::Length>::into(::gpui::px(0.)));
+            })
+        }
+        3 => {
+            let grow = number_value(&parts[0], "flex", span)?;
+            let shrink = number_value(&parts[1], "flex", span)?;
+            let basis = parse_length(&parts[2]).ok_or_else(|| unsupported("flex", tokens, span))?;
+            let basis = emit_as_length(&basis, span)?;
+            Ok(quote! {
+                s.flex_grow = Some(#grow as f32);
+                s.flex_shrink = Some(#shrink as f32);
+                s.flex_basis = Some(#basis);
+            })
+        }
+        _ => Err(unsupported("flex", tokens, span)),
+    }
 }
 /// Parse `grid-column` / `grid-row` shorthand: "span N", "A / B", or "N".
 fn emit_grid_span(tokens: &[TokenTree], axis: &str, span: Span) -> syn::Result<TokenStream2> {

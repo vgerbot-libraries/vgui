@@ -9,13 +9,13 @@ category. Properties not listed here produce a compile-time error.
 | ------------------------- | ----------------------------------------------------- |
 | `display`                 | `flex` \| `block` \| `none` \| `grid`                 |
 | `visibility`              | `hidden` \| `visible`                                 |
-| `overflow`                | `hidden` \| `scroll` \| `visible`                     |
-| `overflow-x`              | `hidden` \| `scroll` \| `visible`                     |
-| `overflow-y`              | `hidden` \| `scroll` \| `visible`                     |
+| `overflow`                | `hidden` \| `scroll` \| `visible` \| `clip` \| `auto` |
+| `overflow-x`              | `hidden` \| `scroll` \| `visible` \| `clip` \| `auto` |
+| `overflow-y`              | `hidden` \| `scroll` \| `visible` \| `clip` \| `auto` |
 | `position`                | `relative` \| `absolute`                              |
 | `flex-direction`          | `row` \| `column` \| `row-reverse` \| `column-reverse`|
 | `flex-wrap`               | `nowrap` \| `wrap` \| `wrap-reverse`                  |
-| `flex`                    | `N` (grow) \| `N N` (grow shrink) \| `N N basis`     |
+| `flex`                    | `none` \| `auto` \| `N` (grow) \| `N N` (grow shrink, basis `0px`) \| `N N basis` |
 | `flex-grow`               | number                                                |
 | `flex-shrink`             | number                                                |
 | `flex-basis`              | length                                                |
@@ -76,16 +76,24 @@ category. Properties not listed here produce a compile-time error.
 | `color`                   | color                                                 |
 | `opacity`                 | number (0.0–1.0)                                      |
 | `border`                  | `width style color` (e.g. `1px solid #ccc`)          |
+| `border-top`              | `width style color` (one side)                       |
+| `border-right`            | `width style color` (one side)                       |
+| `border-bottom`           | `width style color` (one side)                       |
+| `border-left`             | `width style color` (one side)                       |
 | `border-color`            | color                                                 |
 | `border-style`            | `solid` \| `dashed`                                   |
 | `border-width`            | length                                                |
+| `border-top-width`        | length                                                |
+| `border-right-width`      | length                                                |
+| `border-bottom-width`     | length                                                |
+| `border-left-width`       | length                                                |
 | `border-radius`           | length                                                |
 | `border-top-left-radius`  | length                                                |
 | `border-top-right-radius` | length                                                |
 | `border-bottom-right-radius` | length                                             |
 | `border-bottom-left-radius`| length                                               |
 | `cursor`                  | `pointer` \| `default` \| `text` \| `crosshair` \| `not-allowed` \| `grab` \| `grabbing` |
-| `box-shadow`              | `none` \| `sm` \| `md` \| `lg` \| `xl`               |
+| `box-shadow`              | `none` \| `sm` \| `md` \| `lg` \| `xl` \| `[inset]? <offset-x> <offset-y> <blur>? <spread>? <color>?` |
 
 ## Text
 
