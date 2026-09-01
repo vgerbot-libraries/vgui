@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui", "examples/counter", "examples/todolist", "examples/inputs", "examples/tags-demo", "examples/theming", "examples/variants", "examples/focus-management", "examples/ref-demo", "examples/context", "examples/animation", "examples/select-test", "examples/canvas"]
+members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui", "examples/counter", "examples/todolist", "examples/inputs", "examples/tags-demo", "examples/theming", "examples/variants", "examples/focus-management", "examples/ref-demo", "examples/context", "examples/animation", "examples/select-test", "examples/canvas", "examples/ime-repro"]
 
 [workspace.package]
 version = "0.1.0"

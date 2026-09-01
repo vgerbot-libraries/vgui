@@ -1,0 +1,20 @@
+[package]
+name = "vgui-ime-repro"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "ime-repro"
+path = "src/main.rs"
+
+[dependencies]
+vgui.workspace = true
+gpui.workspace = true
+gpui-platform.workspace = true
+parking_lot = "0.12"

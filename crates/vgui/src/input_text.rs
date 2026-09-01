@@ -258,8 +258,8 @@ impl TextInput {
     fn selected_text(&self) -> String {
         match &self.selection {
             Some(sel) => {
-                let start = sel.start.min(sel.end);
-                let end = sel.start.max(sel.end);
+                let start = sel.start.min(sel.end).min(self.value.len());
+                let end = sel.start.max(sel.end).min(self.value.len());
                 self.value[start..end].to_string()
             }
             None => String::new(),
@@ -485,8 +485,15 @@ impl TextInput {
                 let e = self.utf16_to_value_byte(r.start.max(r.end));
                 (s, e)
             }
+            // No explicit range: replace the active IME marked (preedit) text if
+            // present, otherwise the selection, otherwise insert at the cursor.
+            // This matches the platform IME contract where a `None` range targets
+            // the in-progress composition — without it, each preedit update appends
+            // to the value instead of replacing it, corrupting CJK input.
             None => {
-                if let Some(sel) = self.selection.take() {
+                if let Some((marked, _)) = self.marked.take() {
+                    (marked.start.min(marked.end), marked.start.max(marked.end))
+                } else if let Some(sel) = self.selection.take() {
                     (sel.start.min(sel.end), sel.start.max(sel.end))
                 } else {
                     (self.cursor, self.cursor)
@@ -1447,12 +1454,15 @@ impl Render for TextInput {
 
         // Build displayed text + highlights
         let display = self.displayed_text();
+        let display_len = display.len();
         let mut highlights: Vec<(Range<usize>, HighlightStyle)> = Vec::new();
-
-        // Selection highlight (in displayed-string coordinates)
         if let Some(sel) = &self.selection {
-            let start = self.value_byte_to_display_byte(sel.start.min(sel.end));
-            let end = self.value_byte_to_display_byte(sel.start.max(sel.end));
+            let start = self
+                .value_byte_to_display_byte(sel.start.min(sel.end))
+                .min(display_len);
+            let end = self
+                .value_byte_to_display_byte(sel.start.max(sel.end))
+                .min(display_len);
             if start < end {
                 highlights.push((
                     start..end,
@@ -1466,8 +1476,8 @@ impl Render for TextInput {
 
         // IME marked text underline
         if let Some((marked_range, _)) = &self.marked {
-            let start = self.value_byte_to_display_byte(marked_range.start);
-            let end = self.value_byte_to_display_byte(marked_range.end);
+            let start = self.value_byte_to_display_byte(marked_range.start).min(display_len);
+            let end = self.value_byte_to_display_byte(marked_range.end).min(display_len);
             if start < end {
                 highlights.push((
                     start..end,
@@ -1777,7 +1787,10 @@ impl EntityInputHandler for TextInput {
         if self.disabled || self.readonly {
             return;
         }
-        // First replace the text
+        // Resolve the byte range to replace. With no explicit range the platform
+        // is updating the in-progress composition, so target the existing marked
+        // (preedit) text — otherwise each preedit refresh appends instead of
+        // replacing, corrupting CJK input.
         let (start, end) = match range {
             Some(r) => {
                 let s = self.utf16_to_value_byte(r.start.min(r.end));
@@ -1785,7 +1798,9 @@ impl EntityInputHandler for TextInput {
                 (s, e)
             }
             None => {
-                if let Some(sel) = self.selection.take() {
+                if let Some((marked, _)) = self.marked.take() {
+                    (marked.start.min(marked.end), marked.start.max(marked.end))
+                } else if let Some(sel) = self.selection.take() {
                     (sel.start.min(sel.end), sel.start.max(sel.end))
                 } else {
                     (self.cursor, self.cursor)
@@ -1798,10 +1813,12 @@ impl EntityInputHandler for TextInput {
         let marked_end = start + filtered.len();
         self.marked = Some((marked_start..marked_end, filtered.clone()));
 
-        // Set the selection within the marked text
+        // `new_selected_range` is given in UTF-16 offsets relative to the marked
+        // text, so convert against `filtered` (not the whole value) and offset by
+        // the marked start.
         if let Some(sel_utf16) = new_selected_range {
-            let sel_start = self.utf16_to_value_byte(sel_utf16.start) + start;
-            let sel_end = self.utf16_to_value_byte(sel_utf16.end) + start;
+            let sel_start = start + utf16_to_byte(&filtered, sel_utf16.start.min(sel_utf16.end));
+            let sel_end = start + utf16_to_byte(&filtered, sel_utf16.start.max(sel_utf16.end));
             self.selection = Some(sel_start..sel_end);
             self.cursor = sel_end;
         } else {
@@ -1819,8 +1836,8 @@ impl EntityInputHandler for TextInput {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<String> {
-        let start = self.utf16_to_value_byte(range_utf16.start);
-        let end = self.utf16_to_value_byte(range_utf16.end);
+        let start = self.utf16_to_value_byte(range_utf16.start.min(range_utf16.end));
+        let end = self.utf16_to_value_byte(range_utf16.start.max(range_utf16.end));
         Some(self.value[start..end].to_string())
     }
 
@@ -2046,6 +2063,20 @@ fn match_pattern(pat: &str, value: &str) -> bool {
 }
 
 // ── Free functions ───────────────────────────────────────────────────
+/// Map a UTF-16 code-unit offset to a byte offset within `s`, clamping to
+/// `s.len()`. Used to convert IME selection offsets (relative to marked text)
+/// into byte offsets.
+fn utf16_to_byte(s: &str, utf16_offset: usize) -> usize {
+    let mut utf16 = 0;
+    for (i, c) in s.char_indices() {
+        if utf16 >= utf16_offset {
+            return i;
+        }
+        utf16 += c.len_utf16();
+    }
+    s.len()
+}
+
 
 fn prev_char_boundary(s: &str, pos: usize) -> usize {
     let mut p = pos;

@@ -5800,6 +5800,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-ime-repro"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "parking_lot",
+ "vgui",
+]
+
+[[package]]
 name = "vgui-inputs"
 version = "0.1.0"
 dependencies = [
