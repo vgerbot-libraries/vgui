@@ -97,4 +97,39 @@ fn widgets_compile_and_produce_elements() {
     assert_into_any(|| view! {
         <input type="color" value={"#ff0000".to_string()} />
     });
+
+    // ARIA: role and aria:* attributes on div
+    assert_into_any(|| view! {
+        <div role="button" aria:label="Save" aria:expanded={false}>
+            {"Save"}
+        </div>
+    });
+
+    // ARIA: aria:selected, aria:toggled, aria:value
+    assert_into_any(|| view! {
+        <div role="checkbox" aria:label="Agree" aria:selected={true} aria:toggled="true">
+            {"Agree to terms"}
+        </div>
+    });
+
+    // ARIA: aria:description, aria:keyshortcuts, aria:valuenow
+    assert_into_any(|| view! {
+        <div role="slider" aria:label="Volume" aria:description="Adjust volume" aria:keyshortcuts="Ctrl+Up" aria:valuenow={50f64}>
+            {"Volume"}
+        </div>
+    });
+
+    // ARIA: role on nav element
+    assert_into_any(|| view! {
+        <nav role="navigation" aria:label="Main">
+            <a href={"#home".to_string()}>{"Home"}</a>
+        </nav>
+    });
+
+    // ARIA: aria:placeholder
+    assert_into_any(|| view! {
+        <div role="textbox" aria:label="Search" aria:placeholder="Type here...">
+            {"Search"}
+        </div>
+    });
 }

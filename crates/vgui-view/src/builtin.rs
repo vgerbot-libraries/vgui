@@ -57,6 +57,8 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     let mut spreads: Vec<TokenStream2> = Vec::new();
+    let mut role_attr = None;
+    let mut aria_attrs: Vec<(Ident, TokenStream2)> = Vec::new();
     for attr in &el.attrs {
         match &attr.kind {
             AttrKind::Src => src = Some(attr),
@@ -104,6 +106,12 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                     ));
                 }
                 spreads.push(attr_tokens(&attr.value));
+            }
+            AttrKind::Role => {
+                role_attr = Some(attr);
+            }
+            AttrKind::Aria(name) => {
+                aria_attrs.push((name.clone(), attr_tokens(&attr.value)));
             }
             AttrKind::For => {
                 return Err(syn::Error::new(attr.span, "`for` is only valid on <label>"))
@@ -317,6 +325,8 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             || tabindex.is_some()
             || class.is_some()
             || class_needs_id
+            || role_attr.is_some()
+            || !aria_attrs.is_empty()
             || events
                 .iter()
                 .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
@@ -408,6 +418,18 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let __animate_expr: Option<TokenStream2> = animate.map(|a| attr_tokens(&a.value));
     for (ev, handler, span) in events {
         ctor = emit_event(ctor, &ev, handler, span)?;
+    }
+    // Apply role attribute via gpui's .role() method
+    if let Some(role_attr) = role_attr {
+        let v = attr_tokens(&role_attr.value);
+        ctor = quote! { #ctor.role(::vgui::__resolve_aria_role(#v)) };
+    }
+    // Apply aria:* attributes via gpui's StatefulInteractiveElement methods
+    for (aria_name, aria_value) in &aria_attrs {
+        let method = aria_method(aria_name, aria_value);
+        if let Some(ts) = method {
+            ctor = quote! { #ctor.#ts };
+        }
     }
     let is_void = matches!(name.as_str(), "br" | "hr");
     let handles_children = matches!(name.as_str(), "details");
@@ -802,6 +824,12 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Spread => {
                 return Err(syn::Error::new(attr.span, "spread attributes are not supported on <input>"));
+            }
+            AttrKind::Role => {
+                return Err(syn::Error::new(attr.span, "`role` is not supported on <input>; use a wrapper element"));
+            }
+            AttrKind::Aria(_) => {
+                return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <input>; use a wrapper element"));
             }
         }
     }
@@ -1285,6 +1313,12 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Spread => {
                 return Err(syn::Error::new(attr.span, "spread attributes are not supported on <select>"));
             }
+            AttrKind::Role => {
+                return Err(syn::Error::new(attr.span, "`role` is not supported on <select>; use a wrapper element"));
+            }
+            AttrKind::Aria(_) => {
+                return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <select>; use a wrapper element"));
+            }
         }
     }
 
@@ -1437,6 +1471,12 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Spread => {
                 return Err(syn::Error::new(attr.span, "spread attributes are not supported on <textarea>"));
             }
+            AttrKind::Role => {
+                return Err(syn::Error::new(attr.span, "`role` is not supported on <textarea>; use a wrapper element"));
+            }
+            AttrKind::Aria(_) => {
+                return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <textarea>; use a wrapper element"));
+            }
         }
     }
 
@@ -1561,6 +1601,12 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Spread => {
                 return Err(syn::Error::new(attr.span, "spread attributes are not supported on <label>"));
             }
+            AttrKind::Role => {
+                return Err(syn::Error::new(attr.span, "`role` is not supported on <label>; use a wrapper element"));
+            }
+            AttrKind::Aria(_) => {
+                return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <label>; use a wrapper element"));
+            }
         }
     }
     if !unknown.is_empty() {
@@ -1659,6 +1705,12 @@ fn emit_form(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Animate => {
                 return Err(syn::Error::new(attr.span, "`animate` is not supported on <form>"));
+            }
+            AttrKind::Role => {
+                return Err(syn::Error::new(attr.span, "`role` is not supported on <form>; use a wrapper element"));
+            }
+            AttrKind::Aria(_) => {
+                return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <form>; use a wrapper element"));
             }
             _ => {
                 return Err(syn::Error::new(
@@ -1849,4 +1901,23 @@ fn emit_datalist(el: &Element) -> syn::Result<TokenStream2> {
     Ok(quote! {
         ::vgui::datalist(::std::string::ToString::to_string(&(#id_expr)), #options_expr)
     })
+}
+
+/// Map an `aria:name` attribute to the corresponding gpui method call token stream.
+/// Returns `None` for unsupported aria attributes (silently ignored).
+fn aria_method(name: &Ident, value: &TokenStream2) -> Option<TokenStream2> {
+    let n = name.to_string();
+    match n.as_str() {
+        "label" => Some(quote! { aria_label(::std::convert::Into::<::gpui::SharedString>::into(#value)) }),
+        "description" => Some(quote! { aria_description(::std::convert::Into::<::gpui::SharedString>::into(#value)) }),
+        "keyshortcuts" => Some(quote! { aria_keyshortcuts(::std::convert::Into::<::gpui::SharedString>::into(#value)) }),
+        "selected" => Some(quote! { aria_selected((#value) as bool) }),
+        "expanded" => Some(quote! { aria_expanded((#value) as bool) }),
+        "toggled" => Some(quote! { aria_toggled(::vgui::__resolve_toggled(#value)) }),
+        "valuenow" | "numeric_value" => Some(quote! { aria_numeric_value((#value) as f64) }),
+        "value" => Some(quote! { aria_value(::std::convert::Into::<::gpui::SharedString>::into(#value)) }),
+        "placeholder" => Some(quote! { aria_placeholder(::std::convert::Into::<::gpui::SharedString>::into(#value)) }),
+        "numeric_value_step" => Some(quote! { aria_numeric_value_step((#value) as f64) }),
+        _ => None,
+    }
 }

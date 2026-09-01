@@ -12,6 +12,7 @@ pub use vgui_tailwind::tw;
 pub use vgui_view::view;
 
 mod animation;
+mod aria;
 mod child;
 mod event;
 mod context;
@@ -91,6 +92,9 @@ pub use crate::reactive::__bind_ref;
 
 // Hidden helpers for grid-template-areas / grid-area resolution.
 pub use crate::grid_areas::{__push_grid_areas, __resolve_grid_area, GridAreasGuard};
+
+// Hidden helpers for ARIA role/attribute resolution.
+pub use crate::aria::{__resolve_aria_role, __resolve_toggled};
 
 // Internal test helpers — not part of the public API. Exposed so integration
 // tests can simulate a render scope without spinning up a full gpui App.

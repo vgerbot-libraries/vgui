@@ -206,6 +206,21 @@ pub(crate) fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Att
                 "ref" => AttrKind::Ref,
                 "animate" => AttrKind::Animate,
                 "tabindex" => AttrKind::Tabindex,
+                "role" => AttrKind::Role,
+                "aria" => {
+                    if *i >= tokens.len() || !is_punct(&tokens[*i], ':') {
+                        return Err(syn::Error::new(span, "expected `aria:name`"));
+                    }
+                    *i += 1;
+                    match tokens.get(*i) {
+                        Some(TokenTree::Ident(name)) => {
+                            let name = name.clone();
+                            *i += 1;
+                            AttrKind::Aria(name)
+                        }
+                        _ => return Err(syn::Error::new(span, "expected aria attribute name after `aria:`")),
+                    }
+                }
                 "on" => {
                     if *i >= tokens.len() || !is_punct(&tokens[*i], ':') {
                         return Err(syn::Error::new(span, "expected `on:event`"));

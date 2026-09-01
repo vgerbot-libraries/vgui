@@ -46,6 +46,12 @@ pub(crate) fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::For => fields.push(quote! { r#for: #value }),
             AttrKind::Ref => fields.push(quote! { r#ref: #value }),
             AttrKind::Animate => fields.push(quote! { animate: #value }),
+            AttrKind::Role => fields.push(quote! { role: ::std::option::Option::Some(::vgui::__resolve_aria_role(#value)) }),
+            AttrKind::Aria(name) => {
+                let n = name.to_string();
+                let aria_key = Ident::new(&format!("aria_{n}"), name.span());
+                fields.push(quote! { #aria_key: ::std::option::Option::Some(#value) });
+            }
             AttrKind::On(ev) => {
                 let name = Ident::new(&format!("on_{ev}"), ev.span());
                 fields.push(quote! { #name: #value });

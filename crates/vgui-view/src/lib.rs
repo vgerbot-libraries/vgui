@@ -59,6 +59,8 @@ pub(crate) enum AttrKind {
     Ref,
     Animate,
     Spread,
+    Role,
+    Aria(Ident),
 }
 
 pub(crate) enum AttrValue {
