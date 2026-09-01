@@ -21,6 +21,7 @@ vgui's `view!` macro accepts lowercase tags matching HTML names, mapping them to
 | `br` `hr` `wbr` | empty line / separator / empty | void elements |
 | `table` `thead` `tbody` `tfoot` `tr` `td` `th` `caption` | flex layout simulation | `colspan`→`flex_grow`; `rowspan` has no visual effect |
 | `colgroup` `col` `datalist` `option` `optgroup` | compiles but renders empty or special-purpose | no-op elements |
+| `canvas` | `vgui::canvas_element(paint)` | `<canvas paint={\|ctx\| ...}>` with `Context2D` 2D drawing API; supports `style`/`class`, no children/events |
 
 ### 1.2 Custom Components
 
@@ -296,7 +297,40 @@ Responsive breakpoint thresholds (matching Tailwind defaults):
 | `<progress>` | `<progress value={} max={}>` | ✅ |
 | `<meter>` | `<meter value={} min={} max={} low={} high={} optimum={}>` | ✅ |
 
-## 10. Routing
+## 10. Canvas 2D Drawing
+
+| HTML Canvas API | vgui `Context2D` | Support |
+|-----------------|------------------|---------|
+| `fillRect` / `strokeRect` | `fill_rect` / `stroke_rect` | ✅ |
+| `clearRect` | `clear_rect` | 🔶 No-op (immediate mode; repaints from blank each frame) |
+| `beginPath` / `moveTo` / `lineTo` / `closePath` | `begin_path` / `move_to` / `line_to` / `close_path` | ✅ |
+| `quadraticCurveTo` / `bezierCurveTo` | `quadratic_curve_to` / `bezier_curve_to` | ✅ |
+| `arc` | `arc` | ✅ Flattened to line segments (`max(2, ceil(sweep/(π/16)))`) |
+| `fill` / `stroke` | `fill` / `stroke` | ✅ |
+| `fillText` | `fill_text` | ✅ `y` is baseline; parses CSS font shorthand |
+| `strokeText` | `stroke_text` | ❌ No-op (gpui has no text outline API) |
+| `measureText` | `measure_text` → `TextMetrics { width }` | ✅ |
+| `save` / `restore` | `save` / `restore` | ✅ |
+| `translate` / `rotate` / `scale` | `translate` / `rotate` / `scale` | ✅ |
+| `setTransform` / `resetTransform` | `set_transform` / `reset_transform` | ✅ |
+| `fillStyle` / `strokeStyle` | `fill_style` / `stroke_style` (`Hsla`) | 🔶 Solid colors only; no gradients/patterns |
+| `lineWidth` | `line_width` | ✅ |
+| `font` | `font` (CSS shorthand, e.g. `"16px sans-serif"`) | ✅ |
+| `textAlign` | `text_align` (`CanvasTextAlign`) | ✅ `Start`/`Left`/`Center`/`Right`/`End` |
+| `globalAlpha` | `global_alpha` | ✅ Clamped 0–1 |
+| `lineCap` / `lineJoin` | — | ❌ lyon types not re-exported from gpui |
+| `createLinearGradient` / `createRadialGradient` / `createPattern` | — | ❌ No gradient/pattern support |
+| `drawImage` | — | ❌ Requires `RenderImage` (not exposed) |
+| `clip` | — | ❌ gpui content mask is axis-aligned bounds only |
+| `putImageData` / `getImageData` / `createImageData` | — | ❌ No pixel-level access |
+| `shadowBlur` / `shadowColor` / `shadowOffset*` | — | ❌ No shadow on paths (use `box-shadow` on wrapping element) |
+| Canvas events (`mousemove`, `click` on canvas) | — | 🔶 Wrap `<canvas>` in `<div on:click={...}>` |
+
+Runtime CSS color parser `color()` supports `#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa`, `rgb()`, `rgba()`, `hsl()`, `hsla()`, 140+ named colors, and `"transparent"`.
+
+See [Canvas Example](./examples/canvas.md) for a live demo.
+
+## 11. Routing
 
 | HTML/CSS | vgui | Support |
 |----------|------|---------|
@@ -313,7 +347,7 @@ API overview:
 
 See [Router](./concepts/router.md) for details.
 
-## 11. Refs & Imperative Operations
+## 12. Refs & Imperative Operations
 
 | HTML DOM ref / React ref | vgui `NodeRef` | Support |
 |--------------------------|----------------|---------|
@@ -323,7 +357,7 @@ See [Router](./concepts/router.md) for details.
 | Full DOM handle | Based on gpui `FocusHandle` + `ScrollHandle`; data from previous frame | 🔶 |
 | Direct ref on `select`/`textarea`/text input/`range` | Use wrapping div | 🔶 |
 
-## 12. Theming System
+## 13. Theming System
 
 | HTML/CSS | vgui | Support |
 |----------|------|---------|
@@ -332,7 +366,7 @@ See [Router](./concepts/router.md) for details.
 | Automatic reactive theme changes | Must read signal inside render closure + `set_theme` to trigger re-render | 🔶 |
 | CSS media query theme switching | Combine breakpoint + signal manually | 🔶 |
 
-## 13. Cross-Platform
+## 14. Cross-Platform
 
 | HTML/CSS | vgui | Support |
 |----------|------|---------|
@@ -344,7 +378,7 @@ See [Router](./concepts/router.md) for details.
 - Web: `wasm32-unknown-unknown` + wasm-bindgen
 - GPU-accelerated rendering (gpui)
 
-## 14. Unsupported Features Summary
+## 15. Unsupported Features Summary
 
 | Feature | Alternative |
 |---------|-------------|
@@ -367,8 +401,10 @@ See [Router](./concepts/router.md) for details.
 | Grid `fr` / `minmax()` / `repeat()` / `auto-fit` / `auto-fill` / `grid-auto-*` | Numeric column counts |
 | `rowspan` visual effect | ❌ None |
 | `input type="image"` | ❌ None |
+| Canvas `strokeText` / `drawImage` / `clip` / gradients / patterns / pixel ops | ❌ See [Canvas 2D Drawing](#10-canvas-2d-drawing) for details |
+| Canvas `lineCap` / `lineJoin` | ❌ lyon types not re-exported |
 
-## 15. Documentation vs Source Consistency Notes
+## 16. Documentation vs Source Consistency Notes
 
 This section summarizes the alignment between book documentation and actual source code, for developer reference.
 
