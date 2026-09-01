@@ -1,11 +1,11 @@
 use std::ops::Range;
 use std::time::Duration;
 use gpui::{
-    canvas, fill, px, size, App, AppContext, Bounds, ClipboardItem, Context, ElementInputHandler,
-    Entity, EntityInputHandler, Focusable, HighlightStyle, InteractiveElement, IntoElement,
-    KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Point,
-    Render, SharedString, StatefulInteractiveElement, Styled, StyledText, Task, TextLayout,
-    UTF16Selection, UnderlineStyle, Window, hsla,
+    canvas, fill, px, size, AnyElement, App, AppContext, Bounds, ClipboardItem, Context,
+    ElementInputHandler, Entity, EntityInputHandler, Focusable, HighlightStyle,
+    InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, ParentElement, Point, Render, SharedString, StatefulInteractiveElement, Styled,
+    StyledText, Task, TextLayout, UTF16Selection, UnderlineStyle, Window, hsla,
 };
 
 use crate::reactive::{get_or_create_view, with_root_cx};
@@ -89,6 +89,14 @@ pub struct TextInput {
     picker_open: bool,
     picker_year: i32,
     picker_month: u32,
+    picker_hour: u32,
+    picker_minute: u32,
+    picker_highlight_day: Option<u32>,
+    picker_hue: f32,
+    picker_sat: f32,
+    picker_val: f32,
+    sv_scroll_handle: gpui::ScrollHandle,
+    hue_scroll_handle: gpui::ScrollHandle,
 }
 
 impl TextInput {
@@ -126,6 +134,14 @@ impl TextInput {
             picker_open: false,
             picker_year: 2026,
             picker_month: 1,
+            picker_hour: 0,
+            picker_minute: 0,
+            picker_highlight_day: None,
+            picker_hue: 0.0,
+            picker_sat: 1.0,
+            picker_val: 1.0,
+            sv_scroll_handle: gpui::ScrollHandle::new(),
+            hue_scroll_handle: gpui::ScrollHandle::new(),
             list: None,
         }
     }
@@ -296,8 +312,12 @@ impl TextInput {
     fn supports_picker(&self) -> bool {
         matches!(
             self.kind,
-            TextKind::Date | TextKind::DateTime | TextKind::Month
+            TextKind::Date | TextKind::DateTime | TextKind::Month | TextKind::Time
         )
+    }
+
+    fn supports_time_picker(&self) -> bool {
+        matches!(self.kind, TextKind::DateTime | TextKind::Time)
     }
 
     fn supports_color_picker(&self) -> bool {
@@ -314,6 +334,20 @@ impl TextInput {
     }
 
     fn open_picker(&mut self) {
+        if self.supports_time_picker() {
+            if let Some((h, m)) = parse_time(&self.value) {
+                self.picker_hour = h;
+                self.picker_minute = m;
+            } else {
+                self.picker_hour = 0;
+                self.picker_minute = 0;
+            }
+        }
+        if self.kind == TextKind::Time {
+            // Time-only: no calendar needed
+            self.picker_open = true;
+            return;
+        }
         if let Some((y, m, _)) = parse_date(&self.value) {
             self.picker_year = y;
             self.picker_month = m;
@@ -321,16 +355,81 @@ impl TextInput {
             self.picker_year = y;
             self.picker_month = m;
         }
+        // Initialize highlight to selected day or today
+        if let Some((_, _, d)) = parse_date(&self.value) {
+            self.picker_highlight_day = Some(d);
+        } else if let Some((_, _, d)) = today_date() {
+            self.picker_highlight_day = Some(d);
+        } else {
+            self.picker_highlight_day = Some(1);
+        }
         self.picker_open = true;
     }
 
     fn select_date(&mut self, year: i32, month: u32, day: u32, cx: &mut Context<Self>) {
-        self.value = format!("{:04}-{:02}-{:02}", year, month, day);
+        if self.kind == TextKind::DateTime {
+            self.value = format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}",
+                year, month, day, self.picker_hour, self.picker_minute
+            );
+        } else {
+            self.value = format!("{:04}-{:02}-{:02}", year, month, day);
+        }
         self.cursor = self.value.len();
         self.selection = None;
         self.picker_open = false;
         self.fire_on_input(cx);
         self.fire_on_change(cx);
+    }
+
+    fn select_time(&mut self, hour: u32, minute: u32, cx: &mut Context<Self>) {
+        if self.kind == TextKind::DateTime {
+            if let Some((y, m, d)) = parse_date(&self.value) {
+                self.value = format!(
+                    "{:04}-{:02}-{:02}T{:02}:{:02}",
+                    y, m, d, hour, minute
+                );
+            } else {
+                self.value = format!("0000-01-01T{:02}:{:02}", hour, minute);
+            }
+        } else {
+            self.value = format!("{:02}:{:02}", hour, minute);
+        }
+        self.cursor = self.value.len();
+        self.selection = None;
+        self.picker_open = false;
+        self.fire_on_input(cx);
+        self.fire_on_change(cx);
+    }
+
+    fn picker_move_highlight(&mut self, delta: i32, cx: &mut Context<Self>) {
+        let dim = days_in_month(self.picker_year, self.picker_month) as i32;
+        let cur = self.picker_highlight_day.unwrap_or(1) as i32;
+        let mut new_day = cur + delta;
+        // Handle month boundary crossing
+        while new_day < 1 {
+            // Go to previous month
+            if self.picker_month == 1 {
+                self.picker_month = 12;
+                self.picker_year -= 1;
+            } else {
+                self.picker_month -= 1;
+            }
+            new_day += days_in_month(self.picker_year, self.picker_month) as i32;
+        }
+        let cur_dim = days_in_month(self.picker_year, self.picker_month) as i32;
+        while new_day > cur_dim {
+            // Go to next month
+            new_day -= cur_dim;
+            if self.picker_month == 12 {
+                self.picker_month = 1;
+                self.picker_year += 1;
+            } else {
+                self.picker_month += 1;
+            }
+        }
+        self.picker_highlight_day = Some(new_day as u32);
+        cx.notify();
     }
 
     // ── Editing primitives ───────────────────────────────────────────
@@ -617,50 +716,267 @@ impl TextInput {
     // ── Color picker palette ────────────────────────────────────────
 
     fn render_color_palette(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut grid = gpui::div()
+        // Initialize HSV from current hex value if not yet set
+        let current_hex = self.value.clone();
+        let (hue, sat, val) = if let Some(c) = parse_hex_color(&current_hex) {
+            let (h, s, v) = hsl_to_hsv(c.h, c.s, c.l);
+            (h, s, v)
+        } else {
+            (self.picker_hue, self.picker_sat, self.picker_val)
+        };
+
+        let sv_size = px(140.);
+        let sv_scroll_handle = self.sv_scroll_handle.clone();
+        let sv_canvas = canvas(
+            move |_bounds, _window, _cx| {},
+            move |bounds, _state, window, _cx| {
+                // Paint SV square: x-axis = saturation (0→1), y-axis = value (1→0)
+                let origin = bounds.origin;
+                let w = bounds.size.width;
+                let h = bounds.size.height;
+                let cols = 32;
+                let rows = 32;
+                let cell_w = w / cols as f32;
+                let cell_h = h / rows as f32;
+                for cy in 0..rows {
+                    for cx_idx in 0..cols {
+                        let s = cx_idx as f32 / cols as f32;
+                        let v = 1.0 - cy as f32 / rows as f32;
+                        let (hsl_h, hsl_s, hsl_l) = hsv_to_hsl(hue, s, v);
+                        let color = hsla(hsl_h, hsl_s, hsl_l, 1.0);
+                        let cell_bounds = Bounds::new(
+                            Point::new(
+                                origin.x + cx_idx as f32 * cell_w,
+                                origin.y + cy as f32 * cell_h,
+                            ),
+                            size(cell_w + px(1.), cell_h + px(1.)),
+                        );
+                        window.paint_quad(fill(cell_bounds, color));
+                    }
+                }
+            },
+        );
+
+        let hue_bar_h = px(12.);
+        let hue_scroll_handle = self.hue_scroll_handle.clone();
+        let hue_canvas = canvas(
+            move |_bounds, _window, _cx| {},
+            move |bounds, _state, window, _cx| {
+                let origin = bounds.origin;
+                let w = bounds.size.width;
+                let h = bounds.size.height;
+                let cols = 64;
+                let cell_w = w / cols as f32;
+                for cx_idx in 0..cols {
+                    let h_val = cx_idx as f32 / cols as f32;
+                    let color = hsla(h_val, 1.0, 0.5, 1.0);
+                    let cell_bounds = Bounds::new(
+                        Point::new(origin.x + cx_idx as f32 * cell_w, origin.y),
+                        size(cell_w + px(1.), h),
+                    );
+                    window.paint_quad(fill(cell_bounds, color));
+                }
+            },
+        );
+
+        // SV indicator position
+        let sv_indicator_x = sat * 140.0;
+        let sv_indicator_y = (1.0 - val) * 140.0;
+        // Hue indicator position
+        let hue_indicator_x = hue * 180.0;
+
+        let (cur_hsl_h, cur_hsl_s, cur_hsl_l) = hsv_to_hsl(hue, sat, val);
+        let current_color = hsla(cur_hsl_h, cur_hsl_s, cur_hsl_l, 1.0);
+        let current_hex_upper = current_hex.to_uppercase();
+        let hex_display = if current_hex_upper.starts_with('#') {
+            current_hex_upper.clone()
+        } else if current_hex_upper.is_empty() {
+            "#000000".to_string()
+        } else {
+            format!("#{}", current_hex_upper)
+        };
+
+        let popup = gpui::div()
             .id("color-palette")
             .absolute()
             .top(px(32.))
             .left_0()
-            .w(px(24. * 8. + 8.))
+            .w(px(200.))
             .bg(gpui::white())
             .border_1()
             .border_color(hsla(0.0, 0.0, 0.7, 0.3))
             .rounded(px(4.))
             .shadow_md()
-            .p_1()
+            .p_2()
             .flex()
-            .flex_wrap()
+            .flex_col()
+            .gap_2()
             .on_mouse_down_out(cx.listener(|this, _event, _window, cx| {
                 this.picker_open = false;
                 cx.notify();
-            }));
-
-        for (i, preset) in COLOR_PRESETS.iter().enumerate() {
-            let color = parse_hex_color(preset).unwrap_or(hsla(0.0, 0.0, 0.5, 1.0));
-            let hex = preset.to_string();
-            grid = grid.child(
+            }))
+            // SV square with drag interaction
+            .child(
                 gpui::div()
-                    .id(("color-preset", i as u64))
-                    .w(px(22.))
-                    .h(px(22.))
-                    .m(px(1.))
-                    .rounded(px(3.))
-                    .bg(color)
-                    .border_1()
-                    .border_color(hsla(0.0, 0.0, 0.7, 0.2))
-                    .cursor_pointer()
+                    .id("sv-square")
+                    .track_scroll(&sv_scroll_handle)
+                    .w(sv_size)
+                    .h(sv_size)
+                    .relative()
+                    .child(sv_canvas)
+                    .child(
+                        gpui::div()
+                            .absolute()
+                            .left(px(sv_indicator_x - 5.0))
+                            .top(px(sv_indicator_y - 5.0))
+                            .w(px(10.))
+                            .h(px(10.))
+                            .rounded_full()
+                            .border_2()
+                            .border_color(gpui::white())
+                            .shadow_sm(),
+                    )
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(move |this, _event, _window, cx| {
-                            this.select_color(&hex, cx);
+                        cx.listener(move |this, event: &MouseDownEvent, _window, cx| {
+                            let bounds = this.sv_scroll_handle.bounds();
+                            let local_x = (f32::from(event.position.x - bounds.origin.x)).max(0.0).min(140.0);
+                            let local_y = (f32::from(event.position.y - bounds.origin.y)).max(0.0).min(140.0);
+                            this.picker_sat = local_x / 140.0;
+                            this.picker_val = 1.0 - local_y / 140.0;
+                            let (h, s, l) = hsv_to_hsl(this.picker_hue, this.picker_sat, this.picker_val);
+                            let hex = hsl_to_hex(h, s, l);
+                            this.value = hex;
+                            this.cursor = this.value.len();
+                            this.fire_on_input(cx);
                             cx.notify();
                         }),
+                    )
+                    .on_mouse_move(cx.listener(move |this, event: &MouseMoveEvent, _window, cx| {
+                        if event.pressed_button == Some(MouseButton::Left) {
+                            let bounds = this.sv_scroll_handle.bounds();
+                            let local_x = (f32::from(event.position.x - bounds.origin.x)).max(0.0).min(140.0);
+                            let local_y = (f32::from(event.position.y - bounds.origin.y)).max(0.0).min(140.0);
+                            this.picker_sat = local_x / 140.0;
+                            this.picker_val = 1.0 - local_y / 140.0;
+                            let (h, s, l) = hsv_to_hsl(this.picker_hue, this.picker_sat, this.picker_val);
+                            let hex = hsl_to_hex(h, s, l);
+                            this.value = hex;
+                            this.cursor = this.value.len();
+                            this.fire_on_input(cx);
+                            cx.notify();
+                        }
+                    })),
+            )
+            // Hue bar with drag interaction
+            .child(
+                gpui::div()
+                    .id("hue-bar")
+                    .track_scroll(&hue_scroll_handle)
+                    .w(px(180.))
+                    .h(hue_bar_h)
+                    .relative()
+                    .rounded(px(6.))
+                    .overflow_hidden()
+                    .child(hue_canvas)
+                    .child(
+                        gpui::div()
+                            .absolute()
+                            .left(px(hue_indicator_x - 4.0))
+                            .top(px(0.))
+                            .w(px(4.))
+                            .h(hue_bar_h)
+                            .bg(gpui::white())
+                            .border_1()
+                            .border_color(hsla(0.0, 0.0, 0.3, 1.0)),
+                    )
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, event: &MouseDownEvent, _window, cx| {
+                            let bounds = this.hue_scroll_handle.bounds();
+                            let local_x = (f32::from(event.position.x - bounds.origin.x)).max(0.0).min(180.0);
+                            this.picker_hue = local_x / 180.0;
+                            let (h, s, l) = hsv_to_hsl(this.picker_hue, this.picker_sat, this.picker_val);
+                            let hex = hsl_to_hex(h, s, l);
+                            this.value = hex;
+                            this.cursor = this.value.len();
+                            this.fire_on_input(cx);
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(move |this, event: &MouseMoveEvent, _window, cx| {
+                        if event.pressed_button == Some(MouseButton::Left) {
+                            let bounds = this.hue_scroll_handle.bounds();
+                            let local_x = (f32::from(event.position.x - bounds.origin.x)).max(0.0).min(180.0);
+                            this.picker_hue = local_x / 180.0;
+                            let (h, s, l) = hsv_to_hsl(this.picker_hue, this.picker_sat, this.picker_val);
+                            let hex = hsl_to_hex(h, s, l);
+                            this.value = hex;
+                            this.cursor = this.value.len();
+                            this.fire_on_input(cx);
+                            cx.notify();
+                        }
+                    })),
+            )
+            // Current color preview + hex display
+            .child(
+                gpui::div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        gpui::div()
+                            .w(px(24.))
+                            .h(px(24.))
+                            .rounded(px(4.))
+                            .bg(current_color)
+                            .border_1()
+                            .border_color(hsla(0.0, 0.0, 0.7, 0.3)),
+                    )
+                    .child(
+                        gpui::div()
+                            .text_size(px(13.))
+                            .text_color(gpui::black())
+                            .child(SharedString::from(hex_display)),
                     ),
-            );
-        }
+            )
+            // Preset colors label
+            .child(
+                gpui::div()
+                    .text_size(px(11.))
+                    .text_color(hsla(0.0, 0.0, 0.5, 1.0))
+                    .child(SharedString::from("Presets")),
+            )
+            // Preset palette grid
+            .child({
+                let mut grid = gpui::div().flex().flex_wrap().gap_1();
+                for (i, preset) in COLOR_PRESETS.iter().enumerate() {
+                    let color = parse_hex_color(preset).unwrap_or(hsla(0.0, 0.0, 0.5, 1.0));
+                    let hex = preset.to_string();
+                    grid = grid.child(
+                        gpui::div()
+                            .id(("color-preset", i as u64))
+                            .w(px(20.))
+                            .h(px(20.))
+                            .rounded(px(3.))
+                            .bg(color)
+                            .border_1()
+                            .border_color(hsla(0.0, 0.0, 0.7, 0.2))
+                            .cursor_pointer()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _event, _window, cx| {
+                                    this.select_color(&hex, cx);
+                                    cx.notify();
+                                }),
+                            ),
+                    );
+                }
+                grid
+            });
 
-        grid
+        popup
     }
 
     // ── Datalist suggestions ────────────────────────────────────────
@@ -731,11 +1047,17 @@ impl TextInput {
 
     // ── Date picker popup ────────────────────────────────────────────
 
-    fn render_picker_popup(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_picker_popup(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        // Time-only picker (no calendar)
+        if self.kind == TextKind::Time {
+            return self.render_time_picker_popup(cx);
+        }
+
         let year = self.picker_year;
         let month = self.picker_month;
         let today = today_date();
         let selected = parse_date(&self.value);
+        let highlight_day = self.picker_highlight_day.unwrap_or(1);
 
         let month_name = month_name(month);
         let first_weekday = weekday_of_first(year, month);
@@ -825,8 +1147,11 @@ impl TextInput {
             let is_selected = selected
                 .map(|(sy, sm, sd)| sy == year && sm == month && sd == day)
                 .unwrap_or(false);
+            let is_highlighted = day == highlight_day && !is_selected;
             let bg = if is_selected {
                 hsla(0.6, 0.8, 0.5, 1.0)
+            } else if is_highlighted {
+                hsla(0.6, 0.5, 0.85, 1.0)
             } else if is_today {
                 hsla(0.6, 0.6, 0.9, 1.0)
             } else {
@@ -838,6 +1163,8 @@ impl TextInput {
                 gpui::black()
             };
             let border = if is_today && !is_selected {
+                hsla(0.6, 0.6, 0.5, 1.0)
+            } else if is_highlighted {
                 hsla(0.6, 0.6, 0.5, 1.0)
             } else {
                 gpui::transparent_black()
@@ -881,8 +1208,15 @@ impl TextInput {
             day_grid = day_grid.child(week);
         }
 
+        // Time picker section (for DateTime only)
+        let time_section = if self.supports_time_picker() {
+            Some(self.render_time_section(cx))
+        } else {
+            None
+        };
+
         let _ = &header; // ensure header is used
-        gpui::div()
+        let mut popup = gpui::div()
             .id("date-picker-popup")
             .absolute()
             .top(px(34.))
@@ -896,9 +1230,179 @@ impl TextInput {
             .shadow_md()
             .flex()
             .flex_col()
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+                let key = event.keystroke.key.as_str();
+                match key {
+                    "left" => this.picker_move_highlight(-1, cx),
+                    "right" => this.picker_move_highlight(1, cx),
+                    "up" => this.picker_move_highlight(-7, cx),
+                    "down" => this.picker_move_highlight(7, cx),
+                    "enter" => {
+                        if let Some(day) = this.picker_highlight_day {
+                            this.select_date(this.picker_year, this.picker_month, day, cx);
+                        }
+                    }
+                    "escape" => {
+                        this.picker_open = false;
+                        cx.notify();
+                    }
+                    _ => {}
+                }
+            }))
             .child(header)
             .child(weekday_row)
-            .child(day_grid)
+            .child(day_grid);
+
+        if let Some(ts) = time_section {
+            popup = popup.child(ts);
+        }
+
+        popup.into_any_element()
+    }
+
+    fn render_time_section(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let hour = self.picker_hour;
+        let minute = self.picker_minute;
+
+        gpui::div()
+            .mt_2()
+            .pt_2()
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_center()
+            .gap_1()
+            .child(
+                gpui::div()
+                    .id("time-hour-down")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25C0}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _e, _w, cx| {
+                            this.picker_hour = (this.picker_hour + 23) % 24;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                gpui::div()
+                    .text_size(px(14.))
+                    .text_color(gpui::black())
+                    .w(px(24.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(SharedString::from(format!("{:02}", hour))),
+            )
+            .child(
+                gpui::div()
+                    .id("time-hour-up")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25B6}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _e, _w, cx| {
+                            this.picker_hour = (this.picker_hour + 1) % 24;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                gpui::div()
+                    .text_size(px(14.))
+                    .text_color(gpui::black())
+                    .child(SharedString::from(":")),
+            )
+            .child(
+                gpui::div()
+                    .id("time-minute-down")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25C0}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _e, _w, cx| {
+                            this.picker_minute = (this.picker_minute + 59) % 60;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                gpui::div()
+                    .text_size(px(14.))
+                    .text_color(gpui::black())
+                    .w(px(24.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(SharedString::from(format!("{:02}", minute))),
+            )
+            .child(
+                gpui::div()
+                    .id("time-minute-up")
+                    .cursor_pointer()
+                    .px_1()
+                    .text_color(hsla(0.0, 0.0, 0.3, 1.0))
+                    .child(SharedString::from("\u{25B6}"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _e, _w, cx| {
+                            this.picker_minute = (this.picker_minute + 1) % 60;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                gpui::div()
+                    .id("time-confirm")
+                    .ml_2()
+                    .px_2()
+                    .py_1()
+                    .bg(hsla(0.6, 0.8, 0.5, 1.0))
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .text_size(px(12.))
+                    .text_color(gpui::white())
+                    .child(SharedString::from("OK"))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _e, _w, cx| {
+                            this.select_time(this.picker_hour, this.picker_minute, cx);
+                        }),
+                    ),
+            )
+    }
+
+    fn render_time_picker_popup(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        gpui::div()
+            .id("time-picker-popup")
+            .absolute()
+            .top(px(34.))
+            .left_0()
+            .w(px(180.))
+            .p_2()
+            .bg(gpui::white())
+            .border_1()
+            .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+            .rounded(px(6.))
+            .shadow_md()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(
+                gpui::div()
+                    .text_size(px(12.))
+                    .text_color(hsla(0.0, 0.0, 0.5, 1.0))
+                    .child(SharedString::from("Select Time")),
+            )
+            .child(self.render_time_section(cx))
+            .into_any_element()
     }
     /// Check the current value against required/pattern/minlength/maxlength/kind rules.
     fn is_valid(&self) -> bool {
@@ -1613,6 +2117,67 @@ fn parse_date(s: &str) -> Option<(i32, u32, u32)> {
     } else {
         None
     }
+}
+
+/// Parse a `HH:MM` time string into `(hour, minute)`.
+fn parse_time(s: &str) -> Option<(u32, u32)> {
+    // Handle both "HH:MM" and "YYYY-MM-DDTHH:MM" formats
+    let time_part = if let Some(idx) = s.find('T') {
+        &s[idx + 1..]
+    } else {
+        s
+    };
+    let mut parts = time_part.split(':');
+    let h: u32 = parts.next()?.parse().ok()?;
+    let m: u32 = parts.next()?.parse().ok()?;
+    if h < 24 && m < 60 {
+        Some((h, m))
+    } else {
+        None
+    }
+}
+
+/// Convert HSL (h: 0-1, s: 0-1, l: 0-1) to HSV (h: 0-1, s: 0-1, v: 0-1).
+fn hsl_to_hsv(h: f32, s: f32, l: f32) -> (f32, f32, f32) {
+    let v = l + s * l.min(1.0 - l);
+    let s_out = if v > 0.0 { 2.0 * (v - l) / v } else { 0.0 };
+    (h, s_out, v)
+}
+
+/// Convert HSV (h: 0-1, s: 0-1, v: 0-1) to HSL (h: 0-1, s: 0-1, l: 0-1).
+fn hsv_to_hsl(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
+    let l = v * (1.0 - s / 2.0);
+    let s_out = if l > 0.0 && l < 1.0 {
+        (v - l) / l.min(1.0 - l)
+    } else {
+        0.0
+    };
+    (h, s_out, l)
+}
+
+/// Convert HSL (h: 0-1, s: 0-1, l: 0-1) to a `#RRGGBB` hex string.
+fn hsl_to_hex(h: f32, s: f32, l: f32) -> String {
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let hp = h * 6.0;
+    let x = c * (1.0 - (hp % 2.0 - 1.0).abs());
+    let m = l - c / 2.0;
+    let (r, g, b) = if hp < 1.0 {
+        (c, x, 0.0)
+    } else if hp < 2.0 {
+        (x, c, 0.0)
+    } else if hp < 3.0 {
+        (0.0, c, x)
+    } else if hp < 4.0 {
+        (0.0, x, c)
+    } else if hp < 5.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    let r = ((r + m) * 255.0).round() as u8;
+    let g = ((g + m) * 255.0).round() as u8;
+    let b = ((b + m) * 255.0).round() as u8;
+    format!("#{:02X}{:02X}{:02X}", r, g, b)
 }
 
 /// Parse a `#RRGGBB` hex color string into an `Hsla` color.
