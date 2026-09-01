@@ -70,6 +70,7 @@ pub struct TextInput {
     pattern: Option<String>,
     minlength: Option<usize>,
     maxlength: Option<usize>,
+    list: Option<String>,
     form_submit: Option<crate::form::FormHandler>,
     cursor: usize,
     selection: Option<Range<usize>>,
@@ -125,6 +126,7 @@ impl TextInput {
             picker_open: false,
             picker_year: 2026,
             picker_month: 1,
+            list: None,
         }
     }
 
@@ -146,7 +148,7 @@ impl TextInput {
         self.required = props.required;
         self.pattern = props.pattern;
         self.minlength = props.minlength;
-        self.maxlength = props.maxlength;
+        self.list = props.list;
         self.form_submit = crate::form::current_form_submit();
         if !self.focused && props.value != self.value {
             self.value = props.value.clone();
@@ -296,6 +298,19 @@ impl TextInput {
             self.kind,
             TextKind::Date | TextKind::DateTime | TextKind::Month
         )
+    }
+
+    fn supports_color_picker(&self) -> bool {
+        matches!(self.kind, TextKind::Color)
+    }
+
+    fn select_color(&mut self, hex: &str, cx: &mut Context<Self>) {
+        self.value = hex.to_string();
+        self.cursor = self.value.len();
+        self.selection = None;
+        self.picker_open = false;
+        self.fire_on_input(cx);
+        self.fire_on_change(cx);
     }
 
     fn open_picker(&mut self) {
@@ -596,6 +611,122 @@ impl TextInput {
     fn handle_mouse_up(&mut self, cx: &mut Context<Self>) {
         self.selecting = false;
         cx.notify();
+    }
+
+
+    // ── Color picker palette ────────────────────────────────────────
+
+    fn render_color_palette(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let mut grid = gpui::div()
+            .id("color-palette")
+            .absolute()
+            .top(px(32.))
+            .left_0()
+            .w(px(24. * 8. + 8.))
+            .bg(gpui::white())
+            .border_1()
+            .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+            .rounded(px(4.))
+            .shadow_md()
+            .p_1()
+            .flex()
+            .flex_wrap()
+            .on_mouse_down_out(cx.listener(|this, _event, _window, cx| {
+                this.picker_open = false;
+                cx.notify();
+            }));
+
+        for (i, preset) in COLOR_PRESETS.iter().enumerate() {
+            let color = parse_hex_color(preset).unwrap_or(hsla(0.0, 0.0, 0.5, 1.0));
+            let hex = preset.to_string();
+            grid = grid.child(
+                gpui::div()
+                    .id(("color-preset", i as u64))
+                    .w(px(22.))
+                    .h(px(22.))
+                    .m(px(1.))
+                    .rounded(px(3.))
+                    .bg(color)
+                    .border_1()
+                    .border_color(hsla(0.0, 0.0, 0.7, 0.2))
+                    .cursor_pointer()
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _event, _window, cx| {
+                            this.select_color(&hex, cx);
+                            cx.notify();
+                        }),
+                    ),
+            );
+        }
+
+        grid
+    }
+
+    // ── Datalist suggestions ────────────────────────────────────────
+
+    fn datalist_suggestions(&self) -> Option<Vec<String>> {
+        let id = self.list.as_ref()?;
+        let options = crate::input_widgets::get_datalist(id)?;
+        if !self.focused || self.value.is_empty() {
+            return None;
+        }
+        let lower = self.value.to_lowercase();
+        let matches: Vec<String> = options
+            .into_iter()
+            .filter(|o| o.to_lowercase().starts_with(&lower))
+            .take(8)
+            .collect();
+        Some(matches)
+    }
+
+    fn render_datalist_popup(
+        &self,
+        suggestions: Vec<String>,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let mut list = gpui::div()
+            .id("datalist-popup")
+            .absolute()
+            .top(px(32.))
+            .left_0()
+            .w_full()
+            .max_h(px(200.))
+            .overflow_y_scroll()
+            .bg(gpui::white())
+            .border_1()
+            .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+            .rounded(px(4.))
+            .shadow_md()
+            .flex()
+            .flex_col();
+
+        for (idx, suggestion) in suggestions.into_iter().enumerate() {
+            list = list.child(
+                gpui::div()
+                    .id(("datalist-suggestion", idx as u64))
+                    .w_full()
+                    .px_2()
+                    .py_1()
+                    .text_size(px(14.))
+                    .text_color(gpui::black())
+                    .hover(|s| s.bg(hsla(0.6, 0.8, 0.95, 1.0)))
+                    .child(SharedString::from(suggestion.clone()))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _event, _window, cx| {
+                            this.value = suggestion.clone();
+                            this.cursor = this.value.len();
+                            this.selection = None;
+                            this.fire_on_input(cx);
+                            this.fire_on_change(cx);
+                            cx.notify();
+                        }),
+                    ),
+            );
+        }
+
+        list
     }
 
     // ── Date picker popup ────────────────────────────────────────────
@@ -992,6 +1123,46 @@ impl Render for TextInput {
             div = div.child(self.render_picker_popup(cx));
         }
 
+        // Color picker swatch for color inputs
+        if self.supports_color_picker() {
+            let swatch_bg = parse_hex_color(&self.value).unwrap_or(hsla(0.0, 0.0, 0.5, 1.0));
+            div = div.child(
+                gpui::div()
+                    .id("color-swatch")
+                    .absolute()
+                    .top_0()
+                    .right_0()
+                    .w(px(24.))
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .bg(swatch_bg)
+                    .border_1()
+                    .border_color(hsla(0.0, 0.0, 0.7, 0.3))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            this.picker_open = !this.picker_open;
+                            cx.notify();
+                        }),
+                    ),
+            );
+        }
+
+        // Color picker palette popup
+        if self.picker_open && self.supports_color_picker() {
+            div = div.child(self.render_color_palette(cx));
+        }
+
+        // Datalist autocomplete suggestions
+        if let Some(suggestions) = self.datalist_suggestions() {
+            if !suggestions.is_empty() {
+                div = div.child(self.render_datalist_popup(suggestions, cx));
+            }
+        }
+
         // Apply user-provided style (overrides defaults)
         if let Some(style) = self.style.take() {
             div = style.apply(div);
@@ -1193,6 +1364,7 @@ pub struct TextInputProps {
     pub pattern: Option<String>,
     pub minlength: Option<usize>,
     pub maxlength: Option<usize>,
+    pub list: Option<String>,
     pub rows: Option<u32>,
 }
 
@@ -1256,6 +1428,7 @@ pub fn text_area(props: TextAreaProps) -> Entity<TextInput> {
                     pattern: None,
                     minlength: None,
                     maxlength: None,
+                    list: None,
                 },
                 cx,
             );
@@ -1441,6 +1614,84 @@ fn parse_date(s: &str) -> Option<(i32, u32, u32)> {
         None
     }
 }
+
+/// Parse a `#RRGGBB` hex color string into an `Hsla` color.
+/// Accepts `#rgb` (short form) and `#rrggbb` (long form), case-insensitive.
+pub fn parse_hex_color(s: &str) -> Option<gpui::Hsla> {
+    let hex = s.strip_prefix('#')?;
+    let (r, g, b) = if hex.len() == 6 {
+        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+        (r, g, b)
+    } else if hex.len() == 3 {
+        let r = u8::from_str_radix(&hex[0..1], 16).ok()?;
+        let g = u8::from_str_radix(&hex[1..2], 16).ok()?;
+        let b = u8::from_str_radix(&hex[2..3], 16).ok()?;
+        (r * 17, g * 17, b * 17)
+    } else {
+        return None;
+    };
+    Some(gpui::hsla(
+        rgb_to_hsl_h(r, g, b),
+        rgb_to_hsl_s(r, g, b),
+        rgb_to_hsl_l(r, g, b),
+        1.0,
+    ))
+}
+
+fn rgb_to_hsl_h(r: u8, g: u8, b: u8) -> f32 {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let delta = max - min;
+    if delta < 1e-6 {
+        return 0.0;
+    }
+    let h = if max == r {
+        ((g - b) / delta) % 6.0
+    } else if max == g {
+        (b - r) / delta + 2.0
+    } else {
+        (r - g) / delta + 4.0
+    };
+    (h * 60.0).rem_euclid(360.0) / 360.0
+}
+
+fn rgb_to_hsl_s(r: u8, g: u8, b: u8) -> f32 {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let l = (max + min) / 2.0;
+    let delta = max - min;
+    if delta < 1e-6 {
+        0.0
+    } else if l < 0.5 {
+        delta / (max + min)
+    } else {
+        delta / (2.0 - max - min)
+    }
+}
+
+fn rgb_to_hsl_l(r: u8, g: u8, b: u8) -> f32 {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    (max + min) / 2.0
+}
+
+/// 24 preset colors for the color picker palette (8 columns × 3 rows).
+const COLOR_PRESETS: [&str; 24] = [
+    "#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF",
+    "#808080", "#C0C0C0", "#800000", "#008000", "#000080", "#808000", "#800080", "#008080",
+    "#FFA500", "#FFC0CB", "#A52A2A", "#DAA520", "#90EE90", "#87CEEB", "#DDA0DD", "#F5DEB3",
+];
 
 /// Return today's date as `(year, month, day)` in the local timezone.
 fn today_date() -> Option<(i32, u32, u32)> {
@@ -1707,5 +1958,33 @@ mod validate_tests {
             None,
             None
         ));
+    }
+
+    #[test]
+    fn hex_color_parse() {
+        // Valid 6-digit hex
+        let red = parse_hex_color("#ff0000");
+        assert!(red.is_some());
+        let c = red.unwrap();
+        assert_eq!(c.a, 1.0);
+
+        // Valid 3-digit hex (short form)
+        let short = parse_hex_color("#f00");
+        assert!(short.is_some());
+        let cs = short.unwrap();
+        // #f00 expands to #ff0000, so hue should be 0 (red)
+        assert!((cs.h - 0.0).abs() < 1e-6 || (cs.h - 1.0).abs() < 1e-6);
+
+        // Uppercase
+        let upper = parse_hex_color("#FF0000");
+        assert!(upper.is_some());
+
+        // Invalid: no #
+        assert!(parse_hex_color("ff0000").is_none());
+        // Invalid: wrong length
+        assert!(parse_hex_color("#ff00").is_none());
+        assert!(parse_hex_color("#").is_none());
+        // Invalid: non-hex chars
+        assert!(parse_hex_color("#gg0000").is_none());
     }
 }

@@ -40,8 +40,8 @@ pub use crate::input_text::{
 };
 pub use crate::form::{form_scope, __form_submit, __form_reset};
 pub use crate::input_widgets::{
-    bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
-    radiogroup, range_input, select, select_with_options, FileProps, RadioProps, RangeProps, SelectProps,
+    bool_change_cb, checkbox, CheckboxProps, datalist, f64_change_cb, file_input, files_cb, radio,
+    radiogroup, range_input, register_datalist, select, select_with_options, FileProps, RadioProps, RangeProps, SelectProps,
     str_select_change_cb,
 };
 pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};

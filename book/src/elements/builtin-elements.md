@@ -9,8 +9,7 @@ lists every supported tag and its behavior.
 All of these expand to `gpui::div()` with no additional default styling:
 
 | Tag                                                | Notes                        |
-| -------------------------------------------------- | ---------------------------- |
-| `<div>`, `<span>`, `<p>`                           | Generic containers.          |
+| `<div>`, `<span>`, `<p>`, `<output>`                   | Generic containers.          |
 | `<header>`, `<footer>`, `<nav>`, `<main>`         | Semantic sectioning.         |
 | `<section>`, `<article>`, `<aside>`, `<address>`  | Semantic sectioning.         |
 | `<form>`                                            | Form context: `on:submit` / `on:reset` + child submit/reset buttons. |
@@ -84,6 +83,15 @@ default. Keyboard activation of `on:click` is handled by gpui.
 
 `<colgroup>` and `<col>` are accepted (they compile) but render nothing
 (`gpui::Empty`). Column widths are controlled per-cell via `class` or `style`.
+
+`<datalist>` renders nothing (`gpui::Empty`) but registers its `id` and
+`options` in a thread-local map so text inputs with `list=<id>` can show
+autocomplete suggestions. It requires an `id` attribute and accepts
+`options={Vec<String>}`. See [Input Elements](./inputs.md#datalist).
+
+`<option>` and `<optgroup>` are accepted as standalone tags (they compile as
+pure `<div>` aliases) but are not read by `<select>`. Use the `options` or
+`groups` prop on `<select>` instead.
 
 ## Tables
 

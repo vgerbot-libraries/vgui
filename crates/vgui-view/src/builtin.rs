@@ -34,6 +34,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "radiogroup" {
         return emit_radiogroup(el);
     }
+    if name == "datalist" {
+        return emit_datalist(el);
+    }
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -115,7 +118,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     }
     let mut ctor = match name.as_str() {
         // Pure div aliases (semantic containers)
-        "div" | "span" | "p"
+        "div" | "span" | "p" | "output" | "option" | "optgroup"
         | "header" | "footer" | "nav" | "main" | "section" | "article" | "aside"
         | "address" | "fieldset" | "legend" | "figure" | "figcaption"
         | "pre" | "blockquote" | "q" => quote! { ::gpui::div() },
@@ -741,6 +744,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
     let mut pattern = None;
     let mut minlength = None;
     let mut maxlength = None;
+    let mut list = None;
 
     for attr in &el.attrs {
         match &attr.kind {
@@ -778,6 +782,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     "pattern" => pattern = Some(&attr.value),
                     "minlength" => minlength = Some(&attr.value),
                     "maxlength" => maxlength = Some(&attr.value),
+                    "list" => list = Some(&attr.value),
                     other => {
                         return Err(syn::Error::new(
                             id2.span(),
@@ -935,6 +940,15 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let list_expr = match list {
+                Some(v) => {
+                    let e = attr_tokens(v);
+                    quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&(#e))) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
+
             Ok(quote! {
                 ::vgui::text_input(::vgui::TextInputProps {
                     kind: #kind_variant,
@@ -956,6 +970,7 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     pattern: #pattern_expr,
                     minlength: #minlength_expr,
                     maxlength: #maxlength_expr,
+                    list: #list_expr,
                     rows: ::std::option::Option::None,
                 })
             })
@@ -1215,6 +1230,8 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
     let mut options = None;
     let mut value = None;
     let mut disabled = None;
+    let mut multiple = None;
+    let mut groups = None;
 
     for attr in &el.attrs {
         match &attr.kind {
@@ -1235,6 +1252,8 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
                     "options" => options = Some(&attr.value),
                     "value" => value = Some(&attr.value),
                     "disabled" => disabled = Some(&attr.value),
+                    "multiple" => multiple = Some(&attr.value),
+                    "groups" => groups = Some(&attr.value),
                     "name" => {} // accepted but unused
                     other => {
                         return Err(syn::Error::new(
@@ -1284,6 +1303,14 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
         Some(v) => bool_expr(v),
         None => quote! { false },
     };
+    let multiple_expr = match multiple {
+        Some(v) => bool_expr(v),
+        None => quote! { false },
+    };
+    let groups_expr = match groups {
+        Some(v) => attr_tokens(v),
+        None => quote! { ::std::vec::Vec::new() },
+    };
     let on_change_expr = match on_change {
         Some(h) => quote! { ::std::option::Option::Some(::vgui::str_select_change_cb(#h)) },
         None => quote! { ::std::option::Option::None },
@@ -1312,6 +1339,8 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             options: #options_expr,
             value: #value_expr,
             disabled: #disabled_expr,
+            multiple: #multiple_expr,
+            groups: #groups_expr,
             on_change: #on_change_expr,
         };
         let mut __el = #select_call;
@@ -1782,4 +1811,42 @@ fn emit_radiogroup(el: &Element) -> syn::Result<TokenStream2> {
         ::vgui::__radiogroup_scope_exit();
         ::vgui::radiogroup(__handles, __content)
     } })
+}
+
+/// Emit a `<datalist>` element. Requires `id`; accepts `options={Vec<String>}`.
+/// Renders nothing (`gpui::Empty`) but registers `id` + options in the
+/// thread-local `DATALISTS` map so text inputs with `list=<id>` can show
+/// autocomplete suggestions. Children are ignored.
+fn emit_datalist(el: &Element) -> syn::Result<TokenStream2> {
+    let mut id = None;
+    let mut options = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Id => id = Some(attr),
+            AttrKind::Ident(id2) if id2.to_string() == "options" => {
+                options = Some(&attr.value);
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <datalist>; allowed: `id`, `options`",
+                ));
+            }
+        }
+    }
+    let id_attr = id.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<datalist> requires an `id` attribute")
+    })?;
+    let id_expr = if let Some(lit) = string_lit_static(&id_attr.value) {
+        quote! { #lit }
+    } else {
+        attr_tokens(&id_attr.value)
+    };
+    let options_expr = match options {
+        Some(v) => attr_tokens(v),
+        None => quote! { ::std::vec::Vec::new() },
+    };
+    Ok(quote! {
+        ::vgui::datalist(::std::string::ToString::to_string(&(#id_expr)), #options_expr)
+    })
 }

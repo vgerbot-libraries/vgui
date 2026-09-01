@@ -7,7 +7,41 @@ use gpui::{
 
 use crate::reactive::{get_or_create_slot, get_or_create_view, try_get_or_create_slot, with_root_cx};
 use crate::style::{Css, TwStyle};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::Arc;
+
+// ── Datalist registry ───────────────────────────────────────────────
+//
+// `<datalist>` registers its `id` + options here at render time so that
+// text inputs with a matching `list=` attribute can show autocomplete
+// suggestions. The map is cleared and rebuilt every render frame (each
+// `<datalist>` overwrites its entry), mirroring the immediate-mode pattern
+// used by the radio-group and form scope stacks.
+thread_local! {
+    static DATALISTS: RefCell<HashMap<String, Vec<String>>> = RefCell::new(HashMap::new());
+}
+
+/// Register (or overwrite) the options for a `<datalist id>`. Called by the
+/// `datalist()` runtime function every render frame.
+pub fn register_datalist(id: &str, options: Vec<String>) {
+    DATALISTS.with(|m| m.borrow_mut().insert(id.to_string(), options));
+}
+
+/// Look up the options registered for `id`, if any.
+pub(crate) fn get_datalist(id: &str) -> Option<Vec<String>> {
+    DATALISTS.with(|m| m.borrow().get(id).cloned())
+}
+
+/// Props for `<select>`.
+pub struct SelectProps {
+    pub options: Vec<(String, String)>,
+    pub value: String,
+    pub disabled: bool,
+    pub multiple: bool,
+    pub groups: Vec<(String, Vec<(String, String)>)>,
+    pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
+}
 // ── Radio group scope ───────────────────────────────────────────────
 //
 // A thread_local stack mirroring `label.rs`'s `SCOPE_STACK`. While a
@@ -711,13 +745,6 @@ pub fn files_cb(
 
 // ── Select ───────────────────────────────────────────────────────────
 
-/// Props for `<select>`.
-pub struct SelectProps {
-    pub options: Vec<(String, String)>,
-    pub value: String,
-    pub disabled: bool,
-    pub on_change: Option<Box<dyn FnMut(&str, &mut App)>>,
-}
 
 /// Wrap a closure as an `on:change` callback for select.
 pub fn str_select_change_cb(
@@ -753,6 +780,8 @@ where
 
 fn select_inner(props: SelectProps, render: Option<SelectRender>) -> Stateful<gpui::Div> {
     let options = std::rc::Rc::new(props.options);
+    let groups = std::rc::Rc::new(props.groups);
+    let multiple = props.multiple;
     let selected = props.value;
     let disabled = props.disabled;
     let on_change = std::rc::Rc::new(std::cell::RefCell::new(props.on_change));
@@ -779,11 +808,46 @@ fn select_inner(props: SelectProps, render: Option<SelectRender>) -> Stateful<gp
         );
     }
 
-    let display_label = options
-        .iter()
-        .find(|(v, _)| *v == selected)
-        .map(|(_, l)| l.clone())
-        .unwrap_or_else(|| selected.clone());
+    // Compute the trigger display label.
+    // - Single-select: the label of the matching option (or the raw value).
+    // - Multiple-select: selected labels joined by ", " (empty if none).
+    let display_label = if multiple {
+        let selected_vals: Vec<&str> = selected.split(',').filter(|s| !s.is_empty()).collect();
+        let labels: Vec<String> = selected_vals
+            .iter()
+            .filter_map(|sv| {
+                options
+                    .iter()
+                    .find(|(v, _)| v == sv)
+                    .map(|(_, l)| l.clone())
+                    .or_else(|| {
+                        groups
+                            .iter()
+                            .flat_map(|(_, opts)| opts.iter())
+                            .find(|(v, _)| v == sv)
+                            .map(|(_, l)| l.clone())
+                    })
+            })
+            .collect();
+        labels.join(", ")
+    } else {
+        options
+            .iter()
+            .find(|(v, _)| *v == selected)
+            .map(|(_, l)| l.clone())
+            .or_else(|| {
+                if groups.is_empty() {
+                    None
+                } else {
+                    groups
+                        .iter()
+                        .flat_map(|(_, opts)| opts.iter())
+                        .find(|(v, _)| *v == selected)
+                        .map(|(_, l)| l.clone())
+                }
+            })
+            .unwrap_or_else(|| selected.clone())
+    };
 
     let border_color = if disabled {
         hsla(0.0, 0.0, 0.7, 1.0)
@@ -857,17 +921,11 @@ fn select_inner(props: SelectProps, render: Option<SelectRender>) -> Stateful<gp
             }
         });
 
-        // The popover is an absolute child of the (relative) trigger,
-        // anchored below it via `top(px(32.))` — matching the date-picker
-        // popup convention in `input_text.rs`. `deferred` paints it above
-        // all non-deferred elements so it isn't clipped by following siblings.
-        // Click-outside is handled by `on_mouse_down_out` on the popover itself
-        // (see `render_select_popover`): it fires in the capture phase when the
-        // mouse is geometrically outside the popover's bounds, so clicks on
-        // options (inside the popover) are never intercepted.
         el = el.child(deferred(render_select_popover(
             options.as_slice(),
+            groups.as_slice(),
             &selected,
+            multiple,
             &on_change,
             &open_write,
             &render,
@@ -886,19 +944,20 @@ type SelectRender = std::rc::Rc<dyn Fn(&str, &str) -> gpui::AnyElement>;
 
 /// Render the absolute popover listing `options` below the trigger.
 ///
-/// Anchored to the (relative) trigger via `absolute` + `top`, matching the
-/// date-picker popup convention in `input_text.rs`. Each option is a
-/// stateful row that fires `on_change` and closes the popover on click,
-/// stopping propagation so the trigger's toggle handler does not re-open it.
+/// When `groups` is non-empty, options are rendered by group: each group name
+/// is a non-clickable bold header row, followed by its options.
+/// When `multiple` is true, clicking an option toggles that value in the
+/// comma-separated `selected` string and the popover stays open. When false,
+/// clicking fires `on:change` and closes the popover.
 fn render_select_popover(
     options: &[(String, String)],
+    groups: &[(String, Vec<(String, String)>)],
     selected: &str,
+    multiple: bool,
     on_change: &std::rc::Rc<std::cell::RefCell<Option<SelectChange>>>,
     open_write: &crate::reactive::WriteSignal<bool>,
     render: &Option<SelectRender>,
 ) -> Stateful<gpui::Div> {
-    // Stateful (with an id) so `overflow_y_scroll` is available for long
-    // option lists; the id is unique per render via `next_auto_id`.
     let open_write_out = open_write.clone();
     let mut list = gpui::div()
         .id(("select-popover", crate::reactive::next_auto_id()))
@@ -916,59 +975,165 @@ fn render_select_popover(
         .shadow_md()
         .flex()
         .flex_col()
-        // Close the popover when the mouse is pressed outside its bounds.
-        // `on_mouse_down_out` fires in the CAPTURE phase and checks
-        // `!hitbox.contains(mouse_position)` geometrically — so clicks on
-        // options (which are inside the popover's bounds) never trigger this.
-        // `stop_propagation` prevents the trigger's bubble-phase `on_mouse_down`
-        // from toggling the popover back open when the trigger itself is clicked.
         .on_mouse_down_out(move |_event: &MouseDownEvent, _window, cx: &mut App| {
             open_write_out.set(cx, false);
             cx.stop_propagation();
         });
 
-    for (idx, (val, label)) in options.iter().enumerate() {
-        let is_selected = val == selected;
-        let val_for_cb = val.clone();
-        let on_change_for_cb = on_change.clone();
-        let open_write_for_cb = open_write.clone();
-        let bg = if is_selected {
-            hsla(0.6, 0.8, 0.5, 1.0)
-        } else {
-            gpui::transparent_black()
-        };
-        let fg = if is_selected {
-            gpui::white()
-        } else {
-            gpui::black()
-        };
-        list = list.child(
-            gpui::div()
-                .id(("select-option", idx as u64))
-                .w_full()
-                .px_2()
-                .py_1()
-                .text_size(px(14.))
-                .text_color(fg)
-                .bg(bg)
-                .cursor_pointer()
-                .child(if let Some(r) = render.as_ref() {
-                    r(val, label)
-                } else {
-                    SharedString::from(label.clone()).into_any_element()
-                })
-                .on_mouse_down(
-                    MouseButton::Left,
-                    move |_event: &MouseDownEvent, _window, cx: &mut App| {
-                        if let Some(cb) = on_change_for_cb.borrow_mut().as_mut() {
-                            cb(&val_for_cb, cx);
-                        }
-                        open_write_for_cb.set(cx, false);
-                        cx.stop_propagation();
-                    },
-                ),
-        );
-    }
+    let selected_owned: String = selected.to_string();
 
+    let mut idx: u64 = 0;
+
+    // Render grouped options (if groups is non-empty) or flat options.
+    if !groups.is_empty() {
+        for (group_name, group_options) in groups {
+            // Non-clickable bold group header
+            list = list.child(
+                gpui::div()
+                    .w_full()
+                    .px_2()
+                    .py_1()
+                    .text_size(px(12.))
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(hsla(0.0, 0.0, 0.4, 1.0))
+                    .child(SharedString::from(group_name.clone())),
+            );
+            for (val, label) in group_options {
+                let is_sel = if multiple {
+                    selected_owned.split(',').any(|s| s == val)
+                } else {
+                    selected_owned.as_str() == val.as_str()
+                };
+                let val_for_cb = val.clone();
+                let on_change_for_cb = on_change.clone();
+                let open_write_for_cb = open_write.clone();
+                let sel_for_cb = selected_owned.clone();
+                let bg = if is_sel {
+                    hsla(0.6, 0.8, 0.5, 1.0)
+                } else {
+                    gpui::transparent_black()
+                };
+                let fg = if is_sel {
+                    gpui::white()
+                } else {
+                    gpui::black()
+                };
+                let row_id = idx;
+                idx += 1;
+                list = list.child(
+                    gpui::div()
+                        .id(("select-option", row_id))
+                        .w_full()
+                        .px_2()
+                        .py_1()
+                        .text_size(px(14.))
+                        .text_color(fg)
+                        .bg(bg)
+                        .cursor_pointer()
+                        .child(if let Some(r) = render.as_ref() {
+                            r(val, label)
+                        } else {
+                            SharedString::from(label.clone()).into_any_element()
+                        })
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            move |_event: &MouseDownEvent, _window, cx: &mut App| {
+                                let new_val = if multiple {
+                                    let mut parts: Vec<&str> = sel_for_cb.split(',').filter(|s| !s.is_empty()).collect();
+                                    if let Some(pos) = parts.iter().position(|s| *s == val_for_cb) {
+                                        parts.remove(pos);
+                                    } else {
+                                        parts.push(&val_for_cb);
+                                    }
+                                    parts.join(",")
+                                } else {
+                                    val_for_cb.clone()
+                                };
+                                if let Some(cb) = on_change_for_cb.borrow_mut().as_mut() {
+                                    cb(&new_val, cx);
+                                }
+                                if !multiple {
+                                    open_write_for_cb.set(cx, false);
+                                }
+                                cx.stop_propagation();
+                            },
+                        ),
+                );
+            }
+        }
+    } else {
+        for (val, label) in options {
+            let is_sel = if multiple {
+                selected_owned.split(',').any(|s| s == val)
+            } else {
+                selected_owned.as_str() == val.as_str()
+            };
+            let val_for_cb = val.clone();
+            let on_change_for_cb = on_change.clone();
+            let open_write_for_cb = open_write.clone();
+            let sel_for_cb = selected_owned.clone();
+            let bg = if is_sel {
+                hsla(0.6, 0.8, 0.5, 1.0)
+            } else {
+                gpui::transparent_black()
+            };
+            let fg = if is_sel {
+                gpui::white()
+            } else {
+                gpui::black()
+            };
+            let row_id = idx;
+            idx += 1;
+            list = list.child(
+                gpui::div()
+                    .id(("select-option", row_id))
+                    .w_full()
+                    .px_2()
+                    .py_1()
+                    .text_size(px(14.))
+                    .text_color(fg)
+                    .bg(bg)
+                    .cursor_pointer()
+                    .child(if let Some(r) = render.as_ref() {
+                        r(val, label)
+                    } else {
+                        SharedString::from(label.clone()).into_any_element()
+                    })
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        move |_event: &MouseDownEvent, _window, cx: &mut App| {
+                            let new_val = if multiple {
+                                let mut parts: Vec<&str> = sel_for_cb.split(',').filter(|s| !s.is_empty()).collect();
+                                if let Some(pos) = parts.iter().position(|s| *s == val_for_cb) {
+                                    parts.remove(pos);
+                                } else {
+                                    parts.push(&val_for_cb);
+                                }
+                                parts.join(",")
+                            } else {
+                                val_for_cb.clone()
+                            };
+                            if let Some(cb) = on_change_for_cb.borrow_mut().as_mut() {
+                                cb(&new_val, cx);
+                            }
+                            if !multiple {
+                                open_write_for_cb.set(cx, false);
+                            }
+                            cx.stop_propagation();
+                        },
+                    ),
+            );
+        }
+    }
     list
+}
+
+// ── Datalist ────────────────────────────────────────────────────────
+
+/// Runtime function for `<datalist>`. Renders nothing (`Empty`) but registers
+/// `id` + `options` in the thread-local `DATALISTS` map so text inputs with
+/// `list=<id>` can show autocomplete suggestions.
+pub fn datalist(id: String, options: Vec<String>) -> gpui::Empty {
+    register_datalist(&id, options);
+    gpui::Empty
 }

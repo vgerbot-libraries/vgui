@@ -1,6 +1,6 @@
 //! Compile/smoke test for button tab, img alt, textarea rows, and meter.
 
-use gpui::{Element, IntoElement};
+use gpui::{App, Element, IntoElement};
 use vgui::prelude::*;
 use vgui::view;
 
@@ -45,5 +45,56 @@ fn widgets_compile_and_produce_elements() {
             <input type="submit" value="Go" />
             <input type="reset" value="Clear" />
         </form>
+    });
+
+    // datalist + input with list
+    let datalist = view! {
+        <datalist id="fruits" options={vec!["apple".to_string(), "banana".to_string()]} />
+    };
+    let _ = datalist.into_any_element();
+
+    assert_into_any(|| view! {
+        <input type="text" list="fruits" />
+    });
+
+    // select multiple
+    assert_into_any(|| view! {
+        <select
+            multiple={true}
+            options={vec![
+                ("a".to_string(), "Alpha".to_string()),
+                ("b".to_string(), "Beta".to_string()),
+            ]}
+            value={"a,b".to_string()}
+            on:change={move |_v: &str, _cx: &mut App| {}}
+        />
+    });
+
+    // select with groups
+    assert_into_any(|| view! {
+        <select
+            groups={vec![
+                ("Group 1".to_string(), vec![
+                    ("1a".to_string(), "Option 1A".to_string()),
+                ]),
+            ]}
+            value={"1a".to_string()}
+            on:change={move |_v: &str, _cx: &mut App| {}}
+        />
+    });
+
+    // output element
+    let output = view! { <output>{"42"}</output> };
+    let _ = output.into_any_element();
+
+    // option and optgroup as standalone tags (pure div aliases)
+    let opt = view! { <option>{"x"}</option> };
+    let _ = opt.into_any_element();
+    let optgroup = view! { <optgroup>{"group"}</optgroup> };
+    let _ = optgroup.into_any_element();
+
+    // input type=color
+    assert_into_any(|| view! {
+        <input type="color" value={"#ff0000".to_string()} />
     });
 }

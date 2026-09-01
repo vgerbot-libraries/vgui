@@ -54,6 +54,7 @@ view! {
 | `pattern`     | All text-based         | Literal match or `*` wildcard (`foo*`, `*bar`). Not JS RegExp. |
 | `minlength`   | All text-based         | Minimum character count (usize).   |
 | `maxlength`   | All text-based         | Maximum character count (usize).   |
+| `list`        | All text-based         | Datalist id for autocomplete suggestions. |
 
 ### Type-specific placeholder defaults
 
@@ -96,6 +97,14 @@ Rules applied (in order):
    - `email` — exactly one `@` with non-empty local and domain parts.
    - `url` — must start with `http://` or `https://`.
    - `number` — must parse as `f64` and satisfy `min`/`max` if set.
+
+### Color picker
+
+`<input type="color">` displays a 24×full-height color swatch on the right
+side of the input, showing the current `#RRGGBB` value (gray on parse
+failure). Clicking the swatch opens an 8×3 preset palette of 24 colors.
+Clicking a preset writes the uppercase `#RRGGBB` value, closes the popup,
+and fires `on:input` + `on:change`. Free RGB sliders are not provided.
 
 ## Checkbox & Radio
 
@@ -263,11 +272,61 @@ When no child closure is given, each option renders as plain label text.
 
 | Attribute    | Type                          | Description                    |
 | ------------ | ----------------------------- | ------------------------------ |
-| `options`    | `Vec<(String, String)>`       | Value-label pairs.             |
-| `value`      | `String`                      | Currently selected value.      |
+| `options`    | `Vec<(String, String)>`       | Value-label pairs (flat list). |
+| `groups`     | `Vec<(String, Vec<(String, String)>)>` | Grouped options; group name + value-label pairs. When non-empty, the popover renders by group. |
+| `value`      | `String`                      | Currently selected value. In multiple mode, comma-separated values (`a,b`). |
+| `multiple`   | bool                          | Enables multi-select. Default `false`. |
 | `disabled`   | bool                          | Disables the select.           |
-| `on:change`  | `FnMut(&str, &mut App)`       | Fires on selection change.     |
+| `on:change`  | `FnMut(&str, &mut App)`       | Fires on selection change. In multiple mode, passes the comma-separated string. |
 | `style`/`class`/`id` | —                      | Standard styling.              |
+### Multiple selection
+
+When `multiple={true}`, clicking an option toggles that value in the
+comma-separated `value` string. The popover stays open after each toggle
+(click outside or press Escape to close). The trigger text shows the selected
+labels joined by `", "` (empty if none).
+
+```rust
+view! {
+    <select
+        multiple={true}
+        options={vec![
+            ("a".to_string(), "Alpha".to_string()),
+            ("b".to_string(), "Beta".to_string()),
+        ]}
+        value={sel.get()}
+        on:change={move |v: &str, cx: &mut App| set_sel.set(cx, v.to_string())}
+    />
+}
+```
+
+### Grouped options
+
+Use `groups` instead of `options` to render options under non-clickable bold
+group headers. Each group is `(group_name, Vec<(value, label)>)`. When
+`groups` is non-empty, the popover renders by group; flat `options` are
+ignored for rendering but still used for label lookups.
+
+```rust
+view! {
+    <select
+        groups={vec![
+            ("Fruits".to_string(), vec![
+                ("apple".to_string(), "Apple".to_string()),
+                ("banana".to_string(), "Banana".to_string()),
+            ]),
+            ("Vegetables".to_string(), vec![
+                ("carrot".to_string(), "Carrot".to_string()),
+            ]),
+        ]}
+        value={sel.get()}
+        on:change={move |v: &str, cx: &mut App| set_sel.set(cx, v.to_string())}
+    />
+}
+```
+
+`<select>` does not read `<option>` or `<optgroup>` child nodes; use the
+`options` or `groups` prop instead.
 
 ### Child closure signature
 
@@ -275,6 +334,29 @@ The optional child is a closure `Fn(&str, &str) -> impl IntoElement`. The first
 argument is the option's value, the second is its label. The closure must be
 `Fn` (not `FnMut`) because it is invoked from multiple render sites.
 
+
+## Datalist
+
+`<datalist>` provides autocomplete suggestions for text inputs. It renders
+nothing but registers a list of options under an `id`. A text input with a
+matching `list=<id>` attribute shows prefix-matched suggestions (up to 8)
+below the input when focused and the value is non-empty. Clicking a suggestion
+writes it to the input and fires `on:input` + `on:change`.
+
+```rust
+view! {
+    <datalist id="cities" options={vec!["Paris".to_string(), "London".to_string()]} />
+    <input type="text" list="cities" on:input={move |v: &str, cx: &mut App| {}} />
+}
+```
+
+`<datalist>` requires an `id` attribute and accepts `options={Vec<String>}`.
+It does not read `<option>` child nodes; use the `options` prop.
+
+## Output
+
+`<output>` is a pure `<div>` alias — a generic container with no special
+behavior. Use it to display computed results.
 ## Textarea
 
 `<textarea>` is a void element (no children) configured through attributes:
