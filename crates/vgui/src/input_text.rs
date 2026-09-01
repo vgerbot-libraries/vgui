@@ -66,6 +66,11 @@ pub struct TextInput {
     max: Option<f64>,
     step: Option<f64>,
     rows: Option<u32>,
+    required: bool,
+    pattern: Option<String>,
+    minlength: Option<usize>,
+    maxlength: Option<usize>,
+    form_submit: Option<crate::form::FormHandler>,
     cursor: usize,
     selection: Option<Range<usize>>,
     marked: Option<(Range<usize>, String)>,
@@ -98,6 +103,11 @@ impl TextInput {
             max: None,
             step: None,
             rows: None,
+            required: false,
+            pattern: None,
+            minlength: None,
+            maxlength: None,
+            form_submit: None,
             cursor: 0,
             selection: None,
             marked: None,
@@ -133,6 +143,11 @@ impl TextInput {
         self.max = props.max;
         self.step = props.step;
         self.rows = props.rows;
+        self.required = props.required;
+        self.pattern = props.pattern;
+        self.minlength = props.minlength;
+        self.maxlength = props.maxlength;
+        self.form_submit = crate::form::current_form_submit();
         if !self.focused && props.value != self.value {
             self.value = props.value.clone();
             self.cursor = self.value.len();
@@ -453,6 +468,7 @@ impl TextInput {
                     cx.notify();
                 } else {
                     self.fire_on_change(cx);
+                    crate::form::__form_submit(&mut **cx);
                 }
             }
             "escape" => {
@@ -753,6 +769,19 @@ impl TextInput {
             .child(weekday_row)
             .child(day_grid)
     }
+    /// Check the current value against required/pattern/minlength/maxlength/kind rules.
+    fn is_valid(&self) -> bool {
+        validate_text(
+            self.kind,
+            &self.value,
+            self.required,
+            self.pattern.as_deref(),
+            self.minlength,
+            self.maxlength,
+            self.min,
+            self.max,
+        )
+    }
 }
 
 // ── Render ───────────────────────────────────────────────────────────
@@ -876,7 +905,11 @@ impl Render for TextInput {
                 px(28.)
             })
             .border_1()
-            .border_color(hsla(0.0, 0.0, 0.6, 0.4))
+            .border_color(if self.is_valid() {
+                hsla(0.0, 0.0, 0.6, 0.4)
+            } else {
+                hsla(0., 0.8, 0.5, 1.)
+            })
             .rounded(px(4.))
             .bg(gpui::white());
         if self.multiline {
@@ -1156,6 +1189,10 @@ pub struct TextInputProps {
     pub class: Option<TwStyle>,
     pub id: Option<String>,
     pub tabindex: Option<isize>,
+    pub required: bool,
+    pub pattern: Option<String>,
+    pub minlength: Option<usize>,
+    pub maxlength: Option<usize>,
     pub rows: Option<u32>,
 }
 
@@ -1215,6 +1252,10 @@ pub fn text_area(props: TextAreaProps) -> Entity<TextInput> {
                     id: props.id,
                     tabindex: props.tabindex,
                     rows: props.rows,
+                    required: false,
+                    pattern: None,
+                    minlength: None,
+                    maxlength: None,
                 },
                 cx,
             );
@@ -1242,6 +1283,84 @@ pub fn str_change_cb(
     f: impl FnMut(&str, &mut App) + 'static,
 ) -> Box<dyn FnMut(&str, &mut App)> {
     Box::new(f)
+}
+
+// ── Validation ──────────────────────────────────────────────────────
+
+/// Check a text value against HTML-like constraint rules.
+///
+/// `pattern` is not a JS RegExp — it supports an exact literal or a single
+/// trailing/leading `*` wildcard (`foo*`, `*bar`, `foo`).
+pub fn validate_text(
+    kind: TextKind,
+    value: &str,
+    required: bool,
+    pattern: Option<&str>,
+    minlength: Option<usize>,
+    maxlength: Option<usize>,
+    min: Option<f64>,
+    max: Option<f64>,
+) -> bool {
+    if required && value.is_empty() {
+        return false;
+    }
+    if let Some(n) = minlength {
+        if value.chars().count() < n {
+            return false;
+        }
+    }
+    if let Some(n) = maxlength {
+        if value.chars().count() > n {
+            return false;
+        }
+    }
+    if let Some(pat) = pattern {
+        if !match_pattern(pat, value) {
+            return false;
+        }
+    }
+    match kind {
+        TextKind::Email => {
+            let at = value.matches('@').count();
+            if at != 1 {
+                return false;
+            }
+            let mut parts = value.splitn(2, '@');
+            let local = parts.next().unwrap_or("");
+            let domain = parts.next().unwrap_or("");
+            !local.is_empty() && !domain.is_empty()
+        }
+        TextKind::Url => value.starts_with("http://") || value.starts_with("https://"),
+        TextKind::Number => {
+            if value.parse::<f64>().is_err() {
+                return false;
+            }
+            let n: f64 = value.parse().unwrap();
+            if let Some(lo) = min {
+                if n < lo {
+                    return false;
+                }
+            }
+            if let Some(hi) = max {
+                if n > hi {
+                    return false;
+                }
+            }
+            true
+        }
+        _ => true,
+    }
+}
+
+/// Match `pat` against `value` with single `*` wildcard support.
+fn match_pattern(pat: &str, value: &str) -> bool {
+    if let Some(prefix) = pat.strip_suffix('*') {
+        value.starts_with(prefix)
+    } else if let Some(suffix) = pat.strip_prefix('*') {
+        value.ends_with(suffix)
+    } else {
+        value == pat
+    }
 }
 
 // ── Free functions ───────────────────────────────────────────────────
@@ -1399,5 +1518,194 @@ fn month_name(month: u32) -> &'static str {
         11 => "November",
         12 => "December",
         _ => "",
+    }
+}
+
+#[cfg(test)]
+mod validate_tests {
+    use super::*;
+
+    #[test]
+    fn empty_required_fails() {
+        assert!(!validate_text(
+            TextKind::Text,
+            "",
+            true,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(validate_text(
+            TextKind::Text,
+            "x",
+            true,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn email_validation() {
+        assert!(validate_text(
+            TextKind::Email,
+            "a@b.co",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(!validate_text(
+            TextKind::Email,
+            "nope",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(!validate_text(
+            TextKind::Email,
+            "@b.co",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn url_validation() {
+        assert!(validate_text(
+            TextKind::Url,
+            "https://example.com",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(!validate_text(
+            TextKind::Url,
+            "example.com",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn minlength_validation() {
+        assert!(!validate_text(
+            TextKind::Text,
+            "ab",
+            false,
+            None,
+            Some(3),
+            None,
+            None,
+            None
+        ));
+        assert!(validate_text(
+            TextKind::Text,
+            "abc",
+            false,
+            None,
+            Some(3),
+            None,
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn pattern_literal() {
+        assert!(validate_text(
+            TextKind::Text,
+            "abc",
+            false,
+            Some("abc"),
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(!validate_text(
+            TextKind::Text,
+            "abd",
+            false,
+            Some("abc"),
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(validate_text(
+            TextKind::Text,
+            "abcdef",
+            false,
+            Some("abc*"),
+            None,
+            None,
+            None,
+            None
+        ));
+        assert!(validate_text(
+            TextKind::Text,
+            "foobar",
+            false,
+            Some("*bar"),
+            None,
+            None,
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn number_with_min_max() {
+        assert!(validate_text(
+            TextKind::Number,
+            "5",
+            false,
+            None,
+            None,
+            None,
+            Some(0.),
+            Some(10.)
+        ));
+        assert!(!validate_text(
+            TextKind::Number,
+            "15",
+            false,
+            None,
+            None,
+            None,
+            Some(0.),
+            Some(10.)
+        ));
+        assert!(!validate_text(
+            TextKind::Number,
+            "abc",
+            false,
+            None,
+            None,
+            None,
+            None,
+            None
+        ));
     }
 }

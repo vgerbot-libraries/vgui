@@ -50,7 +50,10 @@ view! {
 | `style`       | All text-based         | CSS-in-Rust styles.                  |
 | `class`       | All text-based         | Tailwind classes.                    |
 | `id`          | All text-based         | Element id (for `<label for=>`).     |
-| `tabindex`    | All text-based         | Tab order.                           |
+| `required`    | All text-based         | Fails validation when empty.       |
+| `pattern`     | All text-based         | Literal match or `*` wildcard (`foo*`, `*bar`). Not JS RegExp. |
+| `minlength`   | All text-based         | Minimum character count (usize).   |
+| `maxlength`   | All text-based         | Maximum character count (usize).   |
 
 ### Type-specific placeholder defaults
 
@@ -73,9 +76,26 @@ default:
 | `week`           | `YYYY-Www`             |
 | `color`          | `#RRGGBB`              |
 
-> **Note:** `date`, `datetime-local`, `time`, `month`, `week`, and `color` are
-> text-entry v1 — they use a format placeholder and light validation with no
-> calendar/color popup. Popups are future work.
+> **Note:** `date`, `datetime-local`, `time`, `month`, and `week` render a
+> calendar popup. `color` renders a preset color palette popup. `tel` is
+> text-entry with format validation only.
+
+### Validation
+
+Text-based inputs check constraint rules on every render and turn the border
+red (`hsla(0, 0.8, 0.5, 1)`) when the value is invalid. Validation does not
+block `on:input` or `on:change` — it is visual feedback only.
+
+Rules applied (in order):
+
+1. `required` — value must not be empty.
+2. `minlength` / `maxlength` — character count bounds.
+3. `pattern` — exact literal match or a single `*` wildcard prefix/suffix
+   (`foo*`, `*bar`, `foo`). This is not a JavaScript RegExp.
+4. Type-specific checks:
+   - `email` — exactly one `@` with non-empty local and domain parts.
+   - `url` — must start with `http://` or `https://`.
+   - `number` — must parse as `f64` and satisfy `min`/`max` if set.
 
 ## Checkbox & Radio
 
@@ -301,8 +321,30 @@ view! {
 }
 ```
 
-> **Note:** `submit` and `reset` have no form semantics in vgui v1 — they
-> behave as buttons.
+> **Note:** Inside a `<form>`, `submit` and `reset` buttons automatically
+> invoke the form's `on:submit` / `on:reset` handler. An explicit `on:click`
+> overrides this — the auto-bind is skipped to avoid double-firing.
+
+## Form
+
+`<form>` wraps its children in a form context. `on:submit` and `on:reset`
+accept `FnMut(&mut App)` closures. Child `<input type="submit">` and
+`<input type="reset">` buttons auto-invoke the enclosing form's handler;
+pressing Enter in a single-line text input also triggers `on:submit`.
+
+```rust
+view! {
+    <form on:submit={move |cx| { /* ... */ }} on:reset={move |cx| { /* ... */ }}>
+        <input type="text" required={true} />
+        <input type="submit" value="Go" />
+        <input type="reset" value="Clear" />
+    </form>
+}
+```
+
+When no `<form>` ancestor is present, submit/reset buttons are no-ops.
+`<form>` supports standard styling attributes (`style`, `class`, `hover`,
+`active`, `focus`, `id`, `tabindex`, `ref`) and event handlers.
 
 
 ## Hidden

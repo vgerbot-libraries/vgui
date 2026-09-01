@@ -13,7 +13,8 @@ All of these expand to `gpui::div()` with no additional default styling:
 | `<div>`, `<span>`, `<p>`                           | Generic containers.          |
 | `<header>`, `<footer>`, `<nav>`, `<main>`         | Semantic sectioning.         |
 | `<section>`, `<article>`, `<aside>`, `<address>`  | Semantic sectioning.         |
-| `<form>`, `<fieldset>`, `<legend>`                 | Form containers (no form semantics). |
+| `<form>`                                            | Form context: `on:submit` / `on:reset` + child submit/reset buttons. |
+| `<fieldset>`, `<legend>`                            | Form containers (pure div aliases). |
 | `<figure>`, `<figcaption>`                         | Figure containers.           |
 | `<pre>`, `<blockquote>`, `<q>`                     | Text containers.             |
 

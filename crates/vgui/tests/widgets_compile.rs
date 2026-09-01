@@ -38,4 +38,12 @@ fn widgets_compile_and_produce_elements() {
         <meter value={0.3f64} min={0f64} max={1f64} low={0.2f64} high={0.8f64} optimum={0.5f64} />
     };
     let _ = meter.into_any_element();
+
+    assert_into_any(|| view! {
+        <form on:submit={move |_cx| {}} on:reset={move |_cx| {}}>
+            <input type="text" required={true} pattern={"abc"} minlength={1usize} />
+            <input type="submit" value="Go" />
+            <input type="reset" value="Clear" />
+        </form>
+    });
 }

@@ -22,6 +22,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "dialog" {
         return emit_dialog(el);
     }
+    if name == "form" {
+        return emit_form(el);
+    }
     if name == "portal" {
         return emit_portal(el);
     }
@@ -34,8 +37,6 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
-    // <colgroup>/<col> have no flex-box meaning; column widths are controlled
-    // per-cell via class/style. Render nothing.
     if name == "colgroup" || name == "col" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -116,7 +117,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         // Pure div aliases (semantic containers)
         "div" | "span" | "p"
         | "header" | "footer" | "nav" | "main" | "section" | "article" | "aside"
-        | "address" | "form" | "fieldset" | "legend" | "figure" | "figcaption"
+        | "address" | "fieldset" | "legend" | "figure" | "figcaption"
         | "pre" | "blockquote" | "q" => quote! { ::gpui::div() },
         // Headings h1-h6 with default font-size (rem) and font-weight
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
@@ -736,6 +737,10 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
     let mut max = None;
     let mut step = None;
     let mut multiple = None;
+    let mut required = None;
+    let mut pattern = None;
+    let mut minlength = None;
+    let mut maxlength = None;
 
     for attr in &el.attrs {
         match &attr.kind {
@@ -769,7 +774,10 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     "max" => max = Some(&attr.value),
                     "step" => step = Some(&attr.value),
                     "multiple" => multiple = Some(&attr.value),
-                    "accept" | "name" => {} // accepted but unused in v1
+                    "required" => required = Some(&attr.value),
+                    "pattern" => pattern = Some(&attr.value),
+                    "minlength" => minlength = Some(&attr.value),
+                    "maxlength" => maxlength = Some(&attr.value),
                     other => {
                         return Err(syn::Error::new(
                             id2.span(),
@@ -898,6 +906,35 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                 None => quote! { ::std::option::Option::None },
             };
 
+            let required_expr = match required {
+                Some(v) => bool_expr(v),
+                None => quote! { false },
+            };
+
+            let pattern_expr = match pattern {
+                Some(v) => {
+                    let e = attr_tokens(v);
+                    quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&(#e))) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
+            let minlength_expr = match minlength {
+                Some(v) => {
+                    let e = attr_tokens(v);
+                    quote! { ::std::option::Option::Some((#e) as ::std::primitive::usize) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
+            let maxlength_expr = match maxlength {
+                Some(v) => {
+                    let e = attr_tokens(v);
+                    quote! { ::std::option::Option::Some((#e) as ::std::primitive::usize) }
+                }
+                None => quote! { ::std::option::Option::None },
+            };
+
             Ok(quote! {
                 ::vgui::text_input(::vgui::TextInputProps {
                     kind: #kind_variant,
@@ -915,6 +952,10 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
                     class: #class_expr,
                     id: #id_expr,
                     tabindex: #tabindex_expr_val,
+                    required: #required_expr,
+                    pattern: #pattern_expr,
+                    minlength: #minlength_expr,
+                    maxlength: #maxlength_expr,
                     rows: ::std::option::Option::None,
                 })
             })
@@ -1100,8 +1141,20 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             if tabindex.is_none() {
                 ctor = quote! { #ctor.tab_index(0) };
             }
+            // Auto-bind form submit/reset when the user hasn't provided on:click.
+            // The on_click is added after chain_div_extras (which may add .id()).
+            let has_click = events.iter().any(|(ev, _, _)| ev.to_string() == "click");
 
-            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, false, &events);
+            let force_id = !has_click && (ty_str == "submit" || ty_str == "reset");
+            ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, force_id, &events);
+
+            if !has_click {
+                if ty_str == "submit" {
+                    ctor = quote! {{ let mut __el = #ctor; __el = __el.on_click(|_e: &::gpui::ClickEvent, _w: &mut ::gpui::Window, cx: &mut ::gpui::App| ::vgui::__form_submit(cx)); __el }};
+                } else if ty_str == "reset" {
+                    ctor = quote! {{ let mut __el = #ctor; __el = __el.on_click(|_e: &::gpui::ClickEvent, _w: &mut ::gpui::Window, cx: &mut ::gpui::App| ::vgui::__form_reset(cx)); __el }};
+                }
+            }
 
             if let Some(label) = label {
                 Ok(quote! {{
@@ -1532,6 +1585,94 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             el
         }})
     }
+}
+// ── <form> ───────────────────────────────────────────────────────────
+
+/// Emit a `<form>` element with `on:submit` / `on:reset` handlers.
+///
+/// Children are built inside `form_scope` so submit/reset buttons and text
+/// inputs can snapshot the enclosing form context. Other attributes (style,
+/// class, events, etc.) are applied to the inner div.
+fn emit_form(el: &Element) -> syn::Result<TokenStream2> {
+    let mut on_submit = None;
+    let mut on_reset = None;
+    let mut style = None;
+    let mut hover = None;
+    let mut active = None;
+    let mut focus = None;
+    let mut class = None;
+    let mut id = None;
+    let mut tabindex = None;
+    let mut ref_attr = None;
+    let mut events: Vec<(Ident, TokenStream2, Span)> = Vec::new();
+
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::On(ev) => {
+                let ev_name = ev.to_string();
+                let handler = attr_tokens(&attr.value);
+                match ev_name.as_str() {
+                    "submit" => on_submit = Some(handler),
+                    "reset" => on_reset = Some(handler),
+                    _ => events.push((ev.clone(), handler, attr.span)),
+                }
+            }
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Hover => hover = Some(attr),
+            AttrKind::Active => active = Some(attr),
+            AttrKind::Focus => focus = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            AttrKind::Id => id = Some(attr),
+            AttrKind::Tabindex => tabindex = Some(attr),
+            AttrKind::Ref => ref_attr = Some(attr),
+            AttrKind::Spread => {
+                return Err(syn::Error::new(attr.span, "spread attributes are not supported on <form>"));
+            }
+            AttrKind::Animate => {
+                return Err(syn::Error::new(attr.span, "`animate` is not supported on <form>"));
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <form>; allowed: style, class, hover, active, focus, id, tabindex, ref, on:submit, on:reset, on:* events",
+                ));
+            }
+        }
+    }
+
+    let on_submit_expr = match on_submit {
+        Some(h) => quote! { ::std::option::Option::Some(::std::boxed::Box::new(#h)) },
+        None => quote! { ::std::option::Option::None },
+    };
+    let on_reset_expr = match on_reset {
+        Some(h) => quote! { ::std::option::Option::Some(::std::boxed::Box::new(#h)) },
+        None => quote! { ::std::option::Option::None },
+    };
+
+    let kids = emit_children(&el.children)?;
+
+    let inner = chain_div_extras(
+        quote! { ::gpui::div() },
+        el,
+        style,
+        class,
+        hover,
+        active,
+        focus,
+        ref_attr,
+        id,
+        tabindex,
+        false,
+        &events,
+    );
+
+    Ok(quote! {
+        ::vgui::form_scope(#on_submit_expr, #on_reset_expr, || {
+            let mut __p = #inner;
+            #(let __c = #kids; __p = __p.child(__c);)*
+            __p
+        })
+    })
 }
 // ── <dialog> / <portal> / <floating> ─────────────────────────────────
 

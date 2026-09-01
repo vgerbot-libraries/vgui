@@ -19,6 +19,7 @@ mod control;
 mod input_text;
 mod input_widgets;
 mod overlay;
+mod form;
 mod label;
 pub mod prelude;
 mod reactive;
@@ -37,6 +38,7 @@ pub use crate::control::{details, for_each, for_each_or, meter, progress, show, 
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInputProps,
 };
+pub use crate::form::{form_scope, __form_submit, __form_reset};
 pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, f64_change_cb, file_input, files_cb, radio,
     radiogroup, range_input, select, select_with_options, FileProps, RadioProps, RangeProps, SelectProps,
