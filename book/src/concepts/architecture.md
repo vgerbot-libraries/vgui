@@ -12,21 +12,26 @@
 | `vgui-tailwind`    | proc-macro  | The `tw!` macro and the Tailwind class registry.                    |
 | `vgui-tailwind-core` | lib       | Shared class-parse/tables for `tw!` and `tw_dynamic` (no gpui dep). |
 
-In addition, eleven example binaries live under `examples/`:
+In addition, sixteen example binaries live under `examples/`:
 
 | Example           | Package name          | Demonstrates                                        |
 | ----------------- | --------------------- | --------------------------------------------------- |
 | Counter           | `vgui-counter`        | Signals, `create_memo`, `<Show>`, `twc!` class composition. |
-| Todo List         | `vgui-todolist`       | `<For>` with fallback, `css!` styling, filtering.   |
-| Inputs Demo       | `vgui-inputs`         | All `<input>` types with live echo.                 |
-| Tags Demo         | `vgui-tags-demo`      | HTML tag coverage, tables, progress, details, dialog, etc.  |
+| Todo List         | `vgui-todolist`       | `<For>` with fallback, `css!` styling, filtering, CRUD. |
+| Styling Showcase  | `vgui-styling`        | `css!` macro, Tailwind classes, pseudo-states, `twc!`, responsive breakpoints. |
 | Theming           | `vgui-theming`        | CSS variables, `theme!` macro, light/dark switching. |
-| Variants          | `vgui-variants`       | `variants!` macro, component variant system.        |
-| Focus Management  | `vgui-focus-management` | Focus trap, restore, roving tabindex.            |
-| ref Demo          | `vgui-ref-demo`       | `NodeRef` imperative handles (focus, scroll, bounds). |
-| Context           | `vgui-context`        | Context API, `<Provider>`, `use_context`.           |
-| Animation         | `vgui-animation`      | Animations, transitions, keyframes.                 |
-| Select Test       | `vgui-select-test`    | Select with grouped/multiple options, datalist.     |
+| Component Variants | `vgui-variants`      | `variants!` macro, typed variant structs, `ApplyStyle`. |
+| Inputs            | `vgui-inputs`         | All `<input>` types, `<select>` with groups/multiple/custom rendering. |
+| HTML Elements     | `vgui-elements`       | HTML tag coverage, tables, progress, details, dialog. |
+| Forms             | `vgui-forms`          | `<form>` submission, reset, field grouping, enter-to-submit. |
+| Context & Provider | `vgui-context`       | Context API, `<Provider>`, `use_context`, multi-module. |
+| Refs & NodeRef    | `vgui-refs`           | `NodeRef` imperative handles (focus, scroll, bounds). |
+| Focus Management  | `vgui-focus`          | Focus trap, restore, roving tabindex, `on:resize`. |
+| Overlays          | `vgui-overlays`       | `portal()`, `dialog()`, `floating()` overlay patterns. |
+| Animation         | `vgui-animation`      | Animations, transitions, keyframes, custom `animate={...}`. |
+| Canvas            | `vgui-canvas`         | `<canvas>`, `Context2D` API, shapes, paths, text, transforms. |
+| Router            | `vgui-router`         | SPA router with param matching, navigation, wildcard routes. |
+| Dashboard         | `vgui-dashboard`      | Capstone: router + theming + context + forms + overlays. |
 
 ## Crate Dependencies
 

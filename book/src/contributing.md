@@ -24,15 +24,20 @@ The examples are the fastest way to verify your changes:
 ```bash
 cargo run -p vgui-counter
 cargo run -p vgui-todolist
-cargo run -p vgui-inputs
-cargo run -p vgui-tags-demo
+cargo run -p vgui-styling
 cargo run -p vgui-theming
 cargo run -p vgui-variants
-cargo run -p vgui-focus-management
-cargo run -p vgui-ref-demo
+cargo run -p vgui-inputs
+cargo run -p vgui-elements
+cargo run -p vgui-forms
 cargo run -p vgui-context
+cargo run -p vgui-refs
+cargo run -p vgui-focus
+cargo run -p vgui-overlays
 cargo run -p vgui-animation
-cargo run -p vgui-select-test
+cargo run -p vgui-canvas
+cargo run -p vgui-router
+cargo run -p vgui-dashboard
 ```
 
 > When adding a new example, follow the

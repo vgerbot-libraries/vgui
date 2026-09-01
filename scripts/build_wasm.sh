@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the counter WASM demo and copy assets into the mdBook source tree.
+# Build a WASM demo and copy assets into the mdBook source tree.
 # Usage: scripts/build_wasm.sh [example-name]
 set -euo pipefail
 

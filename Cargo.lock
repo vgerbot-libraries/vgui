@@ -5731,6 +5731,8 @@ name = "vgui"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "gpui_platform",
+ "parking_lot",
  "trybuild",
  "vgui-css",
  "vgui-tailwind",
@@ -5790,7 +5792,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-focus-management"
+name = "vgui-dashboard"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -5800,13 +5802,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-ime-repro"
+name = "vgui-elements"
 version = "0.1.0"
 dependencies = [
  "gpui",
  "gpui_platform",
- "parking_lot",
  "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "vgui-focus"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "vgui-forms"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -5820,7 +5842,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-ref-demo"
+name = "vgui-overlays"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -5830,7 +5852,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-select-test"
+name = "vgui-refs"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -5840,7 +5862,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-tags-demo"
+name = "vgui-router"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "vgui-styling"
 version = "0.1.0"
 dependencies = [
  "gpui",

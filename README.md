@@ -88,7 +88,7 @@ This repository is a Cargo workspace:
 | `vgui-tailwind`        | proc-macro  | The `tw!` macro and the Tailwind class registry.              |
 | `vgui-tailwind-core`   | lib         | Shared class-parse/tables for `tw!` and `tw_dynamic` (no gpui dep). |
 
-Eleven example binaries live under [`examples/`](examples) — see
+Sixteen example binaries live under [`examples/`](examples) — see
 [Examples](#examples) below and the [book's Examples section](book/src/SUMMARY.md)
 for the full list.
 
@@ -211,21 +211,26 @@ browser.
 
 ## Examples
 
-Eleven end-to-end examples live under [`examples/`](examples):
+Sixteen end-to-end examples live under [`examples/`](examples):
 
 | Example | Command | Description |
 | ------- | ------- | ----------- |
 | Counter | `cargo run -p vgui-counter` | Signals, `create_memo`, `<Show>`, `twc!` class composition. |
-| Todo List | `cargo run -p vgui-todolist` | `<For>` with fallback, `css!` styling, filtering. |
-| Inputs Demo | `cargo run -p vgui-inputs` | All `<input>` types with live echo. |
-| Tags Demo | `cargo run -p vgui-tags-demo` | HTML tag coverage, tables, progress, details, dialog. |
+| Todo List | `cargo run -p vgui-todolist` | `<For>` with fallback, `css!` styling, filtering, CRUD. |
+| Styling Showcase | `cargo run -p vgui-styling` | `css!` macro, Tailwind classes, pseudo-states, `twc!`, responsive breakpoints. |
 | Theming | `cargo run -p vgui-theming` | CSS variables, `theme!` macro, light/dark switching. |
-| Variants | `cargo run -p vgui-variants` | `variants!` macro, component variant system. |
-| Focus Management | `cargo run -p vgui-focus-management` | Focus trap, restore, roving tabindex. |
-| ref Demo | `cargo run -p vgui-ref-demo` | `NodeRef` imperative handles (focus, scroll, bounds). |
-| Context | `cargo run -p vgui-context` | Context API, `<Provider>`, `use_context`. |
-| Animation | `cargo run -p vgui-animation` | Animations, transitions, keyframes. |
-| Select Test | `cargo run -p vgui-select-test` | Select with grouped/multiple options, datalist. |
+| Component Variants | `cargo run -p vgui-variants` | `variants!` macro, typed variant structs, `ApplyStyle`. |
+| Inputs | `cargo run -p vgui-inputs` | All `<input>` types, `<select>` with groups/multiple/custom rendering. |
+| HTML Elements | `cargo run -p vgui-elements` | HTML tag coverage, tables, progress, details, dialog. |
+| Forms | `cargo run -p vgui-forms` | `<form>` submission, reset, field grouping, enter-to-submit. |
+| Context & Provider | `cargo run -p vgui-context` | Context API, `<Provider>`, `use_context`, multi-module. |
+| Refs & NodeRef | `cargo run -p vgui-refs` | `NodeRef` imperative handles (focus, scroll, bounds). |
+| Focus Management | `cargo run -p vgui-focus` | Focus trap, restore, roving tabindex, `on:resize`. |
+| Overlays | `cargo run -p vgui-overlays` | `portal()`, `dialog()`, `floating()` overlay patterns. |
+| Animation | `cargo run -p vgui-animation` | Animations, transitions, keyframes, custom `animate={...}`. |
+| Canvas | `cargo run -p vgui-canvas` | `<canvas>`, `Context2D` API, shapes, paths, text, transforms. |
+| Router | `cargo run -p vgui-router` | SPA router with param matching, navigation, wildcard routes. |
+| Dashboard | `cargo run -p vgui-dashboard` | Capstone: router + theming + context + forms + overlays. |
 
 ## Usage
 

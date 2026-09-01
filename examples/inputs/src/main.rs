@@ -18,6 +18,9 @@ fn app() -> impl gpui::IntoElement {
     let (sel_val, set_sel_val) = create_signal("a".to_string());
     let (number_val, set_number) = create_signal(String::new());
     let (date_val, set_date) = create_signal(String::new());
+    let (group_sel, set_group_sel) = create_signal("apple".to_string());
+    let (multi_sel, set_multi_sel) = create_signal("1,3".to_string());
+    let (custom_sel, set_custom_sel) = create_signal("1".to_string());
     let sr0 = set_radio.clone();
     let sr0b = set_radio.clone();
     let scb = set_checked.clone();
@@ -181,6 +184,66 @@ fn app() -> impl gpui::IntoElement {
                 <span class="text-sm text-[#888]">{"Wrapped file input"}</span>
                 <input type="file" value="Choose file..." on:change={move |paths: Vec<std::path::PathBuf>, _cx: &mut App| { if let Some(p) = paths.first() { eprintln!("file: {:?}", p); } }} />
             </label>
+
+            <hr />
+
+            // ── Select with grouped options ──────────────────────────
+            <div class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Select with groups"}</span>
+                <select
+                    groups={vec![
+                        ("Fruits".to_string(), vec![
+                            ("apple".to_string(), "Apple".to_string()),
+                            ("banana".to_string(), "Banana".to_string()),
+                        ]),
+                        ("Vegetables".to_string(), vec![
+                            ("carrot".to_string(), "Carrot".to_string()),
+                            ("daikon".to_string(), "Daikon".to_string()),
+                        ]),
+                    ]}
+                    value={group_sel.get()}
+                    on:change={move |v: &str, cx: &mut App| set_group_sel.set(cx, v.to_string())}
+                />
+                <span class="text-sm text-[#0f0]">{format!("grouped select: {}", group_sel.get())}</span>
+            </div>
+
+            // ── Multiple select ──────────────────────────────────────
+            <div class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Multiple select (comma-separated values)"}</span>
+                <select
+                    options={vec![
+                        ("1".to_string(), "One".to_string()),
+                        ("2".to_string(), "Two".to_string()),
+                        ("3".to_string(), "Three".to_string()),
+                    ]}
+                    value={multi_sel.get()}
+                    multiple={true}
+                    on:change={move |v: &str, cx: &mut App| set_multi_sel.set(cx, v.to_string())}
+                />
+                <span class="text-sm text-[#0f0]">{format!("multi select: {}", multi_sel.get())}</span>
+            </div>
+
+            // ── Select with custom child closure ─────────────────────
+            <div class="flex flex-col gap-1">
+                <span class="text-sm text-[#888]">{"Select with custom option rendering"}</span>
+                <select
+                    options={vec![
+                        ("1".to_string(), "One".to_string()),
+                        ("2".to_string(), "Two".to_string()),
+                        ("3".to_string(), "Three".to_string()),
+                    ]}
+                    value={custom_sel.get()}
+                    on:change={move |v: &str, cx: &mut App| set_custom_sel.set(cx, v.to_string())}
+                >
+                    {move |value: &str, label: &str| view! {
+                        <div class="flex items-center gap-2">
+                            <span class="text-[#0f0]">{value.to_string()}</span>
+                            <span>{label.to_string()}</span>
+                        </div>
+                    }}
+                </select>
+                <span class="text-sm text-[#0f0]">{format!("custom select: {}", custom_sel.get())}</span>
+            </div>
         </div>
     }
 }

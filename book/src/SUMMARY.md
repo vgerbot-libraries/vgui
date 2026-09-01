@@ -36,16 +36,20 @@
 
 - [Counter](./examples/counter.md)
 - [Todo List](./examples/todolist.md)
-- [Inputs Demo](./examples/inputs.md)
-- [Select Test](./examples/select-test.md)
-- [Tags Demo](./examples/tags-demo.md)
+- [Styling Showcase](./examples/styling.md)
 - [Theming](./examples/theming.md)
-- [Focus Management](./examples/focus-management.md)
-- [ref Demo](./examples/ref-demo.md)
-- [Context](./examples/context.md)
+- [Component Variants](./examples/variants.md)
+- [Inputs](./examples/inputs.md)
+- [HTML Elements](./examples/elements.md)
+- [Forms](./examples/forms.md)
+- [Context & Provider](./examples/context.md)
+- [Refs & NodeRef](./examples/refs.md)
+- [Focus Management](./examples/focus.md)
+- [Overlays](./examples/overlays.md)
 - [Animation](./examples/animation.md)
-- [Variants](./examples/variants.md)
 - [Canvas](./examples/canvas.md)
+- [Router](./examples/router.md)
+- [Dashboard](./examples/dashboard.md)
 
 # Feature Comparison
 

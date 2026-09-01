@@ -66,11 +66,8 @@ cargo run -p vgui-counter
 # Todo list with <For>, filtering, css! styling
 cargo run -p vgui-todolist
 
-# All <input> types: text, password, checkbox, radio, range, file, etc.
-cargo run -p vgui-inputs
-
-# HTML tag coverage: headings, lists, tables, progress, details, dialog, etc.
-cargo run -p vgui-tags-demo
+# Styling showcase: css! macro, Tailwind classes, pseudo-states, twc!, breakpoints
+cargo run -p vgui-styling
 
 # CSS variables, theme! macro, light/dark switching
 cargo run -p vgui-theming
@@ -78,20 +75,38 @@ cargo run -p vgui-theming
 # Component variants! macro with base + dimension styles
 cargo run -p vgui-variants
 
-# Focus trap, focus restore, roving tabindex
-cargo run -p vgui-focus-management
+# All <input> types plus <select> with groups/multiple/custom rendering
+cargo run -p vgui-inputs
 
-# NodeRef imperative handles (focus, scroll, bounds)
-cargo run -p vgui-ref-demo
+# HTML tag coverage: headings, lists, tables, progress, details, dialog, etc.
+cargo run -p vgui-elements
+
+# Form handling: submission, reset, field grouping, enter-to-submit
+cargo run -p vgui-forms
 
 # Context API, <Provider>, use_context
 cargo run -p vgui-context
 
+# NodeRef imperative handles (focus, scroll, bounds)
+cargo run -p vgui-refs
+
+# Focus trap, focus restore, roving tabindex
+cargo run -p vgui-focus
+
+# Overlays: portal(), dialog(), floating()
+cargo run -p vgui-overlays
+
 # Animations, transitions, keyframes
 cargo run -p vgui-animation
 
-# Select with grouped/multiple options, datalist
-cargo run -p vgui-select-test
+# Canvas drawing: Context2D API, shapes, paths, text, transforms
+cargo run -p vgui-canvas
+
+# SPA router with param matching, navigation, wildcard routes
+cargo run -p vgui-router
+
+# Capstone: router + theming + context + forms + overlays
+cargo run -p vgui-dashboard
 ```
 
 ### Web (WASM)
