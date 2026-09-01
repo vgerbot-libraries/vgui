@@ -37,6 +37,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "datalist" {
         return emit_datalist(el);
     }
+    if name == "canvas" {
+        return emit_canvas(el);
+    }
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -1904,6 +1907,54 @@ fn emit_datalist(el: &Element) -> syn::Result<TokenStream2> {
     Ok(quote! {
         ::vgui::datalist(::std::string::ToString::to_string(&(#id_expr)), #options_expr)
     })
+}
+
+/// Emit a `<canvas>` element.  Requires `paint={|ctx| ...}`; accepts optional
+/// `style` and `class`.  No children, no events.
+fn emit_canvas(el: &Element) -> syn::Result<TokenStream2> {
+    let mut paint = None;
+    let mut style = None;
+    let mut class = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id.to_string() == "paint" => {
+                paint = Some(&attr.value);
+            }
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <canvas>; allowed: `paint`, `style`, `class`",
+                ));
+            }
+        }
+    }
+    if !el.children.is_empty() {
+        return Err(syn::Error::new(el.tag.span(), "<canvas> cannot have children"));
+    }
+    let paint_value = paint.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<canvas> requires a `paint={|ctx| ...}` attribute")
+    })?;
+    let paint_tokens = attr_tokens(paint_value);
+    let mut ctor = quote! {
+        ::vgui::canvas_element(#paint_tokens)
+    };
+    if let Some(style) = style {
+        let v = attr_tokens(&style.value);
+        ctor = quote! { ::vgui::ApplyStyle::apply_to(#v, #ctor) };
+    }
+    if let Some(class) = class {
+        let v = attr_tokens(&class.value);
+        ctor = quote! {{
+            let __tw = ::vgui::tw!(#v);
+            let ::vgui::TwStyle { base, hover: _, focus: _, active: _, sm: _, md: _, lg: _, xl: _, animation: _, transition: _ } = __tw;
+            let mut __el = #ctor;
+            (base)(__el.style());
+            __el
+        }};
+    }
+    Ok(quote! { ::gpui::IntoElement::into_any_element(#ctor) })
 }
 
 /// Map an `aria:name` attribute to the corresponding gpui method call token stream.

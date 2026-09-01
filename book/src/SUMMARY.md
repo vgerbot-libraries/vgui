@@ -45,6 +45,7 @@
 - [Context](./examples/context.md)
 - [Animation](./examples/animation.md)
 - [Variants](./examples/variants.md)
+- [Canvas](./examples/canvas.md)
 
 # Feature Comparison
 
