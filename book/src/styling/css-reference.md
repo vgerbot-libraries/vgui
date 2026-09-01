@@ -33,7 +33,9 @@ category. Properties not listed here produce a compile-time error.
 | `grid-column-end`         | number                                                |
 | `grid-row`                | `span N` \| `A / B` \| `N`                            |
 | `grid-row-start`          | number                                                |
-| `grid-row-end`            | number                                                |
+| `grid-row-end`          | number                                                |
+| `grid-template-areas`   | string literals (rows of whitespace-separated cell names; `.` = empty cell). Infers `grid-template-columns`/`-rows` counts. |
+| `grid-area`             | `"name"` (resolves against `grid-template-areas`) \| `N` \| `row / col` \| `row-start / col-start / row-end / col-end` |
 | `scrollbar-width`         | `auto` \| `thin` \| `none`                            |
 
 ## Box Model
@@ -121,17 +123,16 @@ The following common CSS properties are **not** supported by `css!` because
 `gpui`'s styling model does not provide equivalents:
 
 - `transform` / `translate` / `rotate` / `scale`
-- `transition` / `animation`
+- `transition` / `animation` — use `tw!` `transition-*` / `animate-*` utilities instead. See [Animations & Transitions](./animations.md).
 - `z-index` (use `tw!` `z-N` utilities instead)
 - `box-sizing` (gpui uses content-box semantics)
-- `grid-template-areas`
 - `gap` with more than 2 values
 - `outline` (use `border` instead)
 - `list-style` / `list-style-type`
 - `background-image` (use `linear-gradient` in `background` instead)
 - `background-position` / `background-size` / `background-repeat`
 - `float` / `clear`
-- `@media` queries / responsive breakpoints
+- `@media` queries / responsive breakpoints — use `tw!` responsive prefixes `sm:`/`md:`/`lg:`/`xl:` instead. See [Tailwind Classes](./tailwind-classes.md).
 - `!important`
 
 If you need a property not listed here, check whether a `tw!` utility covers

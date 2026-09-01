@@ -69,6 +69,10 @@ view! {
 / `vgui::show_when` / `vgui::for_each` / `vgui::for_each_or` function calls.
 See [Control Flow](../elements/control-flow.md).
 
+`<Provider>` is special-cased to push a context value before evaluating its
+children and pop it after, via `vgui::__provider_scope_enter` /
+`vgui::__provider_scope_exit`. See [Context & Provider](../elements/context.md).
+
 ### Self-closing and void elements
 
 Both `<input type="text">` and `<input type="text" />` are accepted. Void
@@ -103,6 +107,8 @@ Attributes appear inside the opening tag as `name=value` pairs. Values can be:
 | `src`         | `src={path}`        | `<img>`, `<svg>` only   | Image/SVG path.                           |
 | `for`         | `for="id"`          | `<label>` only          | Associates label with input by id.        |
 | `ref`         | `ref={node_ref}`    | All elements            | Binds a `NodeRef` handle for imperative ops (focus, scroll, bounds). |
+| `role`        | `role="button"`     | All elements            | Sets ARIA role via `__resolve_aria_role`. |
+| `aria:name`   | `aria:label="..."`  | All elements            | Sets ARIA attribute (`aria:label`, `aria:description`, `aria:keyshortcuts`, `aria:selected`, `aria:expanded`, `aria:toggled`, `aria:valuenow`/`aria:numeric_value`, `aria:value`, `aria:placeholder`, `aria:numeric_value_step`). |
 
 ### Event handlers
 

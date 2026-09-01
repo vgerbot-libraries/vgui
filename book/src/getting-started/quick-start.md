@@ -57,10 +57,10 @@ fn main() {
 
 ## Running the Examples
 
-The repository includes four end-to-end examples under `examples/`:
+The repository includes eleven end-to-end examples under `examples/`:
 
 ```bash
-# Minimal counter with signals, memo, and <Show>
+# Minimal counter with signals, memo, <Show>, twc! class composition
 cargo run -p vgui-counter
 
 # Todo list with <For>, filtering, css! styling
@@ -71,7 +71,34 @@ cargo run -p vgui-inputs
 
 # HTML tag coverage: headings, lists, tables, progress, details, dialog, etc.
 cargo run -p vgui-tags-demo
+
+# CSS variables, theme! macro, light/dark switching
+cargo run -p vgui-theming
+
+# Component variants! macro with base + dimension styles
+cargo run -p vgui-variants
+
+# Focus trap, focus restore, roving tabindex
+cargo run -p vgui-focus-management
+
+# NodeRef imperative handles (focus, scroll, bounds)
+cargo run -p vgui-ref-demo
+
+# Context API, <Provider>, use_context
+cargo run -p vgui-context
+
+# Animations, transitions, keyframes
+cargo run -p vgui-animation
+
+# Select with grouped/multiple options, datalist
+cargo run -p vgui-select-test
 ```
+
+### Web (WASM)
+
+All examples also build for `wasm32-unknown-unknown`. See the
+[writing-examples rule](../../.agents/rules/writing-examples.md) for the
+dual-target pattern and `scripts/build_wasm.sh` for building WASM assets.
 
 ## Project Layout
 
@@ -93,9 +120,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-vgui = "0.1"
-gpui = "0.2"
-```
+vgui = { git = "https://github.com/vgerbot-libraries/vgui" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-platform = { git = "https://github.com/zed-industries/zed", package = "gpui_platform" }
 
 `src/main.rs` follows the pattern above: define an `app()` function that
 returns `impl IntoElement`, then wire it into `Application::run` with

@@ -43,6 +43,7 @@ use gpui_platform::single_threaded_web;
 fn app() -> impl gpui::IntoElement {
     let (open, set_open) = create_signal(false);
     let (text, set_text) = create_signal("Hello".to_string());
+    let (show_dialog, set_show_dialog) = create_signal(false);
     let (sel_val, set_sel_val) = create_signal("1".to_string());
     let dismiss_dialog = set_show_dialog.clone();
     let close_dialog_btn = set_show_dialog.clone();
@@ -140,7 +141,6 @@ fn app() -> impl gpui::IntoElement {
                 value={sel_val.get()}
                 on:change={move |v: &str, cx: &mut App| set_sel_val.set(cx, v.to_string())}
             />
-
             <hr />
 
             <details open={open.get()}>
@@ -229,6 +229,7 @@ fn main() {
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn start() {
     gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
     run();
 }
 ```

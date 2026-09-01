@@ -152,7 +152,25 @@ All built-in elements support these attributes:
 | `tabindex`   | `tabindex={0}`      | `≥0` sets tab order; `<0` is focusable only.   |
 | `on:event`   | `on:click={handler}`| Event handler (see [view! macro](../concepts/view-macro.md)). |
 | `ref`         | `ref={node_ref}`    | Binds a `NodeRef` handle for imperative ops (focus, scroll, bounds). See [Refs](./refs.md). |
+| `role`        | `role="button"`     | Sets ARIA role via `__resolve_aria_role`. |
+| `aria:name`   | `aria:label="..."`  | Sets ARIA attribute (`aria:label`, `aria:description`, `aria:keyshortcuts`, `aria:selected`, `aria:expanded`, `aria:toggled`, `aria:valuenow`/`aria:numeric_value`, `aria:value`, `aria:placeholder`, `aria:numeric_value_step`). |
 
 Elements that have `on:click`, `hover`, `active`, `focus`, `class`,
 `tabindex`, or `ref` but no explicit `id` automatically receive a stable
 auto-generated id (see [Auto IDs](../concepts/reactivity.md#auto-ids)).
+
+## Radio Group
+
+`<radiogroup>` wraps child `<input type="radio">` elements and enables roving
+tabindex with arrow-key navigation. It has no attributes — it establishes a
+scope (via `__radiogroup_scope_enter`/`__radiogroup_scope_exit`) that child
+radio buttons read to coordinate focus and selection. See
+[Input Elements](./inputs.md#radio-groups-roving-tabindex) for details.
+
+## Form
+
+`<form>` wraps children in a form context. The `on:submit` and `on:reset`
+attributes take `FnMut(&mut App)` closures. Child submit/reset buttons
+auto-invoke the form handler when activated. Pressing Enter in a single-line
+text input triggers `on:submit`. See [Input Elements](./inputs.md#form) for
+details.

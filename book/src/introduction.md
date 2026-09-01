@@ -22,6 +22,33 @@ experience to native desktop applications:
 - **Built-in input widgets** — text fields with full cursor/selection/clipboard/
   IME support, checkboxes, radio buttons, range sliders, file pickers, select
   dropdowns, and text areas.
+- **ARIA semantic attributes** — `role` and `aria:name` attributes on all
+  elements for accessibility roles, labels, and states.
+- **Context & Provider** — SolidJS-style dependency injection via `Context<T>`
+  and `<Provider>` for passing values through the element tree without prop
+  drilling.
+- **NodeRef** — imperative handles for focus, scroll, and bounds queries on
+  rendered elements.
+- **Focus management** — focus trap, focus restore, and roving tabindex for
+  accessible keyboard navigation (e.g., radio groups with arrow-key nav).
+- **Overlays** — `portal`, `dialog`, and `floating` for modal dialogs and
+  floating elements rendered on a separate layer.
+- **Component variants** — the `variants!` macro declares a base style plus
+  dimensions (e.g., color, size) that compose into typed, `Copy` variant
+  structs.
+- **Animations & transitions** — `tw!` `animate-*` and `transition-*` utilities
+  with easing functions and keyframe support.
+- **Responsive breakpoints** — `sm:`, `md:`, `lg:`, `xl:` prefixes apply
+  styles only when the viewport width meets the threshold.
+- **Dynamic class composition** — the `twc!` macro composes conditional
+  Tailwind classes at runtime for state-driven styling.
+- **CSS variables & theming** — `theme!` macro builds a `Theme` of CSS custom
+  properties; `var(--name)` in `css!` resolves them at runtime; `set_theme()`
+  enables reactive light/dark switching.
+- **SPA router** — signal-driven router with `:param` pattern matching and
+  wildcard routes for single-page applications.
+- **Dual-target** — every example compiles and runs natively (Linux) and on
+  the web (WASM) with a single codebase.
 
 Under the hood, `vgui` maps every HTML element to a `gpui` flexbox `div` (or a
 specialized widget for inputs), compiles CSS/Tailwind declarations into
@@ -105,9 +132,9 @@ and the `doubled` memo) are re-evaluated — not the entire tree.
 
 ### Rich input widgets
 
-`<input>` supports 19 `type` variants — text, password, search, email, url,
+`<input>` supports 21 `type` variants — text, password, search, email, url,
 tel, number, date, datetime-local, time, month, week, color, checkbox, radio,
-range, file, submit/button/reset, and hidden — each with appropriate event
+range, file, submit, button, reset, and hidden — each with appropriate event
 handler signatures. Text-based inputs have full cursor movement, selection,
 clipboard (Ctrl+A/C/V/X), and IME (CJK composition) support.
 

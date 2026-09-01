@@ -52,6 +52,82 @@ view! {
 Variants can be stacked with any utility class: `hover:text-white`,
 `focus:outline-none`, `active:scale-95` (if supported).
 
+## Responsive Breakpoints
+
+Four responsive prefixes apply styles only when the viewport width meets the
+threshold:
+
+| Prefix | Min width | Example |
+| ------ | --------- | ------- |
+| `sm:`  | ≥ 640px   | `sm:flex-row` |
+| `md:`  | ≥ 768px   | `md:flex-row` |
+| `lg:`  | ≥ 1024px  | `lg:text-lg` |
+| `xl:`  | ≥ 1280px  | `xl:grid-cols-4` |
+
+```rust
+view! {
+    <div class="flex-col md:flex-row">
+        {"Stacks on small screens, rows on medium and up."}
+    </div>
+}
+```
+
+Breakpoint closures are applied via `__apply_breakpoint_styles` reading the
+viewport width set during render. Each prefix generates a closure that checks
+the current width and applies its styles only when the threshold is met.
+
+## Dynamic Class Composition
+
+The `twc!` macro composes conditional Tailwind classes at runtime. It takes a
+base string plus zero or more `Option<&str>` arguments, including only the ones
+that are `Some`:
+
+```rust
+view! {
+    <button class={twc!(
+        "p-2 rounded text-white",
+        (delta > 0).then_some("bg-blue-500 hover:bg-blue-600"),
+        (delta < 0).then_some("bg-red-500 hover:bg-red-600"),
+        (count.get() == 0).then_some("bg-gray-500")
+    )}>
+        {label}
+    </button>
+}
+```
+
+`twc!` returns a `TwStyle` with last-write-wins semantics per CSS field. When
+multiple conditional classes set the same property, the last matching one wins.
+
+### `TwClass` builder
+
+For programmatic construction, `TwClass` provides a builder API:
+
+```rust
+let cls = TwClass::new()
+    .add("p-4")
+    .add_if(some_cond, "bg-red-500");
+```
+
+### `TwClassSource` trait
+
+`TwClassSource` is implemented for `&str`, `String`, `Option<T>`, and
+`TwClass`, allowing any of these to be used where a class source is expected.
+
+### `IntoTwStyle` trait
+
+`IntoTwStyle` converts class sources into `TwStyle`. Using `class={twc!(...)}` or
+`class={some_string}` (a non-literal expression) routes through `IntoTwStyle`,
+enabling dynamic class composition at runtime.
+
+### `tw_dynamic` runtime interpreter
+
+`tw_dynamic(classes: &str)` interprets a class string at runtime, producing a
+`TwStyle`. This is the runtime counterpart to the compile-time `tw!` macro,
+useful when class strings are not known at compile time.
+
+For `animate-*` and `transition-*` classes, see
+[Animations & Transitions](./animations.md).
+
 ## Arbitrary Values
 
 Arbitrary values use the `[...]` bracket syntax:

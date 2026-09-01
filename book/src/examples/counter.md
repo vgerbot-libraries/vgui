@@ -11,7 +11,8 @@ The counter is the minimal `vgui` application. It demonstrates:
 - `create_signal` for state management.
 - `create_memo` for a derived value (`doubled`).
 - `<Show>` for conditional rendering (positive/negative/zero/odd/even).
-- Component functions taking `WriteSignal` as props.
+- Component functions taking `ReadSignal` and `WriteSignal` as props.
+- `twc!` macro for dynamic Tailwind class composition.
 - Tailwind classes via `class=` with `hover:` variants.
 
 ## Source Code
@@ -28,24 +29,23 @@ use gpui_platform::application;
 #[cfg(target_family = "wasm")]
 use gpui_platform::single_threaded_web;
 
-fn increment_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
+fn dynamic_button(
+    label: String,
+    count: ReadSignal<i32>,
+    set_count: WriteSignal<i32>,
+    delta: i32,
+) -> impl gpui::IntoElement {
     view! {
         <button
-            class="p-2 bg-[#0000ff] hover:bg-[#000088] text-white rounded"
-            on:click={click(move |cx| set_count.update(cx, |n| *n += 1))}
+            class={twc!(
+                "p-2 rounded text-white",
+                (delta > 0).then_some("bg-[#0000ff] hover:bg-[#000088]"),
+                (delta < 0).then_some("bg-[#FF0000] hover:bg-[#880000]"),
+                (count.get() == 0).then_some("bg-[#666666] hover:bg-[#444444]")
+            )}
+            on:click={click(move |cx| set_count.update(cx, |n| *n += delta))}
         >
-            {"Increment"}
-        </button>
-    }
-}
-
-fn decrement_button(set_count: WriteSignal<i32>) -> impl gpui::IntoElement {
-    view! {
-        <button
-            class="p-2 bg-[#FF0000] hover:bg-[#880000] text-white rounded"
-            on:click={click(move |cx| set_count.update(cx, |n| *n -= 1))}
-        >
-            {"Decrement"}
+            {label}
         </button>
     }
 }
@@ -72,8 +72,8 @@ fn app() -> impl gpui::IntoElement {
             <Show when={count.get() & 1 == 1} fallback={view! { <span>{"even"}</span> }}>
                 <span>{"odd"}</span>
             </Show>
-            {increment_button(set_count.clone())}
-            {decrement_button(set_count.clone())}
+            {dynamic_button(String::from("Increment"), count.clone(), set_count.clone(), 1)}
+            {dynamic_button(String::from("Decrement"), count.clone(), set_count.clone(), -1)}
         </div>
     }
 }
@@ -100,9 +100,6 @@ fn run() {
     #[cfg(not(target_family = "wasm"))]
     gpui_app.run(launch);
 
-    // On WASM, run_embedded returns an ApplicationHandle that keeps the
-    // app alive. mem::forget prevents it from being dropped when start()
-    // returns, since WASM's run() is non-blocking.
     #[cfg(target_family = "wasm")]
     std::mem::forget(gpui_app.run_embedded(launch));
 }
@@ -116,6 +113,7 @@ fn main() {
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn start() {
     gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
     run();
 }
 ```
@@ -133,12 +131,16 @@ Four `<Show>` blocks demonstrate both forms. The first three have no
 `fallback` (render nothing when false). The fourth uses `fallback` to show
 "even" when the count is not odd.
 
-### Component functions
+### `dynamic_button` with `twc!`
 
-`increment_button` and `decrement_button` are plain functions that take a
-`WriteSignal<i32>` and return `impl IntoElement`. They are called via
-interpolation `{increment_button(set_count.clone())}` rather than uppercase
-tags, since they take a single non-attribute argument.
+A single `dynamic_button` function takes `(label, count: ReadSignal, set_count:
+WriteSignal, delta)` and returns `impl IntoElement`. The `twc!` macro composes
+conditional Tailwind classes at runtime: a base string plus `Option<&str>`
+arguments that are included only when their condition is true. The increment
+button (delta > 0) gets blue classes, the decrement button (delta < 0) gets red
+classes, and when the count is zero both get a neutral gray. Both buttons are
+created via interpolation `{dynamic_button(...)}` rather than uppercase tags,
+since they take multiple non-attribute arguments.
 
 ### `click` helper
 
@@ -147,9 +149,9 @@ the `gpui` event handler signature `Fn(&ClickEvent, &mut Window, &mut App)`.
 
 ### Tailwind classes with hover variants
 
-`class="p-2 bg-[#0000ff] hover:bg-[#000088] text-white rounded"` uses arbitrary
-color values, a `hover:` variant for the background color, and standard
-spacing/typography utilities.
+`class={twc!("p-2 rounded text-white", ...)}` uses arbitrary color values, a
+`hover:` variant for the background color, and standard spacing/typography
+utilities.
 
 ### Running
 

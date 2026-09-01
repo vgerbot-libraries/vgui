@@ -1,11 +1,11 @@
 # vgui
 
 A declarative, reactive GUI framework for Rust, built on top of
-[`gpui`](https://crates.io/crates/gpui) (the GPU-accelerated UI toolkit behind
-the [Zed](https://zed.dev) editor).
+[`gpui`](https://github.com/zed-industries/zed) (the GPU-accelerated UI toolkit
+behind the [Zed](https://zed.dev) editor).
 
 `vgui` brings a familiar web-style authoring experience to native Rust
-desktop apps:
+desktop apps and web (WASM) applications:
 
 - **JSX-like views** via the `view!` macro — elements, attributes, children,
   fragments and component invocation, all in ergonomic markup.
@@ -19,6 +19,29 @@ desktop apps:
   automatically and re-render only what changes.
 - **Control-flow components** `<Show>` and `<For>` for conditional and list
   rendering with optional fallbacks.
+- **ARIA semantic attributes** — `role` and `aria:name` on all elements for
+  accessibility.
+- **Context & Provider** — SolidJS-style dependency injection via `Context<T>`
+  and `<Provider>`.
+- **NodeRef** — imperative handles for focus, scroll, and bounds queries.
+- **Focus management** — focus trap, focus restore, and roving tabindex for
+  keyboard navigation.
+- **Overlays** — `portal`, `dialog`, and `floating` for modals and floating
+  elements on a separate layer.
+- **Component variants** — the `variants!` macro declares base + dimension
+  styles that compose into typed, `Copy` variant structs.
+- **Animations & transitions** — `tw!` `animate-*` and `transition-*` utilities
+  with easing and keyframe support.
+- **Responsive breakpoints** — `sm:`, `md:`, `lg:`, `xl:` prefixes for
+  viewport-conditional styling.
+- **Dynamic class composition** — the `twc!` macro composes conditional
+  Tailwind classes at runtime.
+- **CSS variables & theming** — `theme!` macro, `var(--name)` in `css!`, and
+  `set_theme()` for reactive light/dark switching.
+- **SPA router** — signal-driven router with `:param` pattern matching and
+  wildcard routes.
+- **Dual-target** — every example compiles and runs natively (Linux) and on
+  the web (WASM) with a single codebase.
 
 ## Status
 
@@ -37,7 +60,21 @@ build with — see the [examples](#examples).
 - [Reactivity](#reactivity)
 - [Styling](#styling)
 - [Control flow](#control-flow)
+- [Tables](#tables)
 - [Input elements](#input-elements)
+- [ARIA & Accessibility](#aria--accessibility)
+- [Context & Provider](#context--provider)
+- [Refs & NodeRef](#refs--noderef)
+- [Focus Management](#focus-management)
+- [Overlays (Portal/Dialog/Floating)](#overlays-portaldialogfloating)
+- [Component Variants](#component-variants)
+- [Animations & Transitions](#animations--transitions)
+- [Responsive Breakpoints](#responsive-breakpoints)
+- [Dynamic Classes](#dynamic-classes)
+- [CSS Variables & Theming](#css-variables--theming)
+- [Router](#router)
+- [Web / WASM](#web--wasm)
+- [Documentation](#documentation)
 
 ## Workspace layout
 
@@ -45,16 +82,19 @@ This repository is a Cargo workspace:
 
 | Crate                  | Kind        | Description                                                    |
 | ---------------------- | ----------- | ------------------------------------------------------------- |
-| `vgui`                 | lib         | The main crate: reactivity, root mounting, styling traits.    |
+| `vgui`                 | lib         | The main crate: reactivity, root mounting, styling traits, widgets. |
 | `vgui-view`            | proc-macro  | The `view!` macro.                                            |
 | `vgui-css`             | proc-macro  | The `css!` macro.                                             |
 | `vgui-tailwind`        | proc-macro  | The `tw!` macro and the Tailwind class registry.              |
-| `examples/counter`     | bin         | A minimal counter demonstrating signals and `Show`.           |
-| `examples/inputs`     | bin         | All `<input>` types: text, password, checkbox, radio, range, file, etc. |
+| `vgui-tailwind-core`   | lib         | Shared class-parse/tables for `tw!` and `tw_dynamic` (no gpui dep). |
+
+Eleven example binaries live under [`examples/`](examples) — see
+[Examples](#examples) below and the [book's Examples section](book/src/SUMMARY.md)
+for the full list.
 
 ## Prerequisites
 
-- A recent stable **Rust** toolchain (edition 2021, ≥ 1.74 recommended).
+- A recent **nightly** Rust toolchain (pinned via `rust-toolchain.toml`).
 - [`pkg-config`](https://www.freedesktop.org/wiki/Software/pkg-config/).
 - A C/C++ build toolchain: `build-essential`, `cmake`.
 - `libclang` for `bindgen` (used by `gpui` and its transitive deps).
@@ -150,7 +190,7 @@ The Windows SDK provides the rest.
 ## Building
 
 ```bash
-git clone https://github.com/local/vgui.git
+git clone https://github.com/vgerbot-libraries/vgui.git
 cd vgui
 cargo build
 ```
@@ -158,48 +198,48 @@ cargo build
 The first build compiles `gpui` and its graphics backends, so expect a longer
 initial compile. Subsequent incremental builds are fast.
 
+### Web (WASM)
+
+To check the WASM target:
+
+```bash
+cargo +nightly check --target wasm32-unknown-unknown
+```
+
+See [Web / WASM](#web--wasm) below for building and serving examples in the
+browser.
+
 ## Examples
 
-Two end-to-end examples live under [`examples/`](examples).
+Eleven end-to-end examples live under [`examples/`](examples):
 
-### Counter
-
-A minimal app with two buttons, a derived `memo`, and conditional `<Show>`
-blocks.
-
-```bash
-cargo run -p vgui-counter
-```
-
-### Todo list
-
-A slightly larger app: add/toggle/delete todos, filter by status, and a
-remaining-count memo. Demonstrates `<For>` with a fallback, `css!` styling,
-and `hover`/`active` refinements.
-
-```bash
-cargo run -p vgui-todolist
-```
-
-### Inputs
-
-A comprehensive demo of every `<input>` type: text with live echo, password,
-checkbox, radio group, range slider, number, date, file picker, submit
-button, and hidden.
-
-```bash
-cargo run -p vgui-inputs
-```
+| Example | Command | Description |
+| ------- | ------- | ----------- |
+| Counter | `cargo run -p vgui-counter` | Signals, `create_memo`, `<Show>`, `twc!` class composition. |
+| Todo List | `cargo run -p vgui-todolist` | `<For>` with fallback, `css!` styling, filtering. |
+| Inputs Demo | `cargo run -p vgui-inputs` | All `<input>` types with live echo. |
+| Tags Demo | `cargo run -p vgui-tags-demo` | HTML tag coverage, tables, progress, details, dialog. |
+| Theming | `cargo run -p vgui-theming` | CSS variables, `theme!` macro, light/dark switching. |
+| Variants | `cargo run -p vgui-variants` | `variants!` macro, component variant system. |
+| Focus Management | `cargo run -p vgui-focus-management` | Focus trap, restore, roving tabindex. |
+| ref Demo | `cargo run -p vgui-ref-demo` | `NodeRef` imperative handles (focus, scroll, bounds). |
+| Context | `cargo run -p vgui-context` | Context API, `<Provider>`, `use_context`. |
+| Animation | `cargo run -p vgui-animation` | Animations, transitions, keyframes. |
+| Select Test | `cargo run -p vgui-select-test` | Select with grouped/multiple options, datalist. |
 
 ## Usage
 
-Add `vgui` (and `gpui`) to your `Cargo.toml`:
+Add `vgui` (and `gpui`) to your `Cargo.toml`. Both are used as git
+dependencies — neither crate is published to crates.io:
 
 ```toml
 [dependencies]
-vgui = "0.1"
-gpui = "0.2"
+vgui = { git = "https://github.com/vgerbot-libraries/vgui" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-platform = { git = "https://github.com/zed-industries/zed", package = "gpui_platform" }
 ```
+
+`vgui` can also be used as a path dependency if you have a local checkout.
 
 Then author a window with `view!`:
 
@@ -237,8 +277,9 @@ fn main() {
 }
 ```
 
-The `vgui::prelude::*` import brings in `view!`, `css!`, `tw!`, the reactive
-primitives, `click`, and `mount`.
+The `vgui::prelude::*` import brings in `view!`, `css!`, `tw!`, `twc!`,
+`variants!`, `theme!`, the reactive primitives, `click`, `mount`, context API,
+`NodeRef`, input widget constructors, styling types, and overlay helpers.
 
 ## Reactivity
 
@@ -248,6 +289,7 @@ primitives, `click`, and `mount`.
 | -------------------- | --------------------------------------------------------- |
 | `create_signal(v)`   | Returns `(ReadSignal, WriteSignal)` for a piece of state. |
 | `ReadSignal::get()`  | Reads the value and registers the current scope as a dep. |
+| `ReadSignal::get_with(cx)` | Reads the value without tracking a dependency.       |
 | `WriteSignal::update(cx, f)` | Mutates the value and notifies dependents.        |
 | `create_memo(f)`     | A derived, cached value that recomputes when deps change. |
 | `create_effect(f)`   | Runs a side effect whenever its deps change.              |
@@ -309,6 +351,28 @@ common spacing, sizing, color, flex, layout and typography utilities, plus
 `hover:`, `focus:` and `active:` variants. Arbitrary values are written as
 `bg-[#0000ff]`, `w-[500px]`, etc.
 
+### Dynamic class composition (`twc!`)
+
+The `twc!` macro composes conditional Tailwind classes at runtime — a base
+string plus `Option<&str>` arguments that are included only when `Some`:
+
+```rust
+<button class={twc!(
+    "p-2 rounded text-white",
+    (delta > 0).then_some("bg-blue-500"),
+    (delta < 0).then_some("bg-red-500")
+)}>
+```
+
+See [Dynamic Classes](#dynamic-classes) below and the
+[book](book/src/styling/tailwind-classes.md#dynamic-class-composition).
+
+### Responsive breakpoints
+
+`sm:`, `md:`, `lg:`, `xl:` prefixes apply styles only when the viewport width
+meets the threshold. See the
+[book](book/src/styling/tailwind-classes.md#responsive-breakpoints).
+
 ## Control flow
 
 ### `<Show>` — conditional rendering
@@ -353,7 +417,7 @@ view! {
     <div>
         <Greeting name={"world"} />
     </div>
-}
+```
 
 ## Tables
 
@@ -403,7 +467,8 @@ widget kind; if omitted, `type="text"` is assumed.
 `text`, `password`, `search`, `email`, `url`, `tel`, `number`, `date`,
 `datetime-local`, `time`, `month`, `week`, `color` all render a text field
 with full cursor, selection, keyboard editing, clipboard (Ctrl+A/C/V/X), and
-IME (CJK composition) support.
+IME (CJK composition) support. Date, time, and color types have picker
+popups.
 
 ```rust
 view! {
@@ -418,10 +483,6 @@ view! {
 Supported attributes: `value`, `placeholder`, `disabled`, `readonly`, `min`,
 `max`, `step` (for `number`), `on:input` (fires on every keystroke), `on:change`
 (fires on Enter/blur), plus `style`, `class`, `hover`, `active`, `focus`, `id`.
-
-> **Note:** `date`, `datetime-local`, `time`, `month`, `week`, and `color`
-> are text-entry v1 — they use a format placeholder and light validation
-> with no calendar/color popup. Popups are future work.
 
 ### Checkbox & Radio
 
@@ -455,12 +516,136 @@ view! {
 ### Submit / Button / Reset
 
 These render as clickable buttons (like `<button>`). The `value` attribute
-becomes the button label. `on:click` wires the handler. `submit` and `reset`
-have no form semantics in vgui v1 — they behave as buttons.
+becomes the button label. `on:click` wires the handler. Inside a `<form>`,
+submit and reset buttons auto-invoke the form's `on:submit` / `on:reset`
+handler.
 
 ### Hidden
 
 `<input type="hidden">` renders nothing (`gpui::Empty`).
+
+### Select
+
+`<select>` supports `options` (a `Vec<(String, String)>` of value/label
+pairs), `groups` (grouped options with `<optgroup>`-style labels), `multiple`
+(multi-select mode), `value`, `disabled`, and `on:change`. See the
+[book](book/src/elements/inputs.md) for details.
+
+### Datalist
+
+`<datalist>` provides autocomplete suggestions for text inputs. Register an
+`id` and `options={Vec<String>}`, then reference it from an `<input>` via
+`list=<id>`.
+
+### Form
+
+`<form>` wraps children in a form context. `on:submit` and `on:reset` take
+`FnMut(&mut App)` closures. Child submit/reset buttons auto-invoke the form
+handler. Pressing Enter in a single-line text input triggers `on:submit`.
+
+## ARIA & Accessibility
+
+All elements support `role` and `aria:name` attributes for ARIA roles,
+labels, and states. See the
+[book](book/src/concepts/view-macro.md#attribute-categories).
+
+## Context & Provider
+
+`Context<T>` is a zero-sized typed marker; `<Provider context={..}
+value={..}>` pushes a value for descendants to consume via `use_context` or
+`use_context_or`. See [Context & Provider](book/src/elements/context.md).
+
+## Refs & NodeRef
+
+`ref={node_ref}` binds a `NodeRef` handle to an element for imperative
+operations: `focus()`, `scroll_to_bottom()`, `bounds()`. See
+[Refs & NodeRef](book/src/elements/refs.md).
+
+## Focus Management
+
+vgui provides focus trap (for modals), focus restore (return focus when an
+overlay closes), and roving tabindex (for radio groups with arrow-key
+navigation). See the [Focus Management example](book/src/examples/focus-management.md).
+
+## Overlays (Portal/Dialog/Floating)
+
+`portal(content, priority)` renders content on a floating layer at a given
+priority. `dialog(open, on_close, content)` wraps content in a modal dialog
+with click-outside and Escape dismissal. `floating(position, content)`
+renders a positioned floating element. See the
+[book](book/src/api-reference.md#overlays).
+
+## Component Variants
+
+The `variants!` macro declares a base style plus dimensions (e.g., `variant`
+for color, `size` for padding). It generates typed enum variants and a
+`Copy` struct that implements `ApplyStyle`. See the
+[Variants example](book/src/examples/variants.md).
+
+## Animations & Transitions
+
+`tw!` supports `animate-*` and `transition-*` utilities with easing functions
+and keyframe definitions. See [Animations & Transitions](book/src/styling/animations.md).
+
+## Responsive Breakpoints
+
+Four prefixes — `sm:` (≥640px), `md:` (≥768px), `lg:` (≥1024px), `xl:`
+(≥1280px) — apply styles only when the viewport width meets the threshold.
+See the [book](book/src/styling/tailwind-classes.md#responsive-breakpoints).
+
+## Dynamic Classes
+
+The `twc!` macro composes conditional Tailwind classes at runtime. `TwClass`
+provides a builder API (`add()`, `add_if()`). `tw_dynamic(classes: &str)`
+interprets class strings at runtime. See the
+[book](book/src/styling/tailwind-classes.md#dynamic-class-composition).
+
+## CSS Variables & Theming
+
+The `theme!` macro builds a `Theme` from `--name: value` declarations.
+`var(--name)` in `css!` resolves against the thread-local theme store at
+runtime. `set_theme()` installs a theme reactively — toggling a signal
+re-runs render and re-resolves all `var()` references. See the
+[Theming example](book/src/examples/theming.md).
+
+## Router
+
+`create_router(initial)` creates a signal-driven `Router`. `navigate(cx,
+path)` updates the path; `match_pattern` supports `:param` segments and `*`
+wildcards; `render(cx, routes, fallback)` dispatches the first matching
+route. See [Router](book/src/concepts/router.md).
+
+## Web / WASM
+
+vgui is dual-target: every example compiles for both native and
+`wasm32-unknown-unknown`. On WASM, use `gpui_platform::single_threaded_web()`
+(not `application()`), and call `vgui::intercept_keyboard_events()` in every
+`start()` function to prevent the browser from stealing keyboard focus.
+
+Build WASM assets with:
+
+```bash
+scripts/build_wasm.sh <name>
+```
+
+See the [writing-examples rule](.agents/rules/writing-examples.md) for the
+dual-target pattern.
+
+## Documentation
+
+The full documentation is an mdBook built with:
+
+```bash
+scripts/build_docs.sh
+```
+
+The output is written to `book/book/`. To build and serve:
+
+```bash
+scripts/build_docs.sh --serve
+```
+
+The site is then available at `http://127.0.0.1:8080`.
 
 ## License
 

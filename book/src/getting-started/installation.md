@@ -97,13 +97,17 @@ The Windows SDK provides the rest.
 
 ## Adding vgui to Your Project
 
-Add `vgui` (and `gpui`) to your `Cargo.toml`:
+Add `vgui` (and `gpui`) to your `Cargo.toml`. Both are used as git
+dependencies — neither crate is published to crates.io:
 
 ```toml
 [dependencies]
-vgui = "0.1"
-gpui = "0.2"
+vgui = { git = "https://github.com/vgerbot-libraries/vgui" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-platform = { git = "https://github.com/zed-industries/zed", package = "gpui_platform" }
 ```
+
+`vgui` can also be used as a path dependency if you have a local checkout.
 
 Then bring the prelude into scope:
 
@@ -111,10 +115,14 @@ Then bring the prelude into scope:
 use vgui::prelude::*;
 ```
 
-The prelude exports `view!`, `css!`, `tw!`, the reactive primitives
-(`create_signal`, `create_memo`, `create_effect`, `ReadSignal`, `WriteSignal`),
-the `click` helper, `mount`, and all input widget constructors and props types.
-It also re-exports `gpui::prelude::*` for convenience.
+The prelude exports `view!`, `css!`, `tw!`, `twc!`, `variants!`, `theme!`, the
+reactive primitives (`create_signal`, `create_memo`, `create_effect`,
+`create_router`, `ReadSignal`, `WriteSignal`, `Router`, `RouteMatch`), the
+`click` helper, `mount`, context API (`Context`, `use_context`,
+`use_context_or`, `provide_context`), `NodeRef`, input widget constructors and
+props types, styling types (`TwClass`, `TwClassSource`, `IntoTwStyle`,
+`Theme`), overlay helpers (`portal`, `floating`), and `Breakpoint`. It also
+re-exports `gpui::prelude::*` for convenience.
 
 Verify the build compiles:
 

@@ -26,6 +26,13 @@ cargo run -p vgui-counter
 cargo run -p vgui-todolist
 cargo run -p vgui-inputs
 cargo run -p vgui-tags-demo
+cargo run -p vgui-theming
+cargo run -p vgui-variants
+cargo run -p vgui-focus-management
+cargo run -p vgui-ref-demo
+cargo run -p vgui-context
+cargo run -p vgui-animation
+cargo run -p vgui-select-test
 ```
 
 > When adding a new example, follow the

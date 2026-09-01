@@ -12,6 +12,7 @@
 - [Architecture](./concepts/architecture.md)
 - [The `view!` Macro](./concepts/view-macro.md)
 - [Reactivity](./concepts/reactivity.md)
+- [Router](./concepts/router.md)
 
 # Styling
 
@@ -28,6 +29,7 @@
 - [Input Elements](./elements/inputs.md)
 - [Other Components](./elements/other-components.md)
 - [Refs & NodeRef](./elements/refs.md)
+- [Context & Provider](./elements/context.md)
 - [Custom Components](./custom-components.md)
 
 # Examples
@@ -42,6 +44,7 @@
 - [ref Demo](./examples/ref-demo.md)
 - [Context](./examples/context.md)
 - [Animation](./examples/animation.md)
+- [Variants](./examples/variants.md)
 
 # Reference
 

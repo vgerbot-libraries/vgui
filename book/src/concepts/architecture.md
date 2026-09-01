@@ -2,7 +2,7 @@
 
 ## Workspace Layout
 
-`vgui` is organized as a Cargo workspace with four crates:
+`vgui` is organized as a Cargo workspace with five crates:
 
 | Crate              | Kind        | Description                                                         |
 | ------------------ | ----------- | ------------------------------------------------------------------- |
@@ -10,15 +10,23 @@
 | `vgui-view`        | proc-macro  | The `view!` macro — JSX-like syntax parser and code generator.      |
 | `vgui-css`         | proc-macro  | The `css!` macro — CSS declaration parser.                          |
 | `vgui-tailwind`    | proc-macro  | The `tw!` macro and the Tailwind class registry.                    |
+| `vgui-tailwind-core` | lib       | Shared class-parse/tables for `tw!` and `tw_dynamic` (no gpui dep). |
 
-In addition, four example binaries live under `examples/`:
+In addition, eleven example binaries live under `examples/`:
 
-| Example           | Package name     | Demonstrates                                        |
-| ----------------- | ---------------- | --------------------------------------------------- |
-| Counter           | `vgui-counter`   | Signals, `create_memo`, `<Show>` control flow.      |
-| Todo List         | `vgui-todolist`  | `<For>` with fallback, `css!` styling, filtering.   |
-| Inputs Demo       | `vgui-inputs`    | All `<input>` types with live echo.                 |
-| Tags Demo         | `vgui-tags-demo` | HTML tag coverage, tables, progress, details, etc.  |
+| Example           | Package name          | Demonstrates                                        |
+| ----------------- | --------------------- | --------------------------------------------------- |
+| Counter           | `vgui-counter`        | Signals, `create_memo`, `<Show>`, `twc!` class composition. |
+| Todo List         | `vgui-todolist`       | `<For>` with fallback, `css!` styling, filtering.   |
+| Inputs Demo       | `vgui-inputs`         | All `<input>` types with live echo.                 |
+| Tags Demo         | `vgui-tags-demo`      | HTML tag coverage, tables, progress, details, dialog, etc.  |
+| Theming           | `vgui-theming`        | CSS variables, `theme!` macro, light/dark switching. |
+| Variants          | `vgui-variants`       | `variants!` macro, component variant system.        |
+| Focus Management  | `vgui-focus-management` | Focus trap, restore, roving tabindex.            |
+| ref Demo          | `vgui-ref-demo`       | `NodeRef` imperative handles (focus, scroll, bounds). |
+| Context           | `vgui-context`        | Context API, `<Provider>`, `use_context`.           |
+| Animation         | `vgui-animation`      | Animations, transitions, keyframes.                 |
+| Select Test       | `vgui-select-test`    | Select with grouped/multiple options, datalist.     |
 
 ## Crate Dependencies
 
@@ -27,11 +35,13 @@ The dependency graph is straightforward:
 ```
 vgui-view ──┐
 vgui-css  ──┼──► vgui ──► gpui
-vgui-tailwind ┘
+vgui-tailwind ─► vgui-tailwind-core
 ```
 
-- `vgui` depends on `gpui` and re-exports the three proc-macro crates (`view`,
+- `vgui` depends on `gpui` and re-exports the proc-macro crates (`view`,
   `css`, `tw`) via `pub use`.
+- `vgui-tailwind` depends on `vgui-tailwind-core` for shared parse logic and
+  class tables.
 - The proc-macro crates are completely independent of `vgui` at the macro
   level — they emit `::vgui::*` and `::gpui::*` qualified paths, so they work
   in any crate that depends on `vgui`.
@@ -43,13 +53,25 @@ The `vgui` crate's internal module structure:
 | ----------------- | ----------------------------------------------------------------- |
 | `reactive`        | `create_signal`, `create_memo`, `create_effect`, `ReadSignal`, `WriteSignal`, scope management, dependency tracking. |
 | `root`            | `VguiRoot` entity, `Scope` (the reactive owner), `mount()`.       |
-| `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `details`. |
+| `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `meter`, `details`. |
 | `overlay`         | `portal`, `floating`, `dialog` (modal overlay with portal, click-outside, escape). |
 | `input_text`      | `TextInput` widget (text fields, text areas), `TextInputProps`, `TextAreaProps`, `TextKind`. |
 | `input_widgets`   | `checkbox`, `radio`, `range_input`, `file_input`, `select` and their props. |
 | `label`           | Label-to-input focus association via `for=` / wrapping.          |
 | `style`           | `Css`, `TwStyle`, `ApplyStyle` trait.                             |
 | `child`           | `IntoViewChild` trait, `into_child`, `click` helper.              |
+| `router`          | SPA router: `create_router`, `Router`, `match_pattern`, `build_path`, `RouteMatch`. |
+| `context`         | Context API: `Context<T>`, `use_context`, `use_context_or`, `provide_context`, `ProviderGuard`. |
+| `ref_handle`      | `NodeRef` imperative handle (focus, scroll, bounds).              |
+| `aria`            | ARIA role and attribute resolution (`__resolve_aria_role`).      |
+| `animation`       | Animation and transition types (`TwAnimation`, `TwTransition`, `Easing`). |
+| `theme`           | CSS variable theming: `Theme`, `CssValue`, `set_theme`, `with_theme`. |
+| `spread`          | `Spread<E>` trait for spread attributes on built-in elements.     |
+| `breakpoint`      | Responsive breakpoint detection (`Breakpoint`, `__apply_breakpoint_styles`). |
+| `grid_areas`      | `grid-template-areas` and `grid-area` CSS property support.       |
+| `form`            | Form context: `on:submit`/`on:reset`, child submit/reset button dispatch. |
+| `web`             | WASM helpers: `intercept_keyboard_events()`.                      |
+| `tw_dynamic`      | Runtime Tailwind class interpreter (`tw_dynamic`).                |
 | `prelude`         | Re-exports the common API surface + `gpui::prelude::*`.           |
 
 ## How Rendering Works
