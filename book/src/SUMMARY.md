@@ -46,6 +46,10 @@
 - [Animation](./examples/animation.md)
 - [Variants](./examples/variants.md)
 
+# Feature Comparison
+
+- [vgui vs HTML+CSS Feature Comparison](./feature-comparison.md)
+
 # Reference
 
 - [API Reference](./api-reference.md)
