@@ -1,4 +1,4 @@
-use gpui::{px, relative, DefiniteLength, Display, FlexDirection, Hsla, Length, Overflow, StyleRefinement, Styled};
+use gpui::{px, relative, DefiniteLength, Display, FlexDirection, GridPlacement, Hsla, Length, Overflow, StyleRefinement, Styled};
 
 use crate::{css, set_theme, theme, tw, twc, ApplyStyle, IntoTwStyle, Theme, TwClass, tw_dynamic, variants};
 
@@ -523,4 +523,61 @@ fn css_box_shadow_arbitrary() {
     assert_eq!(shadows[0].offset.x, px(2.));
     assert_eq!(shadows[0].offset.y, px(4.));
     assert_eq!(shadows[0].blur_radius, px(6.));
+}
+
+#[test]
+fn css_grid_template_areas() {
+    let probe = css! {
+        display: grid;
+        grid-template-areas: "header header" "sidebar main" "footer footer";
+    }
+    .apply(Probe(Default::default()));
+    assert_eq!(probe.0.display, Some(Display::Grid));
+    // 3 rows, 2 cols inferred from areas
+    assert_eq!(probe.0.grid_rows.as_ref().unwrap().repeat, 3);
+    assert_eq!(probe.0.grid_cols.as_ref().unwrap().repeat, 2);
+}
+
+#[test]
+fn css_grid_area_named() {
+    // grid-template-areas pushes area map; grid-area resolves within same css! block
+    let probe = css! {
+        grid-template-areas: "header header" "sidebar main";
+        grid-area: "sidebar";
+    }
+    .apply(Probe(Default::default()));
+    let loc = probe.0.grid_location.as_ref().expect("grid_location");
+    // sidebar is at row 2, col 1 → lines: col 1..2, row 2..3
+    assert_eq!(loc.column.start, GridPlacement::Line(1));
+    assert_eq!(loc.column.end, GridPlacement::Line(2));
+    assert_eq!(loc.row.start, GridPlacement::Line(2));
+    assert_eq!(loc.row.end, GridPlacement::Line(3));
+}
+
+#[test]
+fn css_grid_area_spanning() {
+    let probe = css! {
+        grid-template-areas: "header header" "sidebar main";
+        grid-area: "header";
+    }
+    .apply(Probe(Default::default()));
+    let loc = probe.0.grid_location.as_ref().expect("grid_location");
+    // header spans col 1..3, row 1..2
+    assert_eq!(loc.column.start, GridPlacement::Line(1));
+    assert_eq!(loc.column.end, GridPlacement::Line(3));
+    assert_eq!(loc.row.start, GridPlacement::Line(1));
+    assert_eq!(loc.row.end, GridPlacement::Line(2));
+}
+
+#[test]
+fn css_grid_area_numeric() {
+    let probe = css! {
+        grid-area: 2 / 3 / 4 / 5;
+    }
+    .apply(Probe(Default::default()));
+    let loc = probe.0.grid_location.as_ref().expect("grid_location");
+    assert_eq!(loc.row.start, GridPlacement::Line(2));
+    assert_eq!(loc.column.start, GridPlacement::Line(3));
+    assert_eq!(loc.row.end, GridPlacement::Line(4));
+    assert_eq!(loc.column.end, GridPlacement::Line(5));
 }

@@ -20,6 +20,7 @@ mod input_text;
 mod input_widgets;
 mod overlay;
 mod form;
+mod grid_areas;
 mod label;
 pub mod prelude;
 mod reactive;
@@ -87,6 +88,9 @@ pub use crate::web::intercept_keyboard_events;
 
 // Hidden helper called by macro-emitted `ref=` code.
 pub use crate::reactive::__bind_ref;
+
+// Hidden helpers for grid-template-areas / grid-area resolution.
+pub use crate::grid_areas::{__push_grid_areas, __resolve_grid_area, GridAreasGuard};
 
 // Internal test helpers — not part of the public API. Exposed so integration
 // tests can simulate a render scope without spinning up a full gpui App.

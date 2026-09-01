@@ -179,6 +179,8 @@ pub(crate) fn emit(
 "grid-row" => Ok(Some(emit_grid_span(tokens, "row", span)?)),
 "grid-row-start" => Ok(Some(emit_grid_line(tokens, "row", "start", span)?)),
 "grid-row-end" => Ok(Some(emit_grid_line(tokens, "row", "end", span)?)),
+"grid-template-areas" => Ok(Some(emit_grid_template_areas(tokens, span)?)),
+"grid-area" => Ok(Some(emit_grid_area(tokens, span)?)),
         _ => Ok(None),
     }
 }
@@ -324,6 +326,148 @@ fn parse_grid_placement(tokens: &[TokenTree], span: Span) -> syn::Result<TokenSt
         return Ok(quote! { ::gpui::GridPlacement::Line(#n as i16) });
     }
     Err(unsupported("grid placement", tokens, span))
+}
+
+/// Parse `grid-template-areas: "header header" "sidebar main" "footer footer"`.
+/// Each string literal is a row; whitespace-separated tokens within each string
+/// are cell names. A `.` cell is an empty cell.
+fn emit_grid_template_areas(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for tok in tokens {
+        if let TokenTree::Literal(lit) = tok {
+            let s = lit.to_string();
+            // Remove surrounding quotes
+            let s = s.trim_matches('\"');
+            let cells: Vec<String> = s
+                .split_whitespace()
+                .map(|c| c.to_string())
+                .collect();
+            if cells.is_empty() {
+                return Err(syn::Error::new(
+                    span,
+                    "grid-template-areas: empty row string",
+                ));
+            }
+            rows.push(cells);
+        } else {
+            return Err(syn::Error::new(
+                span,
+                "grid-template-areas: expected string literals",
+            ));
+        }
+    }
+    if rows.is_empty() {
+        return Err(syn::Error::new(
+            span,
+            "grid-template-areas: at least one row required",
+        ));
+    }
+    // Also infer grid_cols and grid_rows from the area map
+    let nrows = rows.len() as u16;
+    let ncols = rows[0].len() as u16;
+    // Build the runtime Vec<Vec<String>>
+    let row_lits: Vec<proc_macro2::TokenStream> = rows
+        .iter()
+        .map(|row| {
+            let cells: Vec<String> = row.clone();
+            let cell_lits: Vec<proc_macro2::TokenStream> = cells
+                .iter()
+                .map(|c| {
+                    let c = c.as_str();
+                    quote! { ::std::string::String::from(#c) }
+                })
+                .collect();
+            quote! { vec![#(#cell_lits),*] }
+        })
+        .collect();
+    Ok(quote! {
+        s.grid_rows = Some(::gpui::GridTemplate { repeat: #nrows, ..Default::default() });
+        s.grid_cols = Some(::gpui::GridTemplate { repeat: #ncols, ..Default::default() });
+        let _ga = ::vgui::__push_grid_areas(vec![#(#row_lits),*]);
+    })
+}
+
+/// Parse `grid-area: "name"` or `grid-area: name` (ident).
+/// Also supports the numeric shorthand `grid-area: row-start / col-start / row-end / col-end`.
+fn emit_grid_area(tokens: &[TokenTree], span: Span) -> syn::Result<TokenStream2> {
+    // Check if it's a string literal
+    if tokens.len() == 1 {
+        if let TokenTree::Literal(lit) = &tokens[0] {
+            let s = lit.to_string();
+            let name = s.trim_matches('"').to_string();
+            let name_str = name.as_str();
+            return Ok(quote! {
+                if let Some((cs, ce, rs, re)) = ::vgui::__resolve_grid_area(#name_str) {
+                    s.grid_location.get_or_insert_with(::core::default::Default::default).column =
+                        ::core::ops::Range { start: ::gpui::GridPlacement::Line(cs), end: ::gpui::GridPlacement::Line(ce) };
+                    s.grid_location.get_or_insert_with(::core::default::Default::default).row =
+                        ::core::ops::Range { start: ::gpui::GridPlacement::Line(rs), end: ::gpui::GridPlacement::Line(re) };
+                }
+            });
+        }
+        // Check if it's an ident (unquoted area name)
+        if let TokenTree::Ident(id) = &tokens[0] {
+            let name = id.to_string();
+            let name_str = name.as_str();
+            return Ok(quote! {
+                if let Some((cs, ce, rs, re)) = ::vgui::__resolve_grid_area(#name_str) {
+                    s.grid_location.get_or_insert_with(::core::default::Default::default).column =
+                        ::core::ops::Range { start: ::gpui::GridPlacement::Line(cs), end: ::gpui::GridPlacement::Line(ce) };
+                    s.grid_location.get_or_insert_with(::core::default::Default::default).row =
+                        ::core::ops::Range { start: ::gpui::GridPlacement::Line(rs), end: ::gpui::GridPlacement::Line(re) };
+                }
+            });
+        }
+    }
+    // Fall back to numeric shorthand: grid-area: row-start / col-start / row-end / col-end
+    // split_values doesn't split on '/', so we manually split on '/' punct
+    let parts: Vec<Vec<TokenTree>> = {
+        let mut out = Vec::new();
+        let mut cur = Vec::new();
+        for tok in tokens {
+            if let TokenTree::Punct(p) = tok {
+                if p.as_char() == '/' {
+                    if !cur.is_empty() {
+                        out.push(std::mem::take(&mut cur));
+                    }
+                    continue;
+                }
+            }
+            cur.push(tok.clone());
+        }
+        if !cur.is_empty() {
+            out.push(cur);
+        }
+        out
+    };
+    match parts.len() {
+        1 => {
+            // grid-area: N → same as grid-row: N; grid-column: N
+            let row_ts = emit_grid_span(&parts[0], "row", span)?;
+            let col_ts = emit_grid_span(&parts[0], "column", span)?;
+            Ok(quote! { #row_ts #col_ts })
+        }
+        2 => {
+            // grid-area: row / col
+            let row_ts = emit_grid_span(&parts[0], "row", span)?;
+            let col_ts = emit_grid_span(&parts[1], "column", span)?;
+            Ok(quote! { #row_ts #col_ts })
+        }
+        4 => {
+            // grid-area: row-start / col-start / row-end / col-end
+            let rs = parse_grid_placement(&parts[0], span)?;
+            let cs = parse_grid_placement(&parts[1], span)?;
+            let re = parse_grid_placement(&parts[2], span)?;
+            let ce = parse_grid_placement(&parts[3], span)?;
+            Ok(quote! {
+                s.grid_location.get_or_insert_with(::core::default::Default::default).row =
+                    ::core::ops::Range { start: #rs, end: #re };
+                s.grid_location.get_or_insert_with(::core::default::Default::default).column =
+                    ::core::ops::Range { start: #cs, end: #ce };
+            })
+        }
+        _ => Err(unsupported("grid-area", tokens, span)),
+    }
 }
 
 pub(crate) fn emit_var(
