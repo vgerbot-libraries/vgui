@@ -384,9 +384,11 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         __class_value = Some(v.clone());
         ctor = quote! {{
             let __tw = ::vgui::tw!(#v);
-            let ::vgui::TwStyle { base, hover, focus, active, animation: _, transition } = __tw;
+            let ::vgui::TwStyle { base, hover, focus, active, sm, md, lg, xl, animation: _, transition } = __tw;
             let mut __el = #ctor;
             (base)(__el.style());
+            // Apply responsive breakpoint styles based on current viewport width.
+            ::vgui::__apply_breakpoint_styles(__el.style(), sm, md, lg, xl);
             // When a transition is configured, hover is driven by the transition
             // wrapper (applied after children); skip the static .hover() here.
             if !(transition.is_some() && hover.is_some()) {
@@ -444,7 +446,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     } else if let Some(cv) = &__class_value {
         quote! {{
             let __tw = ::vgui::tw!(#cv);
-            let ::vgui::TwStyle { base: __b, hover: __h, focus: _, active: _, animation: __anim, transition: __trans } = __tw;
+            let ::vgui::TwStyle { base: __b, hover: __h, focus: _, active: _, sm: _, md: _, lg: _, xl: _, animation: __anim, transition: __trans } = __tw;
             if let ::std::option::Option::Some(__a) = __anim {
                 ::gpui::IntoElement::into_any_element(::vgui::apply_animation(el, &__a))
             } else if let ::std::option::Option::Some(__t) = __trans {
@@ -674,9 +676,10 @@ fn chain_div_extras(
         let v = attr_tokens(&class.value);
         ctor = quote! {{
             let __tw = ::vgui::tw!(#v);
-            let ::vgui::TwStyle { base, hover, focus, active, animation: _, transition: _ } = __tw;
+            let ::vgui::TwStyle { base, hover, focus, active, sm, md, lg, xl, animation: _, transition: _ } = __tw;
             let mut __el = #ctor;
             (base)(__el.style());
+            ::vgui::__apply_breakpoint_styles(__el.style(), sm, md, lg, xl);
             if let ::std::option::Option::Some(__h) = hover {
                 __el = __el.hover(move |mut s| { __h(&mut s); s });
             }

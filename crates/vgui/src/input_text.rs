@@ -1678,10 +1678,15 @@ impl Render for TextInput {
                 hover,
                 focus,
                 active,
+                sm,
+                md,
+                lg,
+                xl,
                 animation: _,
                 transition: _,
             } = class;
             base(div.style());
+            crate::__apply_breakpoint_styles(div.style(), sm, md, lg, xl);
             if let Some(h) = hover {
                 div = div.hover(move |mut s| {
                     h(&mut s);

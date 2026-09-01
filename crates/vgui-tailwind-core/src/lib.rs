@@ -15,6 +15,10 @@ pub enum Variant {
     Hover,
     Focus,
     Active,
+    Sm,
+    Md,
+    Lg,
+    Xl,
 }
 
 #[derive(Clone)]
@@ -40,6 +44,10 @@ pub fn parse_class(class: &str) -> Option<ParsedClass> {
                 "hover" => variant = Variant::Hover,
                 "focus" => variant = Variant::Focus,
                 "active" => variant = Variant::Active,
+                "sm" => variant = Variant::Sm,
+                "md" => variant = Variant::Md,
+                "lg" => variant = Variant::Lg,
+                "xl" => variant = Variant::Xl,
                 _ => break,
             }
             rest = &rest[pos + 1..];

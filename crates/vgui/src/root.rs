@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use gpui::{AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, WeakEntity, Window};
 
-use crate::reactive::{enter_scope, exit_scope};
+use crate::reactive::{enter_scope, exit_scope, set_viewport_width};
 
 pub struct Scope {
     pub(crate) host: WeakEntity<VguiRoot>,
@@ -107,6 +107,7 @@ impl Render for VguiRoot {
             }));
         }
         enter_scope(self.scope.clone(), cx);
+        set_viewport_width(f32::from(window.viewport_size().width));
         let el = (self.render)();
         exit_scope();
         gpui::div()

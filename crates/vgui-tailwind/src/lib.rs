@@ -58,6 +58,10 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
                 hover: ::std::option::Option::None,
                 focus: ::std::option::Option::None,
                 active: ::std::option::Option::None,
+                sm: ::std::option::Option::None,
+                md: ::std::option::Option::None,
+                lg: ::std::option::Option::None,
+                xl: ::std::option::Option::None,
                 animation: ::std::option::Option::None,
                 transition: ::std::option::Option::None,
             }
@@ -68,6 +72,10 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
     let mut hover_stmts = Vec::new();
     let mut focus_stmts = Vec::new();
     let mut active_stmts = Vec::new();
+    let mut sm_stmts = Vec::new();
+    let mut md_stmts = Vec::new();
+    let mut lg_stmts = Vec::new();
+    let mut xl_stmts = Vec::new();
 
     // Animation / transition / timing config (collected from base-variant classes).
     let mut animation_name: Option<String> = None;
@@ -114,6 +122,10 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
             Variant::Hover => hover_stmts.push(stmt),
             Variant::Focus => focus_stmts.push(stmt),
             Variant::Active => active_stmts.push(stmt),
+            Variant::Sm => sm_stmts.push(stmt),
+            Variant::Md => md_stmts.push(stmt),
+            Variant::Lg => lg_stmts.push(stmt),
+            Variant::Xl => xl_stmts.push(stmt),
         }
     }
 
@@ -136,6 +148,27 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
         quote! { ::std::option::Option::None }
     } else {
         quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#active_stmts)* })) }
+    };
+
+    let sm = if sm_stmts.is_empty() {
+        quote! { ::std::option::Option::None }
+    } else {
+        quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#sm_stmts)* })) }
+    };
+    let md = if md_stmts.is_empty() {
+        quote! { ::std::option::Option::None }
+    } else {
+        quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#md_stmts)* })) }
+    };
+    let lg = if lg_stmts.is_empty() {
+        quote! { ::std::option::Option::None }
+    } else {
+        quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#lg_stmts)* })) }
+    };
+    let xl = if xl_stmts.is_empty() {
+        quote! { ::std::option::Option::None }
+    } else {
+        quote! { ::std::option::Option::Some(::std::boxed::Box::new(|s: &mut ::gpui::StyleRefinement| { #(#xl_stmts)* })) }
     };
 
     let animation_tokens = if let Some(name) = &animation_name {
@@ -178,6 +211,10 @@ fn expand_tw_literal(s: &str) -> syn::Result<TokenStream2> {
             hover: #hover,
             focus: #focus,
             active: #active,
+            sm: #sm,
+            md: #md,
+            lg: #lg,
+            xl: #xl,
             animation: #animation_tokens,
             transition: #transition_tokens,
         }

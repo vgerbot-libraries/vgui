@@ -28,6 +28,10 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
     let mut hover: Vec<ParsedClass> = Vec::new();
     let mut focus: Vec<ParsedClass> = Vec::new();
     let mut active: Vec<ParsedClass> = Vec::new();
+    let mut sm: Vec<ParsedClass> = Vec::new();
+    let mut md: Vec<ParsedClass> = Vec::new();
+    let mut lg: Vec<ParsedClass> = Vec::new();
+    let mut xl: Vec<ParsedClass> = Vec::new();
 
     let mut animation_name: Option<String> = None;
     let mut transition_props: Option<crate::animation::TransitionProperties> = None;
@@ -65,6 +69,10 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
                 Variant::Hover => hover.push(parsed),
                 Variant::Focus => focus.push(parsed),
                 Variant::Active => active.push(parsed),
+                Variant::Sm => sm.push(parsed),
+                Variant::Md => md.push(parsed),
+                Variant::Lg => lg.push(parsed),
+                Variant::Xl => xl.push(parsed),
             }
         }
     }
@@ -109,6 +117,46 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
         }) as Box<dyn Fn(&mut StyleRefinement) + 'static>)
     };
 
+    let sm_fn = if sm.is_empty() {
+        None
+    } else {
+        Some(Box::new(move |s: &mut StyleRefinement| {
+            for cls in &sm {
+                apply_class(s, cls);
+            }
+        }) as Box<dyn FnOnce(&mut StyleRefinement) + 'static>)
+    };
+
+    let md_fn = if md.is_empty() {
+        None
+    } else {
+        Some(Box::new(move |s: &mut StyleRefinement| {
+            for cls in &md {
+                apply_class(s, cls);
+            }
+        }) as Box<dyn FnOnce(&mut StyleRefinement) + 'static>)
+    };
+
+    let lg_fn = if lg.is_empty() {
+        None
+    } else {
+        Some(Box::new(move |s: &mut StyleRefinement| {
+            for cls in &lg {
+                apply_class(s, cls);
+            }
+        }) as Box<dyn FnOnce(&mut StyleRefinement) + 'static>)
+    };
+
+    let xl_fn = if xl.is_empty() {
+        None
+    } else {
+        Some(Box::new(move |s: &mut StyleRefinement| {
+            for cls in &xl {
+                apply_class(s, cls);
+            }
+        }) as Box<dyn FnOnce(&mut StyleRefinement) + 'static>)
+    };
+
     let animation = animation_name.map(|name| {
         let dur = duration_ms.unwrap_or_else(|| default_duration(&name));
         let easing = easing_kind.unwrap_or(crate::animation::Easing::EaseInOut);
@@ -139,6 +187,10 @@ pub fn tw_dynamic(classes: &str) -> TwStyle {
         hover: hover_fn,
         focus: focus_fn,
         active: active_fn,
+        sm: sm_fn,
+        md: md_fn,
+        lg: lg_fn,
+        xl: xl_fn,
         animation,
         transition,
     }

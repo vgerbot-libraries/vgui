@@ -132,4 +132,18 @@ fn widgets_compile_and_produce_elements() {
             {"Search"}
         </div>
     });
+
+    // Responsive breakpoints: sm:/md:/lg:/xl: variant classes
+    assert_into_any(|| view! {
+        <div class="flex flex-col sm:flex-row md:flex-row lg:flex-row xl:flex-row p-2 sm:p-4 md:p-6 lg:p-8">
+            {"Responsive"}
+        </div>
+    });
+
+    // Responsive breakpoints with hover combination
+    assert_into_any(|| view! {
+        <div class="bg-blue-500 sm:bg-red-500 md:bg-green-500 hover:bg-gray-500 sm:hover:bg-yellow-500">
+            {"Responsive + hover"}
+        </div>
+    });
 }

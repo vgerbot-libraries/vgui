@@ -21,6 +21,9 @@ thread_local! {
     /// - distinct elements — such as siblings produced by a `<For>` closure
     ///   invoked multiple times — receive distinct ids.
     static ELEMENT_ID_COUNTER: RefCell<Option<u64>> = const { RefCell::new(None) };
+    /// Current viewport width in pixels, set during render for breakpoint
+    /// resolution. `None` outside a render scope.
+    static VIEWPORT_WIDTH: RefCell<Option<f32>> = const { RefCell::new(None) };
 }
 
 /// Fallback counter for auto-generated element ids when no reactive scope is
@@ -87,6 +90,19 @@ pub(crate) fn exit_scope() {
         *c.borrow_mut() = None;
     });
     ELEMENT_ID_COUNTER.with(|c| *c.borrow_mut() = None);
+    VIEWPORT_WIDTH.with(|w| *w.borrow_mut() = None);
+}
+
+/// Set the current viewport width for breakpoint resolution. Called by
+/// `VguiRoot::render` before entering the scope.
+pub(crate) fn set_viewport_width(width: f32) {
+    VIEWPORT_WIDTH.with(|w| *w.borrow_mut() = Some(width));
+}
+
+/// Get the current viewport width, or `None` if outside a render scope.
+#[doc(hidden)]
+pub fn get_viewport_width() -> Option<f32> {
+    VIEWPORT_WIDTH.with(|w| w.borrow().clone())
 }
 
 fn try_current() -> Option<Current> {
