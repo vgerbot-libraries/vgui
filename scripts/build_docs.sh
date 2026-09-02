@@ -29,9 +29,69 @@ done
 
 # 1. WASM demos
 echo "==> [1/3] Building WASM demos..."
+
+# 1a. Build all examples in a single cargo invocation — cargo parallelizes
+# internally across crates sharing one target dir. This avoids lock
+# contention from multiple concurrent cargo processes.
+PKGS=()
 for ex in "${EXAMPLES[@]}"; do
-    "$SCRIPT_DIR/build_wasm.sh" "$ex"
+    PKGS+=("-p" "vgui-${ex}")
 done
+cargo +nightly build --target wasm32-unknown-unknown --release "${PKGS[@]}"
+
+# 1b. Run wasm-bindgen + asset copy for each example in parallel.
+# These steps are fully independent (separate dist/ and book/src/wasm/ dirs).
+pids=()
+for ex in "${EXAMPLES[@]}"; do
+    (
+        set -e
+        rm -rf "examples/${ex}/dist"
+        wasm-bindgen --target web --out-dir "examples/${ex}/dist" --no-typescript \
+            "target/wasm32-unknown-unknown/release/${ex}.wasm"
+        mkdir -p "book/src/wasm/${ex}"
+        cp "examples/${ex}/dist/${ex}.js" "book/src/wasm/${ex}/"
+        cp "examples/${ex}/dist/${ex}_bg.wasm" "book/src/wasm/${ex}/"
+        if [ ! -f "book/src/wasm/${ex}/index.html" ]; then
+            cat > "book/src/wasm/${ex}/index.html" << HTMLEOF
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=0" />
+        <title>vgui ${ex}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { margin: 0; height: 100%; background: #1e1e1e; }
+            canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+                outline: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="module">
+            import init from "./${ex}.js";
+            init();
+        </script>
+    </body>
+</html>
+HTMLEOF
+        fi
+    ) &
+    pids+=($!)
+done
+
+# Wait for all parallel jobs; fail if any failed.
+fail=0
+for pid in "${pids[@]}"; do
+    wait "$pid" || fail=1
+done
+[ "$fail" -eq 0 ] || { echo "WASM bindgen/copy failed" >&2; exit 1; }
 
 # 2. mdBook
 echo "==> [2/3] Building mdBook..."
