@@ -129,7 +129,17 @@ fn ime_preedit_not_doubled() {
             })
             .unwrap();
         *result_clone.lock() = Some(value);
-        cx.quit();
+        // Defer `quit` onto the running event loop. Calling `cx.quit()` synchronously
+        // here would be a no-op: calloop's `EventLoop::run` resets the stop signal to
+        // `false` *after* this launch callback returns and before it enters the
+        // dispatch loop, so the quit would be lost and the visible window would hang
+        // until manually closed. Spawning the quit lets it run on the foreground
+        // executor (a calloop source) once the loop is actually turning, so the stop
+        // flag is set while the loop is live and the app exits promptly.
+        cx.spawn(async move |cx| {
+            cx.update(|cx| cx.quit());
+        })
+        .detach();
     };
 
     gpui_app.run(launch);
