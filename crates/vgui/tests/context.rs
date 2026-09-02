@@ -26,10 +26,12 @@ fn provider_macro_nested_inner_shadows_outer() {
     let iv = inner_val.clone();
     let _el = view! {
         <Provider context={GREETING} value={"outer".to_string()}>
-            { { *o.borrow_mut() = use_context(&GREETING).unwrap() == "outer"; gpui::Empty } }
-            <Provider context={GREETING} value={"inner".to_string()}>
-                { { *iv.borrow_mut() = use_context(&GREETING).unwrap(); gpui::Empty } }
-            </Provider>
+            <div>
+                { { *o.borrow_mut() = use_context(&GREETING).unwrap() == "outer"; gpui::Empty } }
+                <Provider context={GREETING} value={"inner".to_string()}>
+                    { { *iv.borrow_mut() = use_context(&GREETING).unwrap(); gpui::Empty } }
+                </Provider>
+            </div>
         </Provider>
     };
     assert!(*outer_seen.borrow());
