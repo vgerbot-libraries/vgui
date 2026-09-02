@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
-EXAMPLES=(counter todolist inputs tags-demo)
+EXAMPLES=(counter todolist styling theming variants inputs elements forms context refs focus overlays animation canvas router dashboard)
 SERVE=0
 
 for arg in "$@"; do
