@@ -95,6 +95,67 @@ pub(crate) fn exit_scope() {
 
 /// Set the current viewport width for breakpoint resolution. Called by
 /// `VguiRoot::render` before entering the scope.
+pub fn enter_child_scope(key: &str) {
+    let cur = current();
+    let child = {
+        let mut scope = cur.scope.borrow_mut();
+        let host = scope.host.clone();
+        let parent = cur.scope.clone();
+        scope
+            .children
+            .entry(key.to_string())
+            .or_insert_with(|| {
+                Rc::new(RefCell::new(Scope {
+                    host,
+                    slots: Vec::new(),
+                    index: 0,
+                    initialized: false,
+                    subscriptions: Vec::new(),
+                    memos: Vec::new(),
+                    memo_deps: Vec::new(),
+                    effects: Vec::new(),
+                    resize_handlers: Vec::new(),
+                    children: std::collections::HashMap::new(),
+                    parent: Some(parent),
+                }))
+            })
+            .clone()
+    };
+    {
+        let mut child_scope = child.borrow_mut();
+        child_scope.index = 0;
+        child_scope.resize_handlers.clear();
+    }
+    CURRENT.with(|c| {
+        *c.borrow_mut() = Some(Current {
+            scope: child,
+            cx: cur.cx,
+        });
+    });
+}
+
+pub fn exit_child_scope() {
+    let cur = current();
+    let parent = {
+        let mut scope = cur.scope.borrow_mut();
+        if scope.initialized && scope.index != scope.slots.len() {
+            panic!(
+                "vgui hook order changed in child scope: used {} slots, stored {}",
+                scope.index, scope.slots.len()
+            );
+        }
+        scope.initialized = true;
+        scope.parent.clone()
+    };
+    let parent = parent.expect("exit_child_scope called without a matching enter_child_scope");
+    CURRENT.with(|c| {
+        *c.borrow_mut() = Some(Current {
+            scope: parent,
+            cx: cur.cx,
+        });
+    });
+}
+
 pub(crate) fn set_viewport_width(width: f32) {
     VIEWPORT_WIDTH.with(|w| *w.borrow_mut() = Some(width));
 }

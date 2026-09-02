@@ -53,7 +53,7 @@ pub use crate::input_widgets::{
 pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit, LabelTarget};
 pub use crate::context::{__provider_scope_enter, __provider_scope_exit};
-pub use crate::reactive::{create_effect, create_memo, create_signal, next_auto_id, ReadSignal, WriteSignal};
+pub use crate::reactive::{create_effect, create_memo, create_signal, enter_child_scope, exit_child_scope, next_auto_id, ReadSignal, WriteSignal};
 pub use crate::router::{create_router, build_path, match_pattern, RouteMatch, Router};
 pub use crate::breakpoint::Breakpoint;
 pub use crate::breakpoint::__apply_breakpoint_styles;

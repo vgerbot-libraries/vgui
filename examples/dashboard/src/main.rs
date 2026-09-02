@@ -31,15 +31,25 @@ fn route_content(
     set_email: WriteSignal<String>,
 ) -> gpui::AnyElement {
     if router.match_route("/").is_some() {
-        return views::dashboard_view(todos).into_any_element();
+        enter_child_scope("route:/");
+        let el = views::dashboard_view(todos).into_any_element();
+        exit_child_scope();
+        return el;
     }
     if router.match_route("/tasks").is_some() {
-        return views::tasks_view(todos, set_todos, dialog_open, set_dialog_open).into_any_element();
+        enter_child_scope("route:/tasks");
+        let el = views::tasks_view(todos, set_todos, dialog_open, set_dialog_open).into_any_element();
+        exit_child_scope();
+        return el;
     }
     if router.match_route("/settings").is_some() {
-        return views::settings_view(name, set_name, email, set_email).into_any_element();
+        enter_child_scope("route:/settings");
+        let el = views::settings_view(name, set_name, email, set_email).into_any_element();
+        exit_child_scope();
+        return el;
     }
-    view! {
+    enter_child_scope("route:404");
+    let el = view! {
         <div class="p-4" style={css!{ flex: 1; }}>
             <h2 class="text-xl font-bold" style={css!{ color: var(--text); }}>
                 {"404"}
@@ -48,7 +58,9 @@ fn route_content(
                 {"Page not found."}
             </p>
         </div>
-    }.into_any_element()
+    }.into_any_element();
+    exit_child_scope();
+    el
 }
 
 fn app() -> impl gpui::IntoElement {
