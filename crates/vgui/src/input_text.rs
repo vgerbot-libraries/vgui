@@ -693,7 +693,10 @@ impl TextInput {
         if event.modifiers.shift {
             self.move_cursor(index, true);
         } else {
-            self.cursor = index;
+            // Clamp to `value.len()`: `index_for_position` can report an index
+            // past the end of the text (e.g. clicking in the padding area),
+            // which would later panic the word-boundary helpers.
+            self.cursor = index.min(self.value.len());
             self.selection = None;
         }
         self.selecting = true;
@@ -2095,7 +2098,12 @@ fn next_char_boundary(s: &str, pos: usize) -> usize {
 }
 
 fn prev_word_boundary(s: &str, pos: usize) -> usize {
-    let mut p = pos;
+    // Clamp `pos` to `s.len()`: callers may pass a cursor that has fallen out
+    // of sync with `value` (e.g. after an external signal clear while the
+    // input is focused, or a mouse click past the end of the text). Without
+    // this, `s[prev..p]` below panics with "range end index N out of range
+    // for slice of length M" when `pos > s.len()`.
+    let mut p = pos.min(s.len());
     // skip trailing whitespace
     while p > 0 {
         let prev = prev_char_boundary(s, p);
@@ -2118,7 +2126,8 @@ fn prev_word_boundary(s: &str, pos: usize) -> usize {
 }
 
 fn next_word_boundary(s: &str, pos: usize) -> usize {
-    let mut p = pos;
+    // Clamp `pos` to `s.len()` — see `prev_word_boundary` for rationale.
+    let mut p = pos.min(s.len());
     // skip non-whitespace
     while p < s.len() {
         let next = next_char_boundary(s, p);
@@ -2376,6 +2385,25 @@ fn month_name(month: u32) -> &'static str {
 #[cfg(test)]
 mod validate_tests {
     use super::*;
+
+    #[test]
+    fn prev_word_boundary_with_empty_string_and_stale_cursor_does_not_panic() {
+        // Reproduces the dashboard panic: "range end index 14 out of range for
+        // slice of length 0". When the input's `value` is cleared externally
+        // (e.g. form submit / reset) while focused, the cached cursor can be
+        // left pointing past the now-empty value. `prev_word_boundary` must
+        // clamp `pos` instead of slicing `s[prev..pos]`.
+        assert_eq!(prev_word_boundary("", 14), 0);
+        assert_eq!(prev_word_boundary("abc", 99), 0);
+        assert_eq!(prev_word_boundary("build dashboard", 15), 6);
+    }
+
+    #[test]
+    fn next_word_boundary_with_pos_beyond_len_is_clamped() {
+        assert_eq!(next_word_boundary("", 14), 0);
+        assert_eq!(next_word_boundary("abc", 99), 3);
+        assert_eq!(next_word_boundary("build dashboard", 0), 6);
+    }
 
     #[test]
     fn empty_required_fails() {
