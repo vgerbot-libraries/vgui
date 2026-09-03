@@ -36,7 +36,7 @@ Attribute name mapping conventions: `on:click`→`on_click`, `type`→`r#type`, 
 
 | HTML/CSS | vgui | Support |
 |----------|------|---------|
-| No built-in conditional/list rendering (relies on framework `v-if`/`v-for`, React conditional rendering, etc.) | `<Show when={}>` / `<For each={}>`, supports fallback | ✅ |
+| No built-in conditional/list rendering (relies on framework `v-if`/`v-for`, React conditional rendering, etc.) | `<Show when={}>` / `<For each={}>` / `<Switch>`+`<Match>` / `<Index each={}>`, all support `fallback` | ✅ |
 
 ## 2. Styling System
 
@@ -281,6 +281,7 @@ Responsive breakpoint thresholds (matching Tailwind defaults):
 | React `useState` | `create_signal` (SolidJS-style fine-grained) | ✅ |
 | React `useMemo` | `create_memo` | ✅ |
 | React `useEffect` | `create_effect` (synchronous execution, not async) | ✅ |
+| React `useEffect` cleanup | `on_cleanup` (runs on scope disposal) | ✅ |
 | Dependency tracking | Automatic fine-grained tracking | ✅ |
 | React Context API | `Context<T>` + `<Provider>` + `use_context` | ✅ |
 | Re-runs entire `app()` closure on each render | Not SolidJS compile-time fine-grained, but slot model keeps state persistent | 🔶 |

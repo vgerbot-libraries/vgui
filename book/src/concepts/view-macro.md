@@ -65,9 +65,11 @@ view! {
 
 ### Control-flow components
 
-`<Show>` and `<For>` are special-cased by the macro and expand to `vgui::show`
-/ `vgui::show_when` / `vgui::for_each` / `vgui::for_each_or` function calls.
-See [Control Flow](../elements/control-flow.md).
+`<Show>`, `<For>`, `<Switch>`, and `<Index>` are special-cased by the macro
+and expand to `vgui::show` / `vgui::show_when` / `vgui::for_each` /
+`vgui::for_each_or` / `vgui::index_list` / `vgui::index_list_or` function
+calls, plus hidden scope-management helpers for `<Switch>`. See
+[Control Flow](../elements/control-flow.md).
 
 `<Provider>` is special-cased to push a context value before evaluating its
 children and pop it after, via `vgui::__provider_scope_enter` /

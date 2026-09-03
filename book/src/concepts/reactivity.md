@@ -133,6 +133,35 @@ Effects are useful for:
 - Persisting state to disk.
 - Synchronizing external systems.
 
+## Cleanup
+
+`on_cleanup(f)` registers a callback that runs when the current scope is
+disposed. Disposal happens when:
+
+- A `<Switch>` branch becomes inactive (the user switches to another branch).
+- An `<Index>` item is removed (the list shrinks below the item's position).
+- A route change disposes the previous route's child scope.
+
+```rust
+let (mode, set_mode) = create_signal("edit");
+
+// Inside a <Switch> branch:
+on_cleanup(move || {
+    eprintln!("edit scope disposed — saving draft");
+});
+```
+
+`on_cleanup` uses the same slot-caching pattern as `create_effect`: on
+re-renders the slot is recognised by position and the callback is not
+re-registered. The callback runs once, when the scope is disposed.
+
+> **Note:** `on_cleanup` is a no-op when no reactive scope is active (e.g.
+> in standalone tests), so it can be safely called in test `view!`s without
+> panicking.
+
+Cleanups run depth-first: children are disposed before their parent. Within
+a scope, cleanups run in registration order.
+
 ## Dependency Tracking
 
 Dependency tracking is automatic and fine-grained. When `ReadSignal::get()` is

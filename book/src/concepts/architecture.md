@@ -56,7 +56,7 @@ The `vgui` crate's internal module structure:
 
 | Module            | Responsibility                                                    |
 | ----------------- | ----------------------------------------------------------------- |
-| `reactive`        | `create_signal`, `create_memo`, `create_effect`, `ReadSignal`, `WriteSignal`, scope management, dependency tracking. |
+| `reactive`        | `create_signal`, `create_memo`, `create_effect`, `on_cleanup`, `ReadSignal`, `WriteSignal`, scope management, dependency tracking, `index_list`/`index_list_or`, `<Switch>`/`<Index>` scope helpers. |
 | `root`            | `VguiRoot` entity, `Scope` (the reactive owner), `mount()`.       |
 | `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `meter`, `details`. |
 | `overlay`         | `portal`, `floating`, `dialog` (modal overlay with portal, click-outside, escape). |
@@ -88,9 +88,11 @@ The `vgui` crate's internal module structure:
    closure wrapping the user's `app()` function.
 
 2. **On every render**, `VguiRoot::render`:
-   - Resets `scope.index` to 0 — this is the per-render slot counter that gives
-     `create_signal`/`create_memo`/`create_effect` their stable identity across
-     re-renders (like React's hooks rules).
+   - Resets `scope.index` to 0 on the root scope **and all descendant child
+     scopes** (created by `<Switch>`/`<Index>`/routes) — this is the per-render
+     slot counter that gives `create_signal`/`create_memo`/`create_effect`/
+     `on_cleanup` their stable identity across re-renders (like React's hooks
+     rules).
    - Calls `enter_scope` to set the current scope and `gpui::Context` in a
      thread-local.
    - Calls `(self.render)()` — the user's `app()` function — which calls
@@ -111,9 +113,20 @@ The `vgui` crate's internal module structure:
 
 5. **When a signal changes** via `WriteSignal::set` or `WriteSignal::update`,
    `gpui` notifies the `VguiRoot` entity, which calls `notify_dep`. This
-   re-evaluates only the memos and effects whose tracked dependencies include
+   traverses the root scope **and all descendant child scopes recursively**,
+   re-evaluating only the memos and effects whose tracked dependencies include
    the changed signal, then calls `cx.notify()` to trigger a re-render of the
    `VguiRoot` entity — which re-runs `app()` from the top.
+
+### Scope disposal
+
+Child scopes (created by `<Switch>` branches, `<Index>` items, or routes) can
+be disposed when they are no longer needed — e.g. when a `<Switch>` branch
+becomes inactive or an `<Index>` list shrinks. `dispose_scope` runs all
+`on_cleanup` callbacks registered in the scope (children first, depth-first),
+then clears all state (slots, memos, effects, subscriptions, cleanups,
+children). After disposal the scope is empty and can be re-entered as if
+freshly created.
 
 ### Why re-run from the top?
 

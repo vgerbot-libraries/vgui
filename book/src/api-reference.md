@@ -25,6 +25,7 @@ The main crate. Key exports:
 | `create_signal&lt;T&gt;(initial) -> (ReadSignal&lt;T&gt;, WriteSignal&lt;T&gt;)` | Creates a reactive signal. |
 | `create_memo&lt;T&gt;(f) -> ReadSignal&lt;T&gt;`   | Creates a derived, cached value.         |
 | `create_effect(f)`                     | Creates a side effect that re-runs on dep change. |
+| `on_cleanup(f)`                        | Registers a cleanup callback that runs on scope disposal. |
 | `ReadSignal&lt;T&gt;::get() -> T`            | Reads value, registers dependency.       |
 | `ReadSignal&lt;T&gt;::get_with(cx) -> T`     | Reads value without tracking.            |
 | `WriteSignal&lt;T&gt;::set(cx, value)`       | Sets value, notifies if changed.         |
@@ -75,6 +76,8 @@ See [Context & Provider](./elements/context.md) for a full guide.
 | `show_when(when, then) -> AnyElement`  | Conditional render (no fallback).        |
 | `for_each(items, child_fn) -> AnyElement` | List rendering.                       |
 | `for_each_or(items, fallback, child_fn) -> AnyElement` | List rendering with fallback. |
+| `index_list(items, child_fn) -> AnyElement` | Keyed-by-position list with per-item child scopes. |
+| `index_list_or(items, fallback, child_fn) -> AnyElement` | Keyed-by-position list with fallback. |
 | `progress(value, max) -> Div`          | Progress bar.                            |
 | `meter(value, min, max, low, high, optimum) -> Div` | Meter gauge.                |
 | `details(open, summary, content) -> AnyElement` | Collapsible container.           |
@@ -171,11 +174,12 @@ See [Refs & NodeRef](./elements/refs.md) for the full API.
 
 `view`, `css`, `tw`, `twc`, `tw_dynamic`, `variants`, `theme`, `set_theme`,
 `with_theme`, `create_signal`, `create_memo`, `create_effect`, `create_router`,
-`ReadSignal`, `WriteSignal`, `RouteMatch`, `Router`, `Breakpoint`, `click`,
-`mount`, `Context`, `use_context`, `use_context_or`, `provide_context`,
-`NodeRef`, `KeyboardEvent`, `PointerEvent`, `PointerType`, `ResizeEvent`,
-`WheelEvent`, `checkbox`, `radio`, `range_input`, `file_input`, `input_cb`,
-`bool_change_cb`, `f64_change_cb`, `files_cb`, `CheckboxProps`,
+`on_cleanup`, `index_list`, `index_list_or`, `enter_child_scope`,
+`exit_child_scope`, `ReadSignal`, `WriteSignal`, `RouteMatch`, `Router`,
+`Breakpoint`, `click`, `mount`, `Context`, `use_context`, `use_context_or`,
+`provide_context`, `NodeRef`, `KeyboardEvent`, `PointerEvent`, `PointerType`,
+`ResizeEvent`, `WheelEvent`, `checkbox`, `radio`, `range_input`, `file_input`,
+`input_cb`, `bool_change_cb`, `f64_change_cb`, `files_cb`, `CheckboxProps`,
 `FileProps`, `RadioProps`, `RangeProps`, `TextInputProps`, `TextKind`, `Theme`,
 `TwClass`, `TwClassSource`, `IntoTwStyle`, `portal`, `floating`, and all of
 `gpui::prelude::*`.
