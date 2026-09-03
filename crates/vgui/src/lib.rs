@@ -53,7 +53,7 @@ pub use crate::input_widgets::{
 pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit, LabelTarget};
 pub use crate::context::{__provider_scope_enter, __provider_scope_exit};
-pub use crate::reactive::{create_effect, create_memo, create_signal, enter_child_scope, exit_child_scope, next_auto_id, ReadSignal, WriteSignal};
+pub use crate::reactive::{create_effect, create_memo, create_signal, enter_child_scope, exit_child_scope, next_auto_id, on_cleanup, index_list, index_list_or, ReadSignal, WriteSignal};
 pub use crate::router::{create_router, build_path, match_pattern, RouteMatch, Router};
 pub use crate::breakpoint::Breakpoint;
 pub use crate::breakpoint::__apply_breakpoint_styles;
@@ -96,6 +96,12 @@ pub use crate::web::intercept_keyboard_events;
 
 // Hidden helper called by macro-emitted `ref=` code.
 pub use crate::reactive::__bind_ref;
+
+// Hidden helpers called by macro-emitted <Switch>/<Index> code.
+pub use crate::reactive::{
+    __switch_dispose_inactive, __switch_enter_branch, __switch_exit_branch,
+    __index_dispose_excess,
+};
 
 // Hidden helpers for grid-template-areas / grid-area resolution.
 pub use crate::grid_areas::{__push_grid_areas, __resolve_grid_area, GridAreasGuard};

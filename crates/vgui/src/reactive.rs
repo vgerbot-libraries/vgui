@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use gpui::{App, AppContext, Entity, EntityId};
+use gpui::{App, AppContext, Entity, EntityId, IntoElement, ParentElement};
 
 use crate::root::{Scope, Slot, VguiRoot};
 
@@ -114,6 +114,7 @@ pub fn enter_child_scope(key: &str) {
                     memos: Vec::new(),
                     memo_deps: Vec::new(),
                     effects: Vec::new(),
+                    cleanups: Vec::new(),
                     resize_handlers: Vec::new(),
                     children: std::collections::HashMap::new(),
                     parent: Some(parent),
@@ -565,6 +566,181 @@ pub fn create_effect(f: impl Fn() + 'static) {
             deps,
         });
         scope.index += 1;
+    }
+}
+
+/// Register a cleanup callback that runs when the current scope is disposed.
+///
+/// Uses the same slot-caching pattern as `create_effect`: on re-renders the
+/// slot is recognised by position and the callback is not re-registered. The
+/// callback runs once when the scope is disposed via `dispose_scope` (e.g.
+/// when a `<Switch>` branch becomes inactive or an `<Index>` item is removed).
+///
+/// No-op when no reactive scope is active (e.g. in standalone tests), so
+/// `on_cleanup` in test `view!`s won't panic.
+pub fn on_cleanup(f: impl Fn() + 'static) {
+    if try_current().is_none() {
+        return;
+    }
+    let cur = current();
+    {
+        let mut scope = cur.scope.borrow_mut();
+        let index = scope.index;
+        if index < scope.slots.len() {
+            match &scope.slots[index] {
+                Slot::Cleanup(_) => {}
+                _ => panic!("vgui slot {index} changed type"),
+            }
+            scope.index += 1;
+            return;
+        }
+    }
+    {
+        let mut scope = cur.scope.borrow_mut();
+        scope.slots.push(Slot::Cleanup(Arc::new(()) as Arc<dyn Any>));
+        scope.cleanups.push(Rc::new(f));
+        scope.index += 1;
+    }
+}
+
+/// Dispose child scopes for inactive `<Switch>` branches. Called by
+/// macro-emitted code before entering the active branch. No-op without a
+/// reactive scope (test compatibility).
+#[doc(hidden)]
+pub fn __switch_dispose_inactive(switch_id: u64, active: Option<usize>, branch_count: usize) {
+    if try_current().is_none() {
+        return;
+    }
+    let cur = current();
+    let to_dispose: Vec<Rc<RefCell<Scope>>> = {
+        let mut scope = cur.scope.borrow_mut();
+        (0..branch_count)
+            .filter(|&b| active != Some(b))
+            .filter_map(|b| {
+                let key = format!("switch:{}:{}", switch_id, b);
+                scope.children.remove(&key)
+            })
+            .collect()
+    };
+    for child in to_dispose {
+        crate::root::dispose_scope(&child);
+    }
+}
+
+/// Enter the child scope for a `<Switch>` branch. No-op without a reactive
+/// scope (test compatibility).
+#[doc(hidden)]
+pub fn __switch_enter_branch(switch_id: u64, branch: usize) {
+    if try_current().is_none() {
+        return;
+    }
+    let key = format!("switch:{}:{}", switch_id, branch);
+    enter_child_scope(&key);
+}
+
+/// Exit the current `<Switch>` branch child scope. No-op without a reactive
+/// scope (test compatibility).
+#[doc(hidden)]
+pub fn __switch_exit_branch() {
+    if try_current().is_none() {
+        return;
+    }
+    exit_child_scope();
+}
+
+/// Dispose child scopes for `<Index>` positions >= `active_count`. Called by
+/// macro-emitted code after rendering all current items. No-op without a
+/// reactive scope (test compatibility).
+#[doc(hidden)]
+pub fn __index_dispose_excess(list_id: u64, active_count: usize) {
+    if try_current().is_none() {
+        return;
+    }
+    let cur = current();
+    let prefix = format!("index:{}:", list_id);
+    let to_dispose: Vec<Rc<RefCell<Scope>>> = {
+        let mut scope = cur.scope.borrow_mut();
+        let keys: Vec<String> = scope
+            .children
+            .keys()
+            .filter(|k| {
+                k.starts_with(&prefix)
+                    && k[prefix.len()..]
+                        .parse::<usize>()
+                        .map(|idx| idx >= active_count)
+                        .unwrap_or(false)
+            })
+            .cloned()
+            .collect();
+        keys.into_iter()
+            .filter_map(|k| scope.children.remove(&k))
+            .collect()
+    };
+    for child in to_dispose {
+        crate::root::dispose_scope(&child);
+    }
+}
+
+/// Keyed-by-position list primitive. Each item gets its own persistent child
+/// scope (keyed by `index:{list_id}:{position}`), so state created inside the
+/// closure (signals, memos, effects) survives re-renders as long as the item
+/// remains at the same position. When the list shrinks, excess scopes are
+/// disposed and their `on_cleanup` callbacks run.
+pub fn index_list<T, E: gpui::IntoElement>(
+    items: impl IntoIterator<Item = T>,
+    mut child: impl FnMut(T, usize) -> E,
+) -> gpui::AnyElement {
+    let list_id = next_auto_id();
+    let has_scope = try_current().is_some();
+    let mut parent = gpui::div();
+    let mut n = 0;
+    for (i, item) in items.into_iter().enumerate() {
+        if has_scope {
+            let key = format!("index:{}:{}", list_id, i);
+            enter_child_scope(&key);
+        }
+        let el = child(item, i);
+        if has_scope {
+            exit_child_scope();
+        }
+        parent = parent.child(el);
+        n += 1;
+    }
+    if has_scope {
+        __index_dispose_excess(list_id, n);
+    }
+    parent.into_any_element()
+}
+
+/// Like `index_list` but renders `fallback` when the iterator is empty.
+pub fn index_list_or<T, E: gpui::IntoElement, F: gpui::IntoElement>(
+    items: impl IntoIterator<Item = T>,
+    fallback: F,
+    mut child: impl FnMut(T, usize) -> E,
+) -> gpui::AnyElement {
+    let list_id = next_auto_id();
+    let has_scope = try_current().is_some();
+    let mut parent = gpui::div();
+    let mut n = 0;
+    for (i, item) in items.into_iter().enumerate() {
+        if has_scope {
+            let key = format!("index:{}:{}", list_id, i);
+            enter_child_scope(&key);
+        }
+        let el = child(item, i);
+        if has_scope {
+            exit_child_scope();
+        }
+        parent = parent.child(el);
+        n += 1;
+    }
+    if has_scope {
+        __index_dispose_excess(list_id, n);
+    }
+    if n == 0 {
+        fallback.into_any_element()
+    } else {
+        parent.into_any_element()
     }
 }
 

@@ -146,4 +146,49 @@ fn widgets_compile_and_produce_elements() {
             {"Responsive + hover"}
         </div>
     });
+
+    // <Switch> with <Match> branches and fallback
+    assert_into_any(|| view! {
+        <Switch fallback={view! { <div>"none"</div> }}>
+            <Match when={true}>
+                <div>"yes"</div>
+            </Match>
+            <Match when={false}>
+                <div>"no"</div>
+            </Match>
+        </Switch>
+    });
+
+    // <Switch> without fallback (defaults to Empty)
+    assert_into_any(|| view! {
+        <Switch>
+            <Match when={false}>
+                <div>"a"</div>
+            </Match>
+            <Match when={true}>
+                <div>"b"</div>
+            </Match>
+        </Switch>
+    });
+
+    // <Index> with closure
+    assert_into_any(|| view! {
+        <Index each={vec![1u32, 2, 3]}>
+            {|n, _i| view! { <div>{format!("{}", n)}</div> }}
+        </Index>
+    });
+
+    // <Index> with fallback
+    assert_into_any(|| view! {
+        <Index each={Vec::<u32>::new()} fallback={view! { <div>"empty"</div> }}>
+            {|n, _i| view! { <div>{format!("{}", n)}</div> }}
+        </Index>
+    });
+
+    // on_cleanup compiles and is a no-op without scope
+    assert_into_any(|| view! {
+        <div on:click={click(move |_cx| { vgui::on_cleanup(|| {}); })}>
+            {"click"}
+        </div>
+    });
 }

@@ -1,0 +1,5 @@
+error: <Index> child must be a closure
+ --> tests/ui/index_non_closure.rs:5:10
+  |
+5 |         <Index each={vec![1u32, 2, 3]}>
+  |          ^^^^^

@@ -1,0 +1,5 @@
+error: <Switch> children must be <Match> elements
+ --> tests/ui/switch_non_match_child.rs:5:10
+  |
+5 |         <Switch>
+  |          ^^^^^^

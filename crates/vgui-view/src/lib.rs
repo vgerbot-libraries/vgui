@@ -98,6 +98,12 @@ pub(crate) fn emit_element(el: &Element) -> syn::Result<TokenStream2> {
     if name == "For" {
         return control::emit_for(el);
     }
+    if name == "Switch" {
+        return control::emit_switch(el);
+    }
+    if name == "Index" {
+        return control::emit_index(el);
+    }
     if name == "Provider" {
         return provider::emit_provider(el);
     }

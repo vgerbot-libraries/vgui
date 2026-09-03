@@ -1,0 +1,5 @@
+error: missing `when` on <Match>
+ --> tests/ui/switch_missing_when.rs:6:14
+  |
+6 |             <Match>{"x"}</Match>
+  |              ^^^^^

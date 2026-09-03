@@ -15,6 +15,11 @@ pub struct Scope {
     pub(crate) memos: Vec<Rc<dyn Fn(&mut Context<VguiRoot>)>>,
     pub(crate) memo_deps: Vec<Vec<gpui::EntityId>>,
     pub(crate) effects: Vec<EffectSlot>,
+    /// Cleanup callbacks registered via `on_cleanup`. Run when the scope is
+    /// disposed (e.g. when a `<Switch>` branch becomes inactive or an `<Index>`
+    /// item is removed). Stored alongside `slots` so the slot-caching index
+    /// stays consistent.
+    pub(crate) cleanups: Vec<Rc<dyn Fn()>>,
     /// `on:resize` handlers registered during the current render. Cleared and
     /// refilled on every render, then invoked by the window-bounds observer.
     pub(crate) resize_handlers:
@@ -37,7 +42,78 @@ pub(crate) enum Slot {
     Signal(std::sync::Arc<dyn std::any::Any>),
     Memo(std::sync::Arc<dyn std::any::Any>),
     Effect(std::sync::Arc<dyn std::any::Any>),
+    Cleanup(std::sync::Arc<dyn std::any::Any>),
     Widget(std::sync::Arc<dyn std::any::Any>),
+}
+
+/// Recursively collects a scope and all its descendants (depth-first, root
+/// first). Used by `notify_dep` and the resize handler dispatcher so that
+/// memos/effects/handlers living in nested child scopes (created by
+/// `<Switch>`/`<Index>`) are reached.
+pub(crate) fn collect_all_scopes(scope: &Rc<RefCell<Scope>>) -> Vec<Rc<RefCell<Scope>>> {
+    let mut result = vec![scope.clone()];
+    let children: Vec<_> = scope.borrow().children.values().cloned().collect();
+    for child in children {
+        result.extend(collect_all_scopes(&child));
+    }
+    result
+}
+
+/// Recursively disposes a scope: disposes children first (depth-first), runs
+/// own cleanups, then clears all state. After disposal the scope is empty and
+/// can be re-entered as if freshly created.
+pub(crate) fn dispose_scope(scope: &Rc<RefCell<Scope>>) {
+    // Collect children first to avoid holding a borrow during recursion.
+    let children: Vec<_> = scope.borrow().children.values().cloned().collect();
+    for child in children {
+        dispose_scope(&child);
+    }
+    // Run cleanups (own only — children already ran theirs).
+    let cleanups: Vec<Rc<dyn Fn()>> = scope.borrow().cleanups.iter().cloned().collect();
+    for cleanup in cleanups {
+        cleanup();
+    }
+    // Clear everything.
+    let mut s = scope.borrow_mut();
+    s.children.clear();
+    s.slots.clear();
+    s.subscriptions.clear();
+    s.memos.clear();
+    s.memo_deps.clear();
+    s.effects.clear();
+    s.cleanups.clear();
+    s.resize_handlers.clear();
+    s.index = 0;
+    s.initialized = false;
+}
+
+/// Recursively collects resize handlers from a scope and all descendants.
+fn collect_all_resize_handlers(
+    scope: &Rc<RefCell<Scope>>,
+) -> Vec<Rc<dyn Fn(&crate::event::ResizeEvent, &mut gpui::Window, &mut gpui::App)>> {
+    let s = scope.borrow();
+    let mut result: Vec<_> = s.resize_handlers.iter().cloned().collect();
+    let children: Vec<_> = s.children.values().cloned().collect();
+    drop(s);
+    for child in children {
+        result.extend(collect_all_resize_handlers(&child));
+    }
+    result
+}
+
+/// Recursively resets per-render state (`index`, `resize_handlers`) on a
+/// scope and all its descendants. Called at the start of every render so that
+/// each persistent child scope begins with a clean slot sequence.
+fn reset_render_state(scope: &Rc<RefCell<Scope>>) {
+    let children: Vec<_> = scope.borrow().children.values().cloned().collect();
+    {
+        let mut s = scope.borrow_mut();
+        s.index = 0;
+        s.resize_handlers.clear();
+    }
+    for child in children {
+        reset_render_state(&child);
+    }
 }
 
 pub struct VguiRoot {
@@ -56,13 +132,14 @@ impl VguiRoot {
         let scope = Rc::new(RefCell::new(Scope {
             host: cx.weak_entity(),
             slots: Vec::new(),
+            effects: Vec::new(),
+            cleanups: Vec::new(),
+            resize_handlers: Vec::new(),
             index: 0,
             initialized: false,
             subscriptions: Vec::new(),
             memos: Vec::new(),
             memo_deps: Vec::new(),
-            effects: Vec::new(),
-            resize_handlers: Vec::new(),
             children: HashMap::new(),
             parent: None,
         }));
@@ -78,12 +155,7 @@ impl VguiRoot {
         // may live in a child scope (e.g. a route view), but the gpui observe
         // callback always fires on the root VguiRoot, so we must dispatch the
         // notification to every scope that might depend on `id`.
-        let scopes: Vec<Rc<RefCell<Scope>>> = {
-            let scope = self.scope.borrow();
-            std::iter::once(self.scope.clone())
-                .chain(scope.children.values().cloned())
-                .collect()
-        };
+        let scopes = collect_all_scopes(&self.scope);
         for scope_rc in scopes {
             let (memos, memo_deps, effects) = {
                 let scope = scope_rc.borrow();
@@ -114,33 +186,18 @@ impl VguiRoot {
 
 impl Render for VguiRoot {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Reset per-render state on the root scope and every child scope. Child
+        // Reset per-render state on the root scope and all descendants. Child
         // scopes are persistent (keyed by name), so their slots survive route
         // switches, but their `index` and `resize_handlers` must be reset every
-        // render just like the root's.
-        {
-            let mut scope = self.scope.borrow_mut();
-            scope.index = 0;
-            scope.resize_handlers.clear();
-            for child in scope.children.values() {
-                let mut child_scope = child.borrow_mut();
-                child_scope.index = 0;
-                child_scope.resize_handlers.clear();
-            }
-        }
+        // render. Nested child scopes (from <Switch>/<Index>) are reset
+        // recursively.
+        reset_render_state(&self.scope);
         // Register the window-bounds observer once; it dispatches the current
         // render's resize handlers (root + all children) on viewport-size change.
         if self.resize_sub.is_none() {
             self.resize_sub = Some(cx.observe_window_bounds(window, |root, window, cx| {
                 let ev = ::vgui::event::ResizeEvent::from_window(window);
-                let handlers: Vec<_> = {
-                    let scope = root.scope.borrow();
-                    let mut v: Vec<_> = scope.resize_handlers.iter().cloned().collect();
-                    for c in scope.children.values() {
-                        v.extend(c.borrow().resize_handlers.iter().cloned());
-                    }
-                    v
-                };
+                let handlers = collect_all_resize_handlers(&root.scope);
                 for h in handlers {
                     h(&ev, window, cx);
                 }
