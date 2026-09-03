@@ -102,6 +102,7 @@ pub use crate::reactive::{
     __switch_dispose_inactive, __switch_enter_branch, __switch_exit_branch,
     __index_dispose_excess,
 };
+pub use crate::reactive::__try_current;
 
 // Hidden helpers for grid-template-areas / grid-area resolution.
 pub use crate::grid_areas::{__push_grid_areas, __resolve_grid_area, GridAreasGuard};

@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 
-use crate::emit::{attr_tokens, emit_children, string_lit_static};
+use crate::emit::{attr_tokens, emit_children_into, string_lit_static};
 use crate::{Attr, AttrKind, AttrValue, Element, Node};
 use crate::control::looks_like_closure;
 
@@ -252,10 +252,10 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                 }
                 None
             }).unwrap_or(quote! { false });
-            let kids = emit_children(&el.children)?;
+            let child_stmts = emit_children_into(&Ident::new("__p", el.tag.span()), &el.children)?;
             quote! { ::vgui::details(#open, ::gpui::div(), {
                 let mut __p = ::gpui::div().flex_col();
-                #(let __c = #kids; __p = __p.child(__c);)*
+                #child_stmts
                 __p
             }) }
         }
@@ -438,10 +438,10 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     }
     let is_void = matches!(name.as_str(), "br" | "hr");
     let handles_children = matches!(name.as_str(), "details");
-    let kids = if is_void || handles_children {
-        Vec::new()
+    let child_stmts = if is_void || handles_children {
+        quote! {}
     } else {
-        emit_children(&el.children)?
+        emit_children_into(&Ident::new("el", el.tag.span()), &el.children)?
     };
     let anim_wrap = if let Some(ae) = &__animate_expr {
         // Explicit animate={...} attribute — applied last, after children.
@@ -477,7 +477,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     };
     Ok(quote! {{
         let mut el = #ctor;
-        #(el = el.child(#kids);)*
+        #child_stmts
         #(el = ::vgui::Spread::spread(#spreads, el);)*
         #anim_wrap
     }})
@@ -1626,7 +1626,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
     let mut ctor = quote! { ::gpui::div().cursor_pointer() };
     ctor = chain_div_extras(ctor, el, style, class, hover, active, focus, ref_attr, id, tabindex, true, &events);
 
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("el", el.tag.span()), &el.children)?;
 
     if let Some(for_a) = for_attr {
         // Explicit `for="id"` — look up registry at click time.
@@ -1639,7 +1639,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
         };
         Ok(quote! {{
             let mut el = #ctor;
-            #(el = el.child(#kids);)*
+            #child_stmts
             let __for_id = #for_id_expr;
             el = el.on_mouse_down(::gpui::MouseButton::Left, move |_e, window, cx| {
                 ::vgui::focus_label_target(&__for_id, window, cx);
@@ -1651,7 +1651,7 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
         Ok(quote! {{
             ::vgui::__label_scope_enter();
             let mut el = #ctor;
-            #(el = el.child(#kids);)*
+            #child_stmts
             let __target = ::vgui::label_scope_exit();
             if let ::std::option::Option::Some(__t) = __target {
                 let __h = __t.focus_handle;
@@ -1736,7 +1736,7 @@ fn emit_form(el: &Element) -> syn::Result<TokenStream2> {
         None => quote! { ::std::option::Option::None },
     };
 
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("__p", el.tag.span()), &el.children)?;
 
     let inner = chain_div_extras(
         quote! { ::gpui::div() },
@@ -1756,7 +1756,7 @@ fn emit_form(el: &Element) -> syn::Result<TokenStream2> {
     Ok(quote! {
         ::vgui::form_scope(#on_submit_expr, #on_reset_expr, || {
             let mut __p = #inner;
-            #(let __c = #kids; __p = __p.child(__c);)*
+            #child_stmts
             __p
         })
     })
@@ -1787,10 +1787,10 @@ fn emit_dialog(el: &Element) -> syn::Result<TokenStream2> {
     }
     let open = open.unwrap_or(quote! { false });
     let on_close = on_close.unwrap_or(quote! { move |_cx: &mut ::gpui::App| {} });
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("__p", el.tag.span()), &el.children)?;
     Ok(quote! { ::vgui::dialog(#open, #on_close, {
         let mut __p = ::gpui::div();
-        #(let __c = #kids; __p = __p.child(__c);)*
+        #child_stmts
         __p
     }) })
 }
@@ -1813,10 +1813,10 @@ fn emit_portal(el: &Element) -> syn::Result<TokenStream2> {
         }
     }
     let priority = priority.unwrap_or(quote! { 0usize });
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("__p", el.tag.span()), &el.children)?;
     Ok(quote! { ::vgui::portal({
         let mut __p = ::gpui::div();
-        #(let __c = #kids; __p = __p.child(__c);)*
+        #child_stmts
         __p
     }, #priority) })
 }
@@ -1842,10 +1842,10 @@ fn emit_floating(el: &Element) -> syn::Result<TokenStream2> {
     let position = position.ok_or_else(|| {
         syn::Error::new(el.tag.span(), "<floating> requires a `position` attribute")
     })?;
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("__p", el.tag.span()), &el.children)?;
     Ok(quote! { ::vgui::floating(#position, {
         let mut __p = ::gpui::div();
-        #(let __c = #kids; __p = __p.child(__c);)*
+        #child_stmts
         __p
     }) })
 }
@@ -1861,11 +1861,11 @@ fn emit_radiogroup(el: &Element) -> syn::Result<TokenStream2> {
             "unsupported attribute on <radiogroup>; it takes no attributes",
         ));
     }
-    let kids = emit_children(&el.children)?;
+    let child_stmts = emit_children_into(&Ident::new("__content", el.tag.span()), &el.children)?;
     Ok(quote! { {
         let __handles = ::vgui::__radiogroup_scope_enter();
         let mut __content = ::gpui::div();
-        #(let __c = #kids; __content = __content.child(__c);)*
+        #child_stmts
         ::vgui::__radiogroup_scope_exit();
         ::vgui::radiogroup(__handles, __content)
     } })

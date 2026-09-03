@@ -1,7 +1,7 @@
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
 
-use crate::emit::{attr_tokens, emit_child};
+use crate::emit::{attr_tokens, emit_child, emit_children_into};
 use crate::{AttrKind, Element};
 
 /// Emit a `<Provider context={...} value={...}>` element.
@@ -79,4 +79,39 @@ pub(crate) fn emit_provider(el: &Element) -> syn::Result<TokenStream2> {
         ::vgui::__provider_scope_exit();
         __content
     } })
+}
+
+/// Inlined `<Provider>` — pushes the context value, adds children directly to
+/// `parent`, then pops. No wrapper element is introduced. Multiple children
+/// are supported (unlike the standalone `emit_provider` which requires exactly
+/// one child, because the standalone case must return a single `AnyElement`).
+pub(crate) fn emit_provider_into(el: &Element, parent: &Ident) -> syn::Result<TokenStream2> {
+    let mut context = None;
+    let mut value = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id == "context" => context = Some(attr_tokens(&attr.value)),
+            AttrKind::Ident(id) if id == "value" => value = Some(attr_tokens(&attr.value)),
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <Provider>; allowed: `context`, `value`",
+                ));
+            }
+        }
+    }
+    let context = context.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<Provider> requires a `context` attribute")
+    })?;
+    let value = value.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<Provider> requires a `value` attribute")
+    })?;
+    let child_stmts = emit_children_into(parent, &el.children)?;
+    Ok(quote! {{
+        let __ctx = #context;
+        let __val = #value;
+        ::vgui::__provider_scope_enter(&__ctx, __val);
+        #child_stmts
+        ::vgui::__provider_scope_exit();
+    }})
 }

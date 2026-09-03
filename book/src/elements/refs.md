@@ -125,8 +125,9 @@ passes `ref=`.
 
 - **`<select>` and `<textarea>`**: `ref=` is not supported directly. Use a
   wrapping `<div ref={...}>` around these elements instead.
-- **`<Show>` and `<For>`**: `ref=` is rejected — these are control-flow
-  wrappers with no meaningful target element.
+- **`<Show>`, `<For>`, `<Switch>`, `<Index>`, `<Provider>`**: `ref=` is
+  rejected — these are logical (layout-transparent) nodes with no rendered
+  target element.
 - **`<input type="text">` and `<input type="range">`**: These return
   `Entity`-backed views, not divs. `ref=` is not supported on them directly.
   For checkbox/radio/file/submit input types, `ref=` binds to the wrapper div.

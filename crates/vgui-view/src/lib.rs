@@ -23,6 +23,7 @@ pub fn view(input: TokenStream) -> TokenStream {
     }
 }
 
+#[derive(Clone)]
 pub(crate) enum Node {
     Element(Element),
     Fragment(Vec<Node>),
@@ -30,19 +31,21 @@ pub(crate) enum Node {
     Text(syn::LitStr),
 }
 
+#[derive(Clone)]
 pub(crate) struct Element {
     pub(crate) tag: Ident,
     pub(crate) attrs: Vec<Attr>,
     pub(crate) children: Vec<Node>,
     pub(crate) self_closing: bool,
 }
-
+#[derive(Clone)]
 pub(crate) struct Attr {
     pub(crate) kind: AttrKind,
     pub(crate) value: AttrValue,
     pub(crate) span: Span,
 }
 
+#[derive(Clone)]
 pub(crate) enum AttrKind {
     Ident(Ident),
     On(Ident),
@@ -63,6 +66,7 @@ pub(crate) enum AttrKind {
     Aria(Ident),
 }
 
+#[derive(Clone)]
 pub(crate) enum AttrValue {
     Expr(TokenStream2),
     Lit(TokenStream2),

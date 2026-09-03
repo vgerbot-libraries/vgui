@@ -59,14 +59,19 @@ error for unsupported attributes.
 
 ### Multiple children
 
-`<Show>` can have multiple children; they are wrapped in a `div`:
+`<Show>` can have multiple children; they are added directly to the parent
+element:
 
 ```rust
-<Show when={is_loading.get()}>
-    <span>{"Loading..."}</span>
-    <progress value={0.5f64} max={1.0f64} />
-</Show>
+<div class="flex flex-col">
+    <Show when={is_loading.get()}>
+        <span>{"Loading..."}</span>
+        <progress value={0.5f64} max={1.0f64} />
+    </Show>
+</div>
 ```
+
+Both `<span>` and `<progress>` become direct flex children of the `<div>`.
 
 ## `<For>` — List Rendering
 
@@ -123,9 +128,10 @@ closure. The closure signature is `move |item: T, index: usize| -> impl IntoElem
 
 ### How it works
 
-`for_each` creates a `gpui::div()` and calls `.child(closure(item, i))` for
-each item in the iterator. `for_each_or` does the same, but renders the
-fallback element when the iterator is empty.
+The macro emits a `for` loop that calls `parent.child(closure(item, i))` for
+each item. When the iterator is empty and no `fallback` is provided, nothing
+is added. When a `fallback` is provided and the iterator is empty, the
+fallback element is added as a single child.
 
 > **Note:** `<For>` re-renders all items on every render — it does not
 > key-track individual items for minimal diffing. The closure receives
@@ -239,12 +245,11 @@ The macro expands to:
     match __active {
         Some(0) => {
             vgui::__switch_enter_branch(__switch_id, 0);
-            let __el = { <div>{"Loading..."}</div> };
+            parent = parent.child(<div>{"Loading..."}</div>);
             vgui::__switch_exit_branch();
-            __el.into_any_element()
         }
         // ... other arms
-        _ => vgui::show_fallback(),
+        _ => { /* fallback or nothing */ }
     }
 }
 ```
@@ -321,8 +326,8 @@ cleaned up when the item is removed.
 
 ### How it works
 
-`index_list` assigns a unique `list_id` via `next_auto_id()`, then for each
-item enters a child scope keyed by `index:{list_id}:{position}` before
-calling the closure and exits it after. After all items are rendered,
+The macro assigns a unique `list_id` via `next_auto_id()`, then for each item
+enters a child scope keyed by `index:{list_id}:{position}` before calling the
+closure and exits it after. After all items are rendered,
 `__index_dispose_excess(list_id, n)` removes and disposes child scopes for
 positions `>= n` (items that no longer exist).

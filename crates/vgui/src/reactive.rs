@@ -171,6 +171,14 @@ fn try_current() -> Option<Current> {
     CURRENT.with(|c| c.borrow().as_ref().cloned())
 }
 
+/// Public wrapper for macro-emitted `<Index>` code. Returns `true` when a
+/// reactive scope is active so the macro can decide whether to call
+/// `enter_child_scope` / `exit_child_scope`.
+#[doc(hidden)]
+pub fn __try_current() -> bool {
+    try_current().is_some()
+}
+
 /// Register an `on:resize` handler into the current render scope. Called by
 /// macro-emitted `on:resize` code. No-op outside a real render scope (tests),
 /// so `on:resize` in test `view!`s won't panic.
@@ -709,7 +717,11 @@ pub fn index_list<T, E: gpui::IntoElement>(
     if has_scope {
         __index_dispose_excess(list_id, n);
     }
-    parent.into_any_element()
+    if n == 0 {
+        gpui::Empty.into_any_element()
+    } else {
+        parent.into_any_element()
+    }
 }
 
 /// Like `index_list` but renders `fallback` when the iterator is empty.
