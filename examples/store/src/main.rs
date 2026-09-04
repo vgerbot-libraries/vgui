@@ -203,7 +203,7 @@ fn app() -> impl gpui::IntoElement {
     let set_cart_clear = set_cart.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-[520px] h-[700px] text-white overflow-hidden">
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-full h-full text-white overflow-hidden">
             <span class="text-xl font-bold text-center">{"Shopping Cart (create_store)"}</span>
 
             // Item count — driven by `item_count` selector only.
