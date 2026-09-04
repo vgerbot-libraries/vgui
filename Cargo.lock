@@ -5926,6 +5926,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-use-interval"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-variants"
 version = "0.1.0"
 dependencies = [

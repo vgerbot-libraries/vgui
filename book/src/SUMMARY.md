@@ -50,6 +50,7 @@
 - [Canvas](./examples/canvas.md)
 - [Router](./examples/router.md)
 - [Store](./examples/store.md)
+- [useInterval](./examples/use-interval.md)
 
 # Feature Comparison
 

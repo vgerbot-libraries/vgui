@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::{App, AppContext, Entity, EntityId, IntoElement, ParentElement};
 
@@ -953,6 +954,131 @@ pub fn index_list_or<T, E: gpui::IntoElement, F: gpui::IntoElement>(
     } else {
         parent.into_any_element()
     }
+}
+
+// ---------------------------------------------------------------------------
+// setInterval / useInterval — timer primitives.
+//
+// `set_interval` is the low-level repeating timer (analogous to JS
+// `setInterval`). It spawns a gpui foreground task that awaits
+// `background_executor().timer(duration)` in a loop, invoking the callback
+// with `&mut AsyncApp` on each tick. The returned `IntervalHandle` owns the
+// task; dropping it cancels the interval immediately (gpui `Task` cancels on
+// drop), mirroring JS `clearInterval`.
+//
+// `use_interval` is the reactive hook that combines `create_effect` +
+// `on_cleanup`. It reads a `ReadSignal<u64>` delay (milliseconds; `0` pauses
+// the interval). When the delay changes the effect re-runs, cancelling the
+// previous interval and starting a new one. `on_cleanup` cancels the interval
+// when the enclosing scope is disposed (e.g. a `<Switch>` branch goes
+// inactive).
+// ---------------------------------------------------------------------------
+
+/// Handle returned by [`set_interval`]. Dropping it cancels the interval.
+///
+/// Equivalent to the numeric id returned by JS `setInterval` / passed to
+/// `clearInterval`. Call [`IntervalHandle::clear`] to stop the interval
+/// without dropping the handle.
+pub struct IntervalHandle {
+    task: Option<gpui::Task<()>>,
+}
+
+impl IntervalHandle {
+    /// Cancel the interval. Idempotent — safe to call multiple times.
+    pub fn clear(&mut self) {
+        self.task = None;
+    }
+}
+
+/// Low-level repeating timer, analogous to JS `setInterval`.
+///
+/// Spawns a foreground task that calls `callback` every `duration`. The
+/// callback receives `&mut gpui::AsyncApp` so it can update signals and
+/// entities across await points:
+///
+/// ```ignore
+/// let handle = set_interval(
+///     move |cx| set_count.update(cx, |n| *n += 1),
+///     Duration::from_secs(1),
+/// );
+/// // ...later, to stop:
+/// // drop(handle);
+/// ```
+///
+/// Must be called inside a `VguiRoot` render scope (same precondition as
+/// `create_signal`). The returned [`IntervalHandle`] owns the underlying
+/// task; dropping it cancels the interval immediately.
+pub fn set_interval(
+    callback: impl Fn(&mut gpui::AsyncApp) + 'static,
+    duration: Duration,
+) -> IntervalHandle {
+    let async_cx = with_root_cx(|cx| cx.to_async());
+    set_interval_async(async_cx, Rc::new(callback), duration)
+}
+
+fn set_interval_async(
+    async_cx: gpui::AsyncApp,
+    callback: Rc<dyn Fn(&mut gpui::AsyncApp)>,
+    duration: Duration,
+) -> IntervalHandle {
+    let task = async_cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor().timer(duration).await;
+            callback(cx);
+        }
+    });
+    IntervalHandle { task: Some(task) }
+}
+
+/// Reactive interval hook combining [`create_effect`] + [`on_cleanup`].
+///
+/// `delay_ms` is a reactive signal holding the interval period in
+/// milliseconds. When the value is `0` the interval is paused (no callback
+/// invocations). When the value changes the effect re-runs: the previous
+/// interval is cancelled and a new one is started with the updated period.
+/// When the enclosing scope is disposed the interval is cancelled
+/// automatically via `on_cleanup`.
+///
+/// ```ignore
+/// let (count, set_count) = create_signal(0);
+/// let (delay, set_delay) = create_signal(1000u64);
+/// use_interval(move |cx| set_count.update(cx, |n| *n += 1), delay);
+/// // Pause: set_delay.set(cx, 0);
+/// // Speed up: set_delay.set(cx, 500);
+/// ```
+///
+/// Must be called inside a `VguiRoot` render scope.
+pub fn use_interval(
+    callback: impl Fn(&mut gpui::AsyncApp) + 'static,
+    delay_ms: ReadSignal<u64>,
+) {
+    let handle: Rc<RefCell<Option<IntervalHandle>>> = Rc::new(RefCell::new(None));
+    let async_cx = with_root_cx(|cx| cx.to_async());
+    let callback: Rc<dyn Fn(&mut gpui::AsyncApp)> = Rc::new(callback);
+
+    create_effect({
+        let handle = handle.clone();
+        let callback = callback.clone();
+        let async_cx = async_cx.clone();
+        move || {
+            // Cancel previous interval on every re-run.
+            *handle.borrow_mut() = None;
+
+            let d = delay_ms.get();
+            if d > 0 {
+                let h = set_interval_async(
+                    async_cx.clone(),
+                    callback.clone(),
+                    Duration::from_millis(d),
+                );
+                *handle.borrow_mut() = Some(h);
+            }
+        }
+    });
+
+    on_cleanup(move || {
+        *handle.borrow_mut() = None;
+    });
 }
 
 #[doc(hidden)]
