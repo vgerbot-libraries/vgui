@@ -169,7 +169,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         // Summary (clickable header for details)
         "summary" => quote! { ::gpui::div().cursor_pointer() },
         // Button (existing)
-        "button" => quote! { ::gpui::div().cursor_pointer() },
+        "button" => quote! { ::gpui::div().cursor_pointer().text_center() },
         // Tables (flex-based layout; gpui has no native table layout)
         "table" | "thead" | "tbody" | "tfoot" => quote! { ::gpui::div().flex_col() },
         "caption" => quote! { ::gpui::div() },
