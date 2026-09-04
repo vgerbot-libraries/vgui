@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui",
 "examples/counter", "examples/todolist", "examples/styling", "examples/theming", "examples/variants",
 "examples/inputs", "examples/elements", "examples/forms", "examples/context", "examples/refs",
-"examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router", "examples/dashboard"]
+"examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router", "examples/dashboard", "examples/store"]
 
 [workspace.package]
 version = "0.1.0"

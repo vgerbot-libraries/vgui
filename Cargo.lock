@@ -5872,6 +5872,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-store"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-styling"
 version = "0.1.0"
 dependencies = [

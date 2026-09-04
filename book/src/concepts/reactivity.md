@@ -79,6 +79,101 @@ let old_value = set_count.update(cx, |n| {
 
 `WriteSignal` is `Clone`.
 
+## Stores
+
+`create_store(initial)` creates a reactive store for aggregate state — a
+single struct or enum holding multiple fields, rather than one signal per
+field. It returns a `(Store<T>, SetStore<T>)` pair:
+
+```rust
+#[derive(Clone, Default)]
+struct AppState {
+    count: i32,
+    name: String,
+    items: Vec<String>,
+}
+
+let (state, set_state) = create_store(AppState::default());
+```
+
+The type parameter `T` must implement `Clone + 'static` — notably, **no
+`PartialEq` is required**. Unlike signals, store writes always notify;
+fine-grained filtering is delegated to `select` (below).
+
+`create_store` follows the same slot-caching rules as `create_signal`: it
+must be called inside `app()` in the same order on every render.
+
+### Reading stores
+
+`Store::get()` returns a clone of the entire state and registers the store
+as a dependency:
+
+```rust
+let count = state.get().count;
+```
+
+`Store::with(f)` borrows the state through a closure without cloning:
+
+```rust
+let len = state.with(|s| s.items.len());
+```
+
+Both `get()` and `with()` track the entire store — any write triggers a
+re-render. For fine-grained reactivity, use `select`.
+
+### Fine-grained selectors
+
+`Store::select(f)` derives a `ReadSignal<U>` from a slice of the store. The
+closure acts as a **lens** — the Rust-idiomatic equivalent of SolidJS
+path-level tracking:
+
+```rust
+let count = state.select(|s| s.count);
+let name = state.select(|s| s.name.clone());
+```
+
+The selector recomputes whenever the store changes, but only notifies its
+dependents when the selected value differs (requiring `U: Clone + PartialEq
++ 'static`). Updating `name` does **not** cause `count`'s dependents to
+re-render — even though the store itself always notifies.
+
+```rust
+// Only re-renders when `count` changes.
+set_state.update(cx, |s| s.name = "Alice".to_string()); // count unchanged
+set_state.update(cx, |s| s.count = 42);                 // count changes
+```
+
+### Writing stores
+
+`SetStore::set(cx, value)` replaces the entire state:
+
+```rust
+set_state.set(cx, AppState { count: 0, name: "reset".into(), items: vec![] });
+```
+
+`SetStore::update(cx, f)` mutates the state in place through a closure —
+the idiomatic way to do partial updates:
+
+```rust
+set_state.update(cx, |s| {
+    s.count += 1;
+    s.items.push("new item".to_string());
+});
+```
+
+Both methods always notify. Use `select` downstream to filter reactivity to
+the slices that actually changed.
+
+### Store vs. signal
+
+| | `create_signal` | `create_store` |
+|---|---|---|
+| **Best for** | Single flat value | Aggregate state tree |
+| **`PartialEq` on `T`** | Required | Not required |
+| **Write notifies** | Only if value changed | Always |
+| **Fine-grained** | N/A (single value) | Via `select` (lens closures) |
+| **Slot-cached** | Yes | Yes |
+
 ## Memos
 
 `create_memo(f)` creates a derived, cached value that recomputes only when its

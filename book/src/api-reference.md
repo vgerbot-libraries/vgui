@@ -30,6 +30,12 @@ The main crate. Key exports:
 | `ReadSignal&lt;T&gt;::get_with(cx) -> T`     | Reads value without tracking.            |
 | `WriteSignal&lt;T&gt;::set(cx, value)`       | Sets value, notifies if changed.         |
 | `WriteSignal&lt;T&gt;::update(cx, f) -> R`   | Mutates value in place, notifies if changed. Returns the closure's result. |
+| `create_store&lt;T&gt;(initial) -> (Store&lt;T&gt;, SetStore&lt;T&gt;)` | Creates a reactive store for aggregate state. `T: Clone + 'static` (no `PartialEq` needed). |
+| `Store&lt;T&gt;::get() -> T`              | Reads whole state, registers dependency. |
+| `Store&lt;T&gt;::with(f) -> R`           | Borrows state through a closure, registers dependency. |
+| `Store&lt;T&gt;::select(f) -> ReadSignal&lt;U&gt;` | Derives a fine-grained signal for a slice; only notifies when the slice changes. |
+| `SetStore&lt;T&gt;::set(cx, value)`       | Replaces entire state, always notifies. |
+| `SetStore&lt;T&gt;::update(cx, f) -> R`   | Mutates state in place, always notifies. |
 | `next_auto_id() -> u64`                | Stable per-render element id (used by `view!`). |
 
 ### Mounting
@@ -173,9 +179,9 @@ See [Refs & NodeRef](./elements/refs.md) for the full API.
 `use vgui::prelude::*` brings into scope:
 
 `view`, `css`, `tw`, `twc`, `tw_dynamic`, `variants`, `theme`, `set_theme`,
-`with_theme`, `create_signal`, `create_memo`, `create_effect`, `create_router`,
+`with_theme`, `create_signal`, `create_memo`, `create_effect`, `create_store`, `create_router`,
 `on_cleanup`, `index_list`, `index_list_or`, `enter_child_scope`,
-`exit_child_scope`, `ReadSignal`, `WriteSignal`, `RouteMatch`, `Router`,
+`exit_child_scope`, `ReadSignal`, `WriteSignal`, `Store`, `SetStore`, `RouteMatch`, `Router`,
 `Breakpoint`, `click`, `mount`, `Context`, `use_context`, `use_context_or`,
 `provide_context`, `NodeRef`, `KeyboardEvent`, `PointerEvent`, `PointerType`,
 `ResizeEvent`, `WheelEvent`, `checkbox`, `radio`, `range_input`, `file_input`,

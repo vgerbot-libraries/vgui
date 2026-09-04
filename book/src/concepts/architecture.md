@@ -56,7 +56,7 @@ The `vgui` crate's internal module structure:
 
 | Module            | Responsibility                                                    |
 | ----------------- | ----------------------------------------------------------------- |
-| `reactive`        | `create_signal`, `create_memo`, `create_effect`, `on_cleanup`, `ReadSignal`, `WriteSignal`, scope management, dependency tracking, `index_list`/`index_list_or`, `<Switch>`/`<Index>` scope helpers. |
+| `reactive`        | `create_signal`, `create_store`, `create_memo`, `create_effect`, `on_cleanup`, `ReadSignal`, `WriteSignal`, `Store`, `SetStore`, scope management, dependency tracking, `index_list`/`index_list_or`, `<Switch>`/`<Index>` scope helpers. |
 | `root`            | `VguiRoot` entity, `Scope` (the reactive owner), `mount()`.       |
 | `control`         | `show`, `show_when`, `for_each`, `for_each_or`, `progress`, `meter`, `details`. |
 | `overlay`         | `portal`, `floating`, `dialog` (modal overlay with portal, click-outside, escape). |
