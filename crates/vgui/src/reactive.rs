@@ -362,6 +362,205 @@ pub fn create_signal<T: Clone + PartialEq + 'static>(
     )
 }
 
+// ---------------------------------------------------------------------------
+// createStore — SolidJS-style fine-grained reactive store.
+//
+// Unlike `create_signal` (a single flat value), a store wraps an aggregate
+// state tree. Writes always notify — the store does not require `PartialEq`
+// on `T` — and fine-grained reactivity is achieved through `Store::select`,
+// which creates a memo that recomputes when the store changes but only
+// propagates downstream when the selected slice differs (via `PartialEq` on
+// the slice type `U`). This mirrors SolidJS path-level tracking: reading a
+// store field through `select` subscribes to that slice alone.
+//
+// Rust adaptation: instead of JS Proxy-based deep reactivity (intercepting
+// property access at runtime), the user explicitly selects the slice they
+// care about. This is type-safe, zero-magic, and idiomatic — the closure
+// `|state| state.user.name.clone()` is a lens, not a string path.
+// ---------------------------------------------------------------------------
+//
+/// Read handle for a reactive store. Cheap to clone.
+///
+/// Created by [`create_store`]. Use [`Store::get`] to read the whole state
+/// (tracks the entire store as a dependency), [`Store::with`] to borrow
+/// without cloning, or [`Store::select`] to derive a fine-grained signal
+/// that only updates when a specific slice changes.
+#[derive(Clone)]
+pub struct Store<T: Clone + 'static> {
+    entity: Entity<SignalCell<T>>,
+    cache: Rc<RefCell<T>>,
+}
+
+/// Write handle for a reactive store. Cheap to clone.
+///
+/// Created by [`create_store`]. Use [`SetStore::set`] to replace the entire
+/// state or [`SetStore::update`] to mutate in place. Both always notify —
+/// use [`Store::select`] downstream to filter reactivity to the slices that
+/// actually changed.
+#[derive(Clone)]
+pub struct SetStore<T: Clone + 'static> {
+    entity: Entity<SignalCell<T>>,
+    cache: Rc<RefCell<T>>,
+}
+
+impl<T: Clone + 'static> Store<T> {
+    /// Read a clone of the current state, tracking the entire store as a
+    /// dependency of the enclosing memo/effect.
+    pub fn get(&self) -> T {
+        track_entity(&self.entity);
+        self.cache.borrow().clone()
+    }
+
+    /// Borrow the state through a closure without cloning, tracking the
+    /// entire store as a dependency.
+    pub fn with<R>(&self, f: impl FnOnce(&T) -> R) -> R {
+        track_entity(&self.entity);
+        f(&self.cache.borrow())
+    }
+
+    /// Read the fresh value directly from the gpui entity, refreshing the
+    /// local cache. Use outside a render scope when the cache may be stale
+    /// (e.g. from an event handler that ran after the last render).
+    pub fn get_with(&self, cx: &App) -> T {
+        let value = self.entity.read(cx).0.clone();
+        *self.cache.borrow_mut() = value.clone();
+        value
+    }
+
+    /// Derive a fine-grained signal from a slice of the store state.
+    ///
+    /// The returned [`ReadSignal`] recomputes whenever the store changes but
+    /// only notifies its own subscribers when the selected value differs
+    /// (requiring `U: PartialEq`). This is the Rust-idiomatic equivalent of
+    /// SolidJS path-level tracking: the closure acts as a lens.
+    ///
+    /// ```ignore
+    /// let (store, set_store) = create_store(AppState::default());
+    /// let name = store.select(|s| s.user.name.clone());
+    /// // name: ReadSignal<String> — only updates when user.name changes.
+    /// ```
+    pub fn select<U: Clone + PartialEq + 'static>(
+        &self,
+        f: impl Fn(&T) -> U + 'static,
+    ) -> ReadSignal<U> {
+        let entity = self.entity.clone();
+        let cache = self.cache.clone();
+        create_memo(move || {
+            track_entity(&entity);
+            f(&cache.borrow())
+        })
+    }
+}
+
+impl<T: Clone + 'static> SetStore<T> {
+    /// Replace the entire state. Always notifies — callers that need
+    /// equality-skipping should use [`create_signal`] instead.
+    pub fn set<C: AppContext>(&self, cx: &mut C, value: T) {
+        *self.cache.borrow_mut() = value.clone();
+        let _ = self.entity.update(cx, |cell, cx| {
+            cell.0 = value;
+            cx.notify();
+        });
+    }
+
+    /// Mutate the state in place through a closure. Always notifies after
+    /// the closure returns, even if the mutation was a no-op — downstream
+    /// [`Store::select`] signals filter out unchanged slices.
+    pub fn update<C: AppContext, R>(
+        &self,
+        cx: &mut C,
+        f: impl FnOnce(&mut T) -> R,
+    ) -> R {
+        let cache = self.cache.clone();
+        self.entity.update(cx, |cell, cx| {
+            let r = f(&mut cell.0);
+            *cache.borrow_mut() = cell.0.clone();
+            cx.notify();
+            r
+        })
+    }
+}
+
+/// Track a gpui entity as a dependency of the enclosing memo/effect.
+fn track_entity<T: 'static>(entity: &Entity<T>) {
+    TRACKING.with(|t| {
+        if let Some(list) = t.borrow_mut().as_mut() {
+            list.push(entity.entity_id());
+        }
+    });
+}
+
+/// Create a reactive store wrapping an aggregate state tree.
+///
+/// Returns a (`[`Store`]`, `[`SetStore`]`) pair, analogous to
+/// [`create_signal`] but designed for state that is:
+///
+/// - **Aggregate** — a single struct or enum holding multiple fields, rather
+///   than one signal per field.
+/// - **Fine-grained** — use [`Store::select`] to derive signals for
+///   individual slices; only the slices that actually changed propagate.
+/// - **Not `PartialEq`** — the store does not compare old vs new state on
+///   write (writes always notify). Filtering happens at the `select` level
+///   via `PartialEq` on the slice type.
+///
+/// Like other reactive primitives, this must be called inside a
+/// `VguiRoot` render scope. The store is cached in a scope slot and
+/// persists across re-renders.
+pub fn create_store<T: Clone + 'static>(initial: T) -> (Store<T>, SetStore<T>) {
+    let cur = current();
+    {
+        let mut scope = cur.scope.borrow_mut();
+        let index = scope.index;
+        if index < scope.slots.len() {
+            let typed = match &scope.slots[index] {
+                Slot::Signal(stored) => stored
+                    .downcast_ref::<TypedCell<T>>()
+                    .cloned()
+                    .unwrap_or_else(|| panic!("vgui store slot {index} changed type")),
+                _ => panic!("vgui store slot {index} changed type"),
+            };
+            scope.index += 1;
+            return (
+                Store {
+                    entity: typed.entity.clone(),
+                    cache: typed.cache.clone(),
+                },
+                SetStore {
+                    entity: typed.entity,
+                    cache: typed.cache,
+                },
+            );
+        }
+    }
+
+    let cx = unsafe { &mut *cur.cx };
+    let entity = cx.new(|_| SignalCell(initial.clone()));
+    let cache = Rc::new(RefCell::new(initial));
+    let sub = cx.observe(&entity, |this, observed, cx| {
+        this.notify_dep(observed.entity_id(), cx);
+    });
+    let typed = TypedCell {
+        entity: entity.clone(),
+        cache: cache.clone(),
+    };
+    {
+        let mut scope = cur.scope.borrow_mut();
+        scope.slots.push(Slot::Signal(Arc::new(typed.clone())));
+        scope.subscriptions.push(sub);
+        scope.index += 1;
+    }
+    (
+        Store {
+            entity: entity.clone(),
+            cache: cache.clone(),
+        },
+        SetStore {
+            entity,
+            cache,
+        },
+    )
+}
+
 /// Get-or-create a persistent gpui view entity, cached in a reactive scope
 /// slot (mirroring `create_signal`). The same `Entity<T>` handle is returned
 /// on every render so gpui keeps the view alive and its editing/drag state
