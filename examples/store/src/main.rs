@@ -119,6 +119,7 @@ fn slider_row(
             <span class="text-sm text-[#ccc] w-24">{label.to_string()}</span>
             <input
                 type="range"
+                class="flex-1"
                 min={0.0f64}
                 max={100.0f64}
                 step={1.0f64}
