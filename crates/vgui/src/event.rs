@@ -135,15 +135,19 @@ impl KeyboardEvent {
 
     /// Map a gpui `Keystroke` to a web-style [`KeyboardEvent`].
     pub fn from_keystroke(ks: &Keystroke, is_held: bool) -> Self {
+        // Clone key_char once; reuse for both the `key` field (when
+        // non-empty) and the `key_char` field.
+        let key_char = ks.key_char.clone();
+        let key = web_key_with_char(ks, key_char.as_ref());
         Self {
-            key: web_key(ks),
+            key,
             code: web_code(ks),
             repeat: is_held,
             shift_key: ks.modifiers.shift,
             ctrl_key: ks.modifiers.control,
             alt_key: ks.modifiers.alt,
             meta_key: ks.modifiers.platform,
-            key_char: ks.key_char.clone(),
+            key_char,
             propagation_stopped: Cell::new(false),
         }
     }
@@ -162,16 +166,27 @@ impl KeyboardEvent {
     }
 }
 
-/// Map a gpui `Keystroke` to the web `key` value.
-fn web_key(ks: &Keystroke) -> String {
-    if let Some(c) = ks.key_char.as_ref() {
+/// Map a gpui `Keystroke` to the web `key` value, using a pre-cloned
+/// `key_char` reference to avoid re-cloning from `ks.key_char`.
+fn web_key_with_char(ks: &Keystroke, key_char: Option<&String>) -> String {
+    if let Some(c) = key_char {
         if !c.is_empty() {
             return c.clone();
         }
     }
+    web_key_named(ks)
+}
+
+/// Map a gpui `Keystroke` to the web `key` value.
+fn web_key(ks: &Keystroke) -> String {
+    web_key_with_char(ks, ks.key_char.as_ref())
+}
+
+/// Match-only `web_key` without the `key_char` shortcut.
+fn web_key_named(ks: &Keystroke) -> String {
     // Avoid the intermediate `to_lowercase()` allocation by comparing
-    // case-insensitively against the known names and returning a static
-    // string slice. Only the fallback path allocates.
+    // case-insensitively against the known names. Only the fallback path
+    // allocates.
     match ks.key.as_str() {
         "space" | "SPACE" | "Space" => " ".to_string(),
         "enter" | "ENTER" | "Enter" => "Enter".to_string(),
