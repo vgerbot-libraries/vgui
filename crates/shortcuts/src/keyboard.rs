@@ -197,6 +197,33 @@ impl Keyboard {
         self.context_stack.borrow().last().cloned()
     }
 
+
+    /// Replace the entire context stack with a single entry. Unlike
+    /// [`switch_context`](Self::switch_context), this does not push or
+    /// return a guard — the stack is cleared first.
+    pub fn set_context(&self, name: &str) -> Result<(), ShortcutsError> {
+        if !self.contexts.borrow().contains_key(name) {
+            return Err(ShortcutsError::ContextNotRegistered(name.to_string()));
+        }
+        let mut stack = self.context_stack.borrow_mut();
+        stack.clear();
+        stack.push(name.to_string());
+        Ok(())
+    }
+
+    /// Whether any commands have been registered via `keymap`.
+    pub fn has_keymap(&self) -> bool {
+        !self.commands.borrow().is_empty()
+    }
+
+    /// Current partial-match command names, sorted alphabetically.
+    pub fn partial_matches(&self) -> Vec<String> {
+        let mut names: Vec<String> =
+            self.partial_matches.borrow().iter().cloned().collect();
+        names.sort();
+        names
+    }
+
     /// Add a global interceptor. `front` inserts at the head. Returns a guard
     /// that removes it on drop. Deduplicates by pointer identity.
     pub fn add_interceptor(&self, interceptor: Interceptor, front: bool) -> InterceptorGuard {

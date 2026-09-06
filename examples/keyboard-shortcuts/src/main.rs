@@ -1,8 +1,6 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
 use std::collections::HashMap;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
 use vgui::prelude::*;
@@ -34,156 +32,140 @@ fn app() -> impl gpui::IntoElement {
     // ── State ──────────────────────────────────────────────────────
     let (palette_open, set_palette) = create_signal(false);
     let (selected, set_selected) = create_signal(0usize);
-    let (last_action, set_last_action) = create_signal(String::from("Press Ctrl+K, Ctrl+P for palette"));
+    let (last_action, set_last_action) =
+        create_signal(String::from("Press Ctrl+K, Ctrl+P for palette"));
     let (partial_label, set_partial_label) = create_signal(String::new());
 
-    // ── Shortcuts engine ───────────────────────────────────────────
+    // ── Shortcuts engine (persisted across re-renders) ─────────────
     let sc = use_shortcuts();
 
-    // Build the keymap: a "global" context with app-wide commands, and a
-    // "palette" context (fallback to global) with navigation commands.
-    let mut commands = HashMap::new();
-    commands.insert("new_file".to_string(), CommandOptions {
-        shortcut: "Ctrl+N".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("save".to_string(), CommandOptions {
-        shortcut: "Ctrl+S".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("save_as".to_string(), CommandOptions {
-        shortcut: "Ctrl+Shift+S".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("find".to_string(), CommandOptions {
-        shortcut: "Ctrl+F".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("palette".to_string(), CommandOptions {
-        shortcut: "Ctrl+K,Ctrl+P".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("quit".to_string(), CommandOptions {
-        shortcut: "Ctrl+Q".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    // Palette-context commands
-    commands.insert("next".to_string(), CommandOptions {
-        shortcut: "Down".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("prev".to_string(), CommandOptions {
-        shortcut: "Up".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("select".to_string(), CommandOptions {
-        shortcut: "Enter".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
-    commands.insert("close".to_string(), CommandOptions {
-        shortcut: "Escape".to_string(), event: None, prevent_default: None, interceptors: None,
-    });
+    // One-time initialization: keymap, handlers, partial-change listener,
+    // and initial context. On re-renders the has_keymap guard skips this
+    // block, preserving the engine state (sequence cursors, context stack).
+    if !sc.has_keymap() {
+        // ── Keymap ──────────────────────────────────────────────────
+        let mut commands = HashMap::new();
+        commands.insert("new_file".to_string(), CommandOptions {
+            shortcut: "Ctrl+N".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("save".to_string(), CommandOptions {
+            shortcut: "Ctrl+S".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("save_as".to_string(), CommandOptions {
+            shortcut: "Ctrl+Shift+S".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("find".to_string(), CommandOptions {
+            shortcut: "Ctrl+F".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("palette".to_string(), CommandOptions {
+            shortcut: "Ctrl+K,Ctrl+P".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("quit".to_string(), CommandOptions {
+            shortcut: "Ctrl+Q".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        // Palette-context commands
+        commands.insert("next".to_string(), CommandOptions {
+            shortcut: "Down".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("prev".to_string(), CommandOptions {
+            shortcut: "Up".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("select".to_string(), CommandOptions {
+            shortcut: "Enter".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
+        commands.insert("close".to_string(), CommandOptions {
+            shortcut: "Escape".to_string(), event: None, prevent_default: None, interceptors: None,
+        });
 
-    let mut contexts = HashMap::new();
-    contexts.insert("global".to_string(), ContextOptions {
-        commands: vec!["new_file".to_string(), "save".to_string(), "save_as".to_string(),
-                       "find".to_string(), "palette".to_string(), "quit".to_string()],
-        abstract_ctx: None, fallbacks: None,
-    });
-    contexts.insert("palette".to_string(), ContextOptions {
-        commands: vec!["next".to_string(), "prev".to_string(), "select".to_string(), "close".to_string()],
-        abstract_ctx: None, fallbacks: Some(vec!["global".to_string()]),
-    });
+        let mut contexts = HashMap::new();
+        contexts.insert("global".to_string(), ContextOptions {
+            commands: vec!["new_file".to_string(), "save".to_string(), "save_as".to_string(),
+                           "find".to_string(), "palette".to_string(), "quit".to_string()],
+            abstract_ctx: None, fallbacks: None,
+        });
+        contexts.insert("palette".to_string(), ContextOptions {
+            commands: vec!["next".to_string(), "prev".to_string(),
+                           "select".to_string(), "close".to_string()],
+            abstract_ctx: None, fallbacks: Some(vec!["global".to_string()]),
+        });
 
-    sc.keymap(KeymapOptions { commands, contexts });
+        sc.keymap(KeymapOptions { commands, contexts });
 
-    // ── Partial-match indicator ────────────────────────────────────
-    // The on_partial_change handler runs without a gpui context, so we
-    // store the names in a shared cell and update the signal from the
-    // command handlers (which do have cx). The view re-renders on every
-    // signal change, so the label stays current.
-    let partial_names: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    let pn_clone = partial_names.clone();
-    sc.on_partial_change(move |names: &[String]| {
-        *pn_clone.borrow_mut() = names.to_vec();
-    });
-
-    // Helper to sync the partial-label signal from the shared cell.
-    let sync_partial = {
-        let pn = partial_names.clone();
+        // ── Partial-match indicator ────────────────────────────────
+        // The listener receives cx, so it can update the signal directly.
         let set_pl = set_partial_label.clone();
-        move |cx: &mut App| {
-            let names = pn.borrow();
+        sc.on_partial_change(move |names: &[String], cx| {
             if names.is_empty() {
                 set_pl.set(cx, String::new());
             } else {
                 set_pl.set(cx, format!("Partial: {}", names.join(", ")));
             }
-        }
-    };
+        });
 
-    // ── Command handlers ───────────────────────────────────────────
-    let set_act = set_last_action.clone();
-    sc.on("new_file", move |_sev, _w, cx| {
-        set_act.set(cx, "New File".to_string());
-    });
-    let set_act = set_last_action.clone();
-    sc.on("save", move |_sev, _w, cx| {
-        set_act.set(cx, "Save".to_string());
-    });
-    let set_act = set_last_action.clone();
-    sc.on("save_as", move |_sev, _w, cx| {
-        set_act.set(cx, "Save As".to_string());
-    });
-    let set_act = set_last_action.clone();
-    sc.on("find", move |_sev, _w, cx| {
-        set_act.set(cx, "Find".to_string());
-    });
-    let set_act = set_last_action.clone();
-    sc.on("quit", move |_sev, _w, cx| {
-        set_act.set(cx, "Quit".to_string());
-    });
+        // ── Global command handlers ────────────────────────────────
+        let set_act = set_last_action.clone();
+        sc.on("new_file", move |_sev, _w, cx| {
+            set_act.set(cx, "New File".to_string());
+        });
+        let set_act = set_last_action.clone();
+        sc.on("save", move |_sev, _w, cx| {
+            set_act.set(cx, "Save".to_string());
+        });
+        let set_act = set_last_action.clone();
+        sc.on("save_as", move |_sev, _w, cx| {
+            set_act.set(cx, "Save As".to_string());
+        });
+        let set_act = set_last_action.clone();
+        sc.on("find", move |_sev, _w, cx| {
+            set_act.set(cx, "Find".to_string());
+        });
+        let set_act = set_last_action.clone();
+        sc.on("quit", move |_sev, _w, cx| {
+            set_act.set(cx, "Quit".to_string());
+        });
 
-    // Palette command (sequence: Ctrl+K, Ctrl+P)
-    let set_pal = set_palette.clone();
-    let set_sel2 = set_selected.clone();
-    let sc_pal_inner = sc.clone();
-    sc.on("palette", move |_sev, _w, cx| {
-        set_pal.set(cx, true);
-        set_sel2.set(cx, 0);
-        let _guard = sc_pal_inner.switch_context("palette");
-        std::mem::forget(_guard);
-    });
+        // ── Palette command (sequence: Ctrl+K, Ctrl+P) ─────────────
+        let set_pal = set_palette.clone();
+        let set_sel2 = set_selected.clone();
+        let sc_pal = sc.clone();
+        sc.on("palette", move |_sev, _w, cx| {
+            set_pal.set(cx, true);
+            set_sel2.set(cx, 0);
+            sc_pal.set_context("palette");
+        });
 
-    // Palette-context commands
-    let set_sel_p = set_selected.clone();
-    let sync_p = sync_partial.clone();
-    sc.on("next", move |_sev, _w, cx| {
-        let count = COMMANDS.len();
-        set_sel_p.update(cx, |s| *s = (*s + 1) % count);
-        sync_p(cx);
-    });
-    let set_sel_p = set_selected.clone();
-    let sync_p = sync_partial.clone();
-    sc.on("prev", move |_sev, _w, cx| {
-        let count = COMMANDS.len();
-        set_sel_p.update(cx, |s| *s = if *s == 0 { count - 1 } else { *s - 1 });
-        sync_p(cx);
-    });
-    let set_act_p = set_last_action.clone();
-    let set_pal_p = set_palette.clone();
-    let sc_close = sc.clone();
-    let selected_clone = selected.clone();
-    sc.on("select", move |_sev, _w, cx| {
-        let idx = selected_clone.get();
-        let cmd = &COMMANDS[idx.min(COMMANDS.len() - 1)];
-        set_act_p.set(cx, format!("Executed: {}", cmd.name));
-        set_pal_p.set(cx, false);
-        let _guard = sc_close.switch_context("global");
-        std::mem::forget(_guard);
-    });
-    let set_pal_c = set_palette.clone();
-    let sc_close2 = sc.clone();
-    sc.on("close", move |_sev, _w, cx| {
-        set_pal_c.set(cx, false);
-        let _guard = sc_close2.switch_context("global");
-        std::mem::forget(_guard);
-    });
+        // ── Palette-context commands ───────────────────────────────
+        let set_sel_p = set_selected.clone();
+        sc.on("next", move |_sev, _w, cx| {
+            let count = COMMANDS.len();
+            set_sel_p.update(cx, |s| *s = (*s + 1) % count);
+        });
+        let set_sel_p = set_selected.clone();
+        sc.on("prev", move |_sev, _w, cx| {
+            let count = COMMANDS.len();
+            set_sel_p.update(cx, |s| *s = if *s == 0 { count - 1 } else { *s - 1 });
+        });
+        let set_act_p = set_last_action.clone();
+        let set_pal_p = set_palette.clone();
+        let selected_clone = selected.clone();
+        let sc_close = sc.clone();
+        sc.on("select", move |_sev, _w, cx| {
+            let idx = selected_clone.get();
+            let cmd = &COMMANDS[idx.min(COMMANDS.len() - 1)];
+            set_act_p.set(cx, format!("Executed: {}", cmd.name));
+            set_pal_p.set(cx, false);
+            sc_close.set_context("global");
+        });
+        let set_pal_c = set_palette.clone();
+        let sc_close2 = sc.clone();
+        sc.on("close", move |_sev, _w, cx| {
+            set_pal_c.set(cx, false);
+            sc_close2.set_context("global");
+        });
 
-    // Start in the global context
-    let _global_guard = sc.switch_context("global");
-    std::mem::forget(_global_guard);
+        // Start in the global context
+        sc.set_context("global");
+    }
 
     // ── View ───────────────────────────────────────────────────────
     let cmds: Vec<(usize, &'static Command)> = COMMANDS.iter().enumerate().collect();
