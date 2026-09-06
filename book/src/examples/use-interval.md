@@ -7,7 +7,7 @@
 ## Source Code
 
 ```rust
-{{#include ../../examples/use-interval/src/main.rs}}
+{{#include ../../../examples/use-interval/src/main.rs}}
 ```
 
 ## Key Concepts

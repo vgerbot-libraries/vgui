@@ -7,7 +7,7 @@
 ## Source Code
 
 ```rust
-{{#include ../../examples/canvas-animation/src/main.rs}}
+{{#include ../../../examples/canvas-animation/src/main.rs}}
 ```
 
 ## Key Concepts
