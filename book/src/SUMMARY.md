@@ -52,6 +52,7 @@
 - [Store](./examples/store.md)
 - [useInterval](./examples/use-interval.md)
 - [Canvas Animation](./examples/canvas-animation.md)
+- [Keyboard Events](./examples/keyboard-events.md)
 
 # Feature Comparison
 
