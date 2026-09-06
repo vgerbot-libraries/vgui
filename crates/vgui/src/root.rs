@@ -166,6 +166,9 @@ pub struct VguiRoot {
     /// Window-bounds observer subscription (registered once on first render,
     /// dispatches `on:resize` handlers on viewport-size change).
     resize_sub: Option<gpui::Subscription>,
+    /// Global keystroke interceptor subscription (registered once on first
+    /// render, dispatches `use_key_down` handlers regardless of focus).
+    key_sub: Option<gpui::Subscription>,
 }
 
 impl VguiRoot {
@@ -177,6 +180,8 @@ impl VguiRoot {
             host: cx.weak_entity(),
             slots: Vec::new(),
             effects: Vec::new(),
+            memos: Vec::new(),
+            memo_deps: Vec::new(),
             cleanups: Vec::new(),
             resize_handlers: Vec::new(),
             key_down_handlers: Vec::new(),
@@ -184,8 +189,6 @@ impl VguiRoot {
             index: 0,
             initialized: false,
             subscriptions: Vec::new(),
-            memos: Vec::new(),
-            memo_deps: Vec::new(),
             children: HashMap::new(),
             parent: None,
         }));
@@ -193,6 +196,7 @@ impl VguiRoot {
             scope,
             render: Box::new(move || render().into_any_element()),
             resize_sub: None,
+            key_sub: None,
         }
     }
 
@@ -249,23 +253,23 @@ impl Render for VguiRoot {
                 }
             }));
         }
-        enter_scope(self.scope.clone(), cx);
-        set_viewport_width(f32::from(window.viewport_size().width));
-        let el = (self.render)();
-        exit_scope();
-        let scope_for_down = self.scope.clone();
-        let scope_for_up = self.scope.clone();
-        gpui::div()
-            .on_key_down(move |event: &gpui::KeyDownEvent, window: &mut Window, cx: &mut App| {
-                if event.keystroke.key == "tab" {
-                    if event.keystroke.modifiers.shift {
+        // Register a global keystroke interceptor once. Unlike div-level
+        // on_key_down (which only fires when the element or a descendant has
+        // focus), intercept_keystrokes fires for every key press in any
+        // window regardless of focus — matching the use_key_down contract.
+        let scope_for_keys = self.scope.clone();
+        if self.key_sub.is_none() {
+            self.key_sub = Some(cx.intercept_keystrokes(move |event, window, cx| {
+                let ks = &event.keystroke;
+                if ks.key == "tab" {
+                    if ks.modifiers.shift {
                         window.focus_prev(cx);
                     } else {
                         window.focus_next(cx);
                     }
                 }
-                let ke = KeyboardEvent::from_keystroke(&event.keystroke, event.is_held);
-                let handlers = collect_all_key_down_handlers(&scope_for_down);
+                let ke = KeyboardEvent::from_keystroke(ks, false);
+                let handlers = collect_all_key_down_handlers(&scope_for_keys);
                 for h in handlers {
                     h(&ke, window, cx);
                     if ke.is_propagation_stopped() {
@@ -273,7 +277,14 @@ impl Render for VguiRoot {
                         break;
                     }
                 }
-            })
+            }));
+        }
+        enter_scope(self.scope.clone(), cx);
+        set_viewport_width(f32::from(window.viewport_size().width));
+        let el = (self.render)();
+        exit_scope();
+        let scope_for_up = self.scope.clone();
+        gpui::div()
             .on_key_up(move |event: &gpui::KeyUpEvent, window: &mut Window, cx: &mut App| {
                 let ke = KeyboardEvent::from_keystroke(&event.keystroke, false);
                 let handlers = collect_all_key_up_handlers(&scope_for_up);

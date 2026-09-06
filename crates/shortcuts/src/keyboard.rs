@@ -369,6 +369,7 @@ impl Keyboard {
             None => return Vec::new(),
         };
         let commands = self.commands_of(&current);
+
         if commands.is_empty() {
             return Vec::new();
         }
@@ -383,7 +384,8 @@ impl Keyboard {
                 Some(c) => c,
                 None => continue,
             };
-            if cmd.shortcut.matches(event) {
+            let seg_match = cmd.shortcut.matches(event);
+            if seg_match {
                 if cmd.shortcut.is_full_match() {
                     partial.remove(name);
                     if cmd.event.contains(&event.event_type) {
