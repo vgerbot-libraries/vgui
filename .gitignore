@@ -33,4 +33,7 @@ book/src/wasm/
 
 # SkillHub: ignore skill bodies (= node_modules), keep lockfile (= package-lock.json)
 .agents/skills/@*/
+
+# Reference clone of vgerbot-libraries/shortcuts (TS source for cross-checking)
+/temp
 !.agents/skills/.skills_store_lock.json

@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui",
+members = ["crates/shortcuts", "crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui",
 "examples/counter", "examples/todolist", "examples/styling", "examples/theming", "examples/variants",
 "examples/inputs", "examples/elements", "examples/forms", "examples/context", "examples/refs",
-"examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router", "examples/dashboard", "examples/store", "examples/use-interval", "examples/canvas-animation", "examples/keyboard-events"]
+"examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router", "examples/dashboard", "examples/store", "examples/use-interval", "examples/canvas-animation", "examples/keyboard-events", "examples/keyboard-shortcuts"]
 
 [workspace.package]
 version = "0.1.0"
@@ -23,6 +23,7 @@ vgui-view = { path = "crates/vgui-view" }
 vgui-tailwind-core = { path = "crates/vgui-tailwind-core" }
 vgui-tailwind = { path = "crates/vgui-tailwind" }
 vgui = { path = "crates/vgui" }
+shortcuts = { path = "crates/shortcuts" }
 syn = { version = "2", features = ["full", "extra-traits"] }
 quote = "1"
 proc-macro2 = "1"

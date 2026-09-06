@@ -34,6 +34,7 @@ mod style;
 mod spread;
 mod tw_dynamic;
 mod web;
+mod shortcuts;
 pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
@@ -60,6 +61,10 @@ pub use crate::breakpoint::__apply_breakpoint_styles;
 pub use crate::ref_handle::NodeRef;
 pub use crate::root::{mount, VguiRoot};
 pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent, WheelEvent};
+pub use crate::shortcuts::{
+    use_shortcuts, Shortcuts, CommandOptions, ContextOptions, KeymapOptions, ShortcutContext,
+    KeyEventType, ShortcutEvent, Interceptor, Shortcut, Keyboard,
+};
 // Hidden macro-facing converters wrapping user closures into gpui listeners.
 pub use crate::event::{
     __dom_contextmenu, __dom_dblclick, __dom_key_down, __dom_key_up, __dom_pointer_down,
