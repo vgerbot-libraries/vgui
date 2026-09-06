@@ -169,78 +169,84 @@ fn web_key(ks: &Keystroke) -> String {
             return c.clone();
         }
     }
-    match ks.key.to_lowercase().as_str() {
-        "space" => " ".to_string(),
-        "enter" => "Enter".to_string(),
-        "escape" => "Escape".to_string(),
-        "tab" => "Tab".to_string(),
-        "backspace" => "Backspace".to_string(),
-        "delete" => "Delete".to_string(),
-        "arrowup" => "ArrowUp".to_string(),
-        "arrowdown" => "ArrowDown".to_string(),
-        "arrowleft" => "ArrowLeft".to_string(),
-        "arrowright" => "ArrowRight".to_string(),
-        "home" => "Home".to_string(),
-        "end" => "End".to_string(),
-        "pageup" => "PageUp".to_string(),
-        "pagedown" => "PageDown".to_string(),
-        "capslock" => "CapsLock".to_string(),
-        "control" => "Control".to_string(),
-        "alt" => "Alt".to_string(),
-        "shift" => "Shift".to_string(),
-        "meta" => "Meta".to_string(),
-        "fn" => "Fn".to_string(),
-        "f1" => "F1".to_string(),
-        "f2" => "F2".to_string(),
-        "f3" => "F3".to_string(),
-        "f4" => "F4".to_string(),
-        "f5" => "F5".to_string(),
-        "f6" => "F6".to_string(),
-        "f7" => "F7".to_string(),
-        "f8" => "F8".to_string(),
-        "f9" => "F9".to_string(),
-        "f10" => "F10".to_string(),
-        "f11" => "F11".to_string(),
-        "f12" => "F12".to_string(),
+    // Avoid the intermediate `to_lowercase()` allocation by comparing
+    // case-insensitively against the known names and returning a static
+    // string slice. Only the fallback path allocates.
+    match ks.key.as_str() {
+        "space" | "SPACE" | "Space" => " ".to_string(),
+        "enter" | "ENTER" | "Enter" => "Enter".to_string(),
+        "escape" | "ESCAPE" | "Escape" => "Escape".to_string(),
+        "tab" | "TAB" | "Tab" => "Tab".to_string(),
+        "backspace" | "BACKSPACE" | "Backspace" => "Backspace".to_string(),
+        "delete" | "DELETE" | "Delete" => "Delete".to_string(),
+        "arrowup" | "ARROWUP" | "ArrowUp" => "ArrowUp".to_string(),
+        "arrowdown" | "ARROWDOWN" | "ArrowDown" => "ArrowDown".to_string(),
+        "arrowleft" | "ARROWLEFT" | "ArrowLeft" => "ArrowLeft".to_string(),
+        "arrowright" | "ARROWRIGHT" | "ArrowRight" => "ArrowRight".to_string(),
+        "home" | "HOME" | "Home" => "Home".to_string(),
+        "end" | "END" | "End" => "End".to_string(),
+        "pageup" | "PAGEUP" | "PageUp" => "PageUp".to_string(),
+        "pagedown" | "PAGEDOWN" | "PageDown" => "PageDown".to_string(),
+        "capslock" | "CAPSLOCK" | "CapsLock" => "CapsLock".to_string(),
+        "control" | "CONTROL" | "Control" => "Control".to_string(),
+        "alt" | "ALT" | "Alt" => "Alt".to_string(),
+        "shift" | "SHIFT" | "Shift" => "Shift".to_string(),
+        "meta" | "META" | "Meta" => "Meta".to_string(),
+        "fn" | "FN" | "Fn" => "Fn".to_string(),
+        "f1" | "F1" => "F1".to_string(),
+        "f2" | "F2" => "F2".to_string(),
+        "f3" | "F3" => "F3".to_string(),
+        "f4" | "F4" => "F4".to_string(),
+        "f5" | "F5" => "F5".to_string(),
+        "f6" | "F6" => "F6".to_string(),
+        "f7" | "F7" => "F7".to_string(),
+        "f8" | "F8" => "F8".to_string(),
+        "f9" | "F9" => "F9".to_string(),
+        "f10" | "F10" => "F10".to_string(),
+        "f11" | "F11" => "F11".to_string(),
+        "f12" | "F12" => "F12".to_string(),
         other => other.to_string(),
     }
 }
-
 /// Map a gpui `Keystroke` to the web `code` value (best-effort; gpui exposes
 /// no physical key code).
 fn web_code(ks: &Keystroke) -> String {
-    let lower = ks.key.to_lowercase();
-    match lower.as_str() {
-        "enter" => "Enter".to_string(),
-        "space" => "Space".to_string(),
-        "tab" => "Tab".to_string(),
-        "escape" => "Escape".to_string(),
-        "backspace" => "Backspace".to_string(),
-        "delete" => "Delete".to_string(),
-        "arrowup" => "ArrowUp".to_string(),
-        "arrowdown" => "ArrowDown".to_string(),
-        "arrowleft" => "ArrowLeft".to_string(),
-        "arrowright" => "ArrowRight".to_string(),
-        "home" => "Home".to_string(),
-        "end" => "End".to_string(),
-        "pageup" => "PageUp".to_string(),
-        "pagedown" => "PageDown".to_string(),
-        "f1" => "F1".to_string(),
-        "f2" => "F2".to_string(),
-        "f3" => "F3".to_string(),
-        "f4" => "F4".to_string(),
-        "f5" => "F5".to_string(),
-        "f6" => "F6".to_string(),
-        "f7" => "F7".to_string(),
-        "f8" => "F8".to_string(),
-        "f9" => "F9".to_string(),
-        "f10" => "F10".to_string(),
-        "f11" => "F11".to_string(),
-        "f12" => "F12".to_string(),
-        _ if lower.len() == 1 => {
-            let ch = lower.chars().next().unwrap();
+    // Avoid the intermediate `to_lowercase()` allocation by matching
+    // case-insensitively. Named keys return static slices; single-char
+    // keys build "KeyX" / "DigitN" only for the fallback.
+    match ks.key.as_str() {
+        "enter" | "ENTER" | "Enter" => "Enter".to_string(),
+        "space" | "SPACE" | "Space" => "Space".to_string(),
+        "tab" | "TAB" | "Tab" => "Tab".to_string(),
+        "escape" | "ESCAPE" | "Escape" => "Escape".to_string(),
+        "backspace" | "BACKSPACE" | "Backspace" => "Backspace".to_string(),
+        "delete" | "DELETE" | "Delete" => "Delete".to_string(),
+        "arrowup" | "ARROWUP" | "ArrowUp" => "ArrowUp".to_string(),
+        "arrowdown" | "ARROWDOWN" | "ArrowDown" => "ArrowDown".to_string(),
+        "arrowleft" | "ARROWLEFT" | "ArrowLeft" => "ArrowLeft".to_string(),
+        "arrowright" | "ARROWRIGHT" | "ArrowRight" => "ArrowRight".to_string(),
+        "home" | "HOME" | "Home" => "Home".to_string(),
+        "end" | "END" | "End" => "End".to_string(),
+        "pageup" | "PAGEUP" | "PageUp" => "PageUp".to_string(),
+        "pagedown" | "PAGEDOWN" | "PageDown" => "PageDown".to_string(),
+        "f1" | "F1" => "F1".to_string(),
+        "f2" | "F2" => "F2".to_string(),
+        "f3" | "F3" => "F3".to_string(),
+        "f4" | "F4" => "F4".to_string(),
+        "f5" | "F5" => "F5".to_string(),
+        "f6" | "F6" => "F6".to_string(),
+        "f7" | "F7" => "F7".to_string(),
+        "f8" | "F8" => "F8".to_string(),
+        "f9" | "F9" => "F9".to_string(),
+        "f10" | "F10" => "F10".to_string(),
+        "f11" | "F11" => "F11".to_string(),
+        "f12" | "F12" => "F12".to_string(),
+        _ if ks.key.len() == 1 => {
+            let ch = ks.key.chars().next().unwrap();
             if ch.is_ascii_lowercase() {
                 format!("Key{}", ch.to_ascii_uppercase())
+            } else if ch.is_ascii_uppercase() {
+                format!("Key{}", ch)
             } else if ch.is_ascii_digit() {
                 format!("Digit{}", ch)
             } else {
