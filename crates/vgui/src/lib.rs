@@ -20,6 +20,7 @@ mod context;
 mod control;
 mod input_text;
 mod input_widgets;
+mod img;
 mod overlay;
 mod form;
 mod grid_areas;
@@ -66,6 +67,7 @@ pub use crate::shortcuts::{
     KeyEventType, ShortcutEvent, Interceptor, Shortcut, Keyboard,
 };
 // Hidden macro-facing converters wrapping user closures into gpui listeners.
+pub use crate::img::__img_with_events;
 pub use crate::event::{
     __dom_contextmenu, __dom_dblclick, __dom_key_down, __dom_key_up, __dom_pointer_down,
     __dom_pointer_move, __dom_pointer_up, __dom_wheel,

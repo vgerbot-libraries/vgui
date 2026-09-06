@@ -22,14 +22,15 @@ The HTML elements example renders a broad swath of the HTML tag surface that
 - `select` with `options` and `on:change`.
 - `details`/`summary` toggling.
 - `dialog` with `open` and `on:close`.
-- Tables with `thead`/`tbody` and `colspan`.
+- `<img>` with `on:load` / `on:error` event callbacks.
+
 
 ## Source Code
 
 ```rust
 #![cfg_attr(target_family = "wasm", no_main)]
 
-use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
+use gpui::{px, size, App, Bounds, RenderImage, WindowBounds, WindowOptions};
 use vgui::prelude::*;
 
 #[cfg(not(target_family = "wasm"))]
@@ -45,6 +46,13 @@ fn app() -> impl gpui::IntoElement {
     let (sel_val, set_sel_val) = create_signal("1".to_string());
     let dismiss_dialog = set_show_dialog.clone();
     let close_dialog_btn = set_show_dialog.clone();
+    let (img_loaded, set_img_loaded) = create_signal(false);
+    let (img_error, set_img_error) = create_signal(false);
+    // A tiny 4×4 solid-color image used as a Render source — `on:load` fires
+    // on first paint because the data is immediately available.
+    let solid_image = std::sync::Arc::new(RenderImage::new(vec![
+        image::Frame::new(image::RgbaImage::from_raw(4, 4, [80, 120, 200, 255].repeat(16)).unwrap()),
+    ]));
 
     view! {
         <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-[600px] h-[700px] text-white overflow-y-auto">
@@ -168,6 +176,22 @@ fn app() -> impl gpui::IntoElement {
 
             <hr />
 
+            <div class="flex flex-col gap-1">
+                <span>{"<img> with on:load / on:error"}</span>
+                <div class="flex flex-row gap-2 items-center">
+                    <img src={solid_image.clone()} object_fit="contain" class="w-4 h-4"
+                        on:load={move |cx: &mut App| set_img_loaded.set(cx, true)} />
+                    <span>{if img_loaded.get() { "Loaded ✓" } else { "Loading…" }}</span>
+                </div>
+                <div class="flex flex-row gap-2 items-center">
+                    <img src={"nonexistent.png"} class="w-4 h-4"
+                        on:error={move |cx: &mut App| set_img_error.set(cx, true)} />
+                    <span>{if img_error.get() { "Error ✓ (expected)" } else { "Loading…" }}</span>
+                </div>
+            </div>
+
+            <hr />
+
             <table class="w-full">
                 <thead>
                     <tr class="bg-[#333]">
@@ -276,6 +300,27 @@ string.
 - **`<dialog>`** — The `open` prop is signal-driven. The `on:close` handler
   fires when the dialog is dismissed (Escape key or click-outside), resetting
   the signal to `false`. A manual close button sets the same signal directly.
+
+### Image events (`on:load` / `on:error`)
+
+`<img>` supports two `<img>`-only events beyond the standard `on:click` etc.:
+
+- **`on:load`** — fires when the image source finishes loading. The handler
+  takes `Fn(&mut App)` (no event payload).
+- **`on:error`** — fires when the image source fails to load. Same signature.
+
+The example demonstrates both:
+
+- A `RenderImage` source (a tiny 4×4 solid-color rectangle built with the
+  `image` crate) fires `on:load` on first paint because the data is
+  immediately available. The callback sets a signal that reactively updates
+  the status text from "Loading…" to "Loaded ✓".
+- A non-existent `"nonexistent.png"` resource triggers `on:error`, updating
+  the status to "Error ✓ (expected)".
+
+No `click()` wrapper is needed — pass the closure directly, like `on:close`
+on `<dialog>`. When only one of the two callbacks is specified, the other
+defaults to a no-op.
 
 ### Running
 

@@ -68,7 +68,7 @@ default. Keyboard activation of `on:click` is handled by gpui.
 
 | Tag      | Attributes  | Behavior                                   |
 | -------- | ----------- | ------------------------------------------ |
-| `<img>`  | `src` (required), `object_fit`, `alt` | `gpui::img(src)`. `object_fit` accepts `fill`, `contain`, `cover`, `scale-down`, `none`. `alt` is accepted and unused for a11y. |
+| `<img>`  | `src` (required), `object_fit`, `alt`, `on:load`, `on:error` | `gpui::img(src)`. `object_fit` accepts `fill`, `contain`, `cover`, `scale-down`, `none`. `alt` is accepted and unused for a11y. `on:load`/`on:error` take `Fn(&mut App)` and fire when the image finishes loading or fails. |
 | `<svg>`  | `src` (required) | `gpui::svg().path(src)`                 |
 
 ### Void elements

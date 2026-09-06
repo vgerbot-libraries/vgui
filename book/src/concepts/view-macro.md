@@ -134,6 +134,17 @@ Events use the `on:event={handler}` syntax. Supported events:
 | `on:mouse_up_out`     | `Fn(&MouseUpEvent, &mut Window, &mut App)`                |
 | `on:any_mouse_down`   | `Fn(&MouseDownEvent, &mut Window, &mut App)`              |
 
+For `<img>` only, two additional events are available:
+
+| Event       | Handler signature     |
+| ----------- | --------------------- |
+| `on:load`   | `Fn(&mut App)`        |
+| `on:error`  | `Fn(&mut App)`        |
+
+These fire when the image source finishes loading or fails to load. No
+`click()` wrapper is needed — pass the closure directly, like `on:close` on
+`<dialog>`.
+
 For `on:click`, the `click` helper wraps a simpler closure:
 
 ```rust

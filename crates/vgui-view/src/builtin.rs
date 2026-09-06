@@ -180,7 +180,15 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
         "img" => {
             let src = src.ok_or_else(|| syn::Error::new(el.tag.span(), "<img> requires src"))?;
             let v = attr_tokens(&src.value);
-            quote! { ::gpui::img(#v) }
+            let on_load = events.iter().find(|(ev, _, _)| ev.to_string() == "load").map(|(_, h, _)| h.clone());
+            let on_error = events.iter().find(|(ev, _, _)| ev.to_string() == "error").map(|(_, h, _)| h.clone());
+            if on_load.is_some() || on_error.is_some() {
+                let on_load = on_load.unwrap_or_else(|| quote! { move |_cx: &mut ::gpui::App| {} });
+                let on_error = on_error.unwrap_or_else(|| quote! { move |_cx: &mut ::gpui::App| {} });
+                quote! { ::vgui::__img_with_events(#v, #on_load, #on_error) }
+            } else {
+                quote! { ::gpui::img(#v) }
+            }
         }
         // SVG (uses gpui::svg() element, similar to img)
         "svg" => {
@@ -266,6 +274,12 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             ))
         }
     };
+    // `on:load`/`on:error` on `<img>` are handled inside `__img_with_events`;
+    // drop them from `events` so they don't reach `emit_event` (which would
+    // reject them as unsupported) or count toward `needs_stateful`/`needs_id`.
+    if name == "img" {
+        events.retain(|(ev, _, _)| ev.to_string() != "load" && ev.to_string() != "error");
+    }
     if name != "img" && name != "svg" {
         if let Some(src) = src {
             return Err(syn::Error::new(src.span, "src is only valid on <img>"));
@@ -274,7 +288,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     // Apply object-fit to img elements
     if name == "img" {
         if let Some(of) = object_fit {
-            let v = match string_lit_static(&of.value).map(|s| s.to_string()).as_deref() {
+            let v = match string_lit_static(&of.value).and_then(|ts| syn::parse2::<syn::LitStr>(ts).ok()).map(|s| s.value()).as_deref() {
                 Some("fill") => quote! { ::gpui::ObjectFit::Fill },
                 Some("contain") => quote! { ::gpui::ObjectFit::Contain },
                 Some("cover") => quote! { ::gpui::ObjectFit::Cover },

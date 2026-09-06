@@ -31,6 +31,22 @@ fn widgets_compile_and_produce_elements() {
     let img = view! { <img src={"x.png"} alt={"logo"} /> };
     let _ = img.into_any_element();
 
+    // img with on:load / on:error
+    let img_events = view! {
+        <img src={"x.png"} on:load={move |_cx: &mut App| {}} on:error={move |_cx: &mut App| {}} />
+    };
+    let _ = img_events.into_any_element();
+
+    // img with on:load only + object_fit (chaining still works)
+    assert_into_any(|| view! {
+        <img src={"x.png"} object_fit="contain" on:load={move |_cx: &mut App| {}} />
+    });
+
+    // img with on:load + on:click (regular events still work)
+    assert_into_any(|| view! {
+        <img src={"x.png"} on:load={move |_cx: &mut App| {}} on:click={move |_e, _w, _cx| {}} />
+    });
+
     // `text_area` needs a VguiRoot slot; type-check `rows` without constructing.
     assert_into_any(|| view! { <textarea rows={4u32} /> });
 

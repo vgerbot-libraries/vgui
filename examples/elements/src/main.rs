@@ -1,6 +1,6 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
-use gpui::{px, size, App, Bounds, WindowBounds, WindowOptions};
+use gpui::{px, size, App, Bounds, RenderImage, WindowBounds, WindowOptions};
 use vgui::prelude::*;
 
 #[cfg(not(target_family = "wasm"))]
@@ -16,6 +16,13 @@ fn app() -> impl gpui::IntoElement {
     let (sel_val, set_sel_val) = create_signal("1".to_string());
     let dismiss_dialog = set_show_dialog.clone();
     let close_dialog_btn = set_show_dialog.clone();
+    let (img_loaded, set_img_loaded) = create_signal(false);
+    let (img_error, set_img_error) = create_signal(false);
+    // A tiny 4×4 solid-color image used as a Render source — `on:load` fires
+    // on first paint because the data is immediately available.
+    let solid_image = std::sync::Arc::new(RenderImage::new(vec![
+        image::Frame::new(image::RgbaImage::from_raw(4, 4, [80, 120, 200, 255].repeat(16)).unwrap()),
+    ]));
 
     view! {
         <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-full h-full text-white overflow-y-auto">
@@ -135,6 +142,22 @@ fn app() -> impl gpui::IntoElement {
 
             <div on:modifiers_changed={move |_e, _w, _cx| {}} on:any_mouse_down={move |_e, _w, _cx| {}}>
                 {"Events test"}
+            </div>
+
+            <hr />
+
+            <div class="flex flex-col gap-1">
+                <span>{"<img> with on:load / on:error"}</span>
+                <div class="flex flex-row gap-2 items-center">
+                    <img src={solid_image.clone()} object_fit="contain" class="w-4 h-4"
+                        on:load={move |cx: &mut App| set_img_loaded.set(cx, true)} />
+                    <span>{if img_loaded.get() { "Loaded ✓" } else { "Loading…" }}</span>
+                </div>
+                <div class="flex flex-row gap-2 items-center">
+                    <img src={"nonexistent.png"} class="w-4 h-4"
+                        on:error={move |cx: &mut App| set_img_error.set(cx, true)} />
+                    <span>{if img_error.get() { "Error ✓ (expected)" } else { "Loading…" }}</span>
+                </div>
             </div>
 
             <hr />
