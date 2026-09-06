@@ -5,10 +5,12 @@ globs:
   - "examples/**"
   - "book/src/examples/**"
   - "scripts/build_wasm.sh"
+  - "scripts/build_docs.sh"
 paths:
   - "examples/**"
   - "book/src/examples/**"
   - "scripts/build_wasm.sh"
+  - "scripts/build_docs.sh"
 trigger: auto
 tags: [examples, wasm, mdbook, docs]
 ---
@@ -216,16 +218,62 @@ Every example MUST have a page at `book/src/examples/<name>.md` with:
 
 5. The page MUST be listed in `book/src/SUMMARY.md` under the Examples section.
 
-## 4. Checklist for adding a new example
+## 4. When to add a new example
 
+Do NOT create a new example for every feature or minor addition. The examples
+list should stay curated — each example demonstrates a coherent theme, not a
+single API call.
+
+Before creating `examples/<name>/`, work through this decision process in order:
+
+1. **Can an existing example demonstrate the feature?** Check the current
+   examples list in `book/src/SUMMARY.md`. If the feature fits naturally into
+   an existing example's theme (e.g. a new input type belongs in `inputs`, a
+   new overlay pattern belongs in `overlays`, a new animation utility belongs
+   in `animation`), extend that example's `main.rs` and its mdBook page
+   instead. Add the feature to the existing example's "Key Concepts" section.
+
+2. **Can a closely related example absorb it with a new subsection?** If the
+   feature is related but would significantly grow an existing example, consider
+   adding a clearly delimited subsection (e.g. a new tab, panel, or labeled
+   region) within that example rather than spawning a new crate.
+
+3. **Only create a new example when none of the above apply.** A new example is
+   justified when the feature is a self-contained capability that does not fit
+   any existing theme — e.g. a full application combining multiple systems
+   (like `dashboard`), or a fundamentally new interaction paradigm that would
+   dilute an existing example's focus if merged in.
+
+When extending an existing example, skip the registration steps in §5
+(Registration points) — they only apply to new crates. Update the existing
+example's mdBook page and rebuild its WASM assets.
+
+## 5. Registration points
+
+The example list is not auto-discovered. Adding a new example requires
+registering it in **all** of the following locations:
+
+| File | What to add | Why |
+| --- | --- | --- |
+| `Cargo.toml` (root) | `"examples/<name>"` to `workspace.members` | Without this, `cargo build --workspace` and `cargo run -p vgui-<name>` cannot find the crate. |
+| `scripts/build_docs.sh` | `<name>` to the `EXAMPLES` array | Without this, `build_docs.sh` skips the WASM demo and the mdBook site has no live demo for this example. |
+| `book/src/SUMMARY.md` | `- [Title](./examples/<name>.md)` under `# Examples` | Without this, the mdBook sidebar has no entry and the page is unreachable. |
+
+`scripts/build_wasm.sh` does **not** need editing — it accepts the example
+name as a CLI argument (`scripts/build_wasm.sh <name>`).
+
+## 6. Checklist for adding a new example
+
+- [ ] Confirmed no existing example can demonstrate this feature (see §4)
 - [ ] Create `examples/<name>/Cargo.toml` with `wasm-bindgen` target dep
 - [ ] Write `examples/<name>/src/main.rs` with dual entry point pattern
-- [ ] Add the example to the workspace `members` list in root `Cargo.toml`
+- [ ] Add `"examples/<name>"` to the workspace `members` list in root `Cargo.toml`
+- [ ] Add `<name>` to the `EXAMPLES` array in `scripts/build_docs.sh`
+- [ ] Add `- [Title](./examples/<name>.md)` to `book/src/SUMMARY.md` under `# Examples`
 - [ ] `cargo +nightly check` passes (native)
 - [ ] `cargo +nightly check --target wasm32-unknown-unknown` passes (WASM)
 - [ ] Run `scripts/build_wasm.sh <name>` to generate WASM assets
 - [ ] Create `book/src/wasm/<name>/index.html` (or let build_wasm.sh create it)
 - [ ] Create `book/src/examples/<name>.md` with Live Demo iframe + source
-- [ ] Add the page to `book/src/SUMMARY.md`
 - [ ] `mdbook build book` succeeds
 - [ ] Open the page in a browser and verify the iframe renders the app
