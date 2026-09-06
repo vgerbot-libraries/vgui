@@ -243,12 +243,16 @@ fn web_code(ks: &Keystroke) -> String {
         "f12" | "F12" => "F12".to_string(),
         _ if ks.key.len() == 1 => {
             let ch = ks.key.chars().next().unwrap();
-            if ch.is_ascii_lowercase() {
-                format!("Key{}", ch.to_ascii_uppercase())
-            } else if ch.is_ascii_uppercase() {
-                format!("Key{}", ch)
+            if ch.is_ascii_alphabetic() {
+                let mut s = String::with_capacity(4);
+                s.push_str("Key");
+                s.push(ch.to_ascii_uppercase());
+                s
             } else if ch.is_ascii_digit() {
-                format!("Digit{}", ch)
+                let mut s = String::with_capacity(6);
+                s.push_str("Digit");
+                s.push(ch);
+                s
             } else {
                 String::new()
             }
