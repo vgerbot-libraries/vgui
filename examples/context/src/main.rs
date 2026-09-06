@@ -18,7 +18,7 @@ fn app() -> impl gpui::IntoElement {
     let (mode, set_mode) = create_signal(Mode::Light);
     view! {
         <Provider context={MODE} value={mode.get()}>
-            <div class="flex flex-col p-4 gap-2 w-[400px] h-[400px]">
+            <div class="flex flex-col p-4 gap-2 w-full h-full">
                 {themed_box("root context (toggles)")}
                 <ThemePanel />
                 <button class="p-2 bg-[#0066cc] text-white rounded"

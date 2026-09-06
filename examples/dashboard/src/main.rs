@@ -90,6 +90,7 @@ fn app() -> impl gpui::IntoElement {
             <div class="flex flex-col" style={css!{
                 background: var(--bg);
                 color: var(--text);
+                width: 100%;
                 height: 100%;
             }}>
                 // Top bar

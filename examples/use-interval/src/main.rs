@@ -39,7 +39,7 @@ fn app() -> impl gpui::IntoElement {
     let set_running_pause = set_running.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-[460px] h-[420px] text-white justify-center items-center">
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-full h-full text-white justify-center items-center">
             <h2 class="text-lg font-bold">{"useInterval Demo"}</h2>
 
             // ── Timer display ────────────────────────────────────────

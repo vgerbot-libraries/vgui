@@ -193,8 +193,8 @@ fn app() -> impl gpui::IntoElement {
             gap: 12px;
             padding: 20px;
             background: rgb(30, 30, 30);
-            width: 500px;
-            height: 600px;
+            width: 100%;
+            height: 100%;
             color: #fff;
             font-size: 14px;
         }}>

@@ -104,7 +104,7 @@ fn app() -> impl gpui::IntoElement {
     let set_running_pause = set_running.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#0f0f1e] w-[540px] h-[600px] text-white rounded">
+        <div class="flex flex-col gap-4 p-6 bg-[#0f0f1e] w-full h-full text-white rounded">
             <h2 class="text-lg font-bold">{"Particle Animation"}</h2>
             <span class="text-sm text-[#888] -mt-2">
                 {"use_interval + canvas — reactive timer-driven rendering"}
@@ -201,7 +201,7 @@ fn app() -> impl gpui::IntoElement {
             // ── Particle count selector ─────────────────────────────
             <div class="flex gap-2 items-center">
                 <span class="text-sm text-[#888] w-16">{"Particles"}</span>
-                {vgui::for_each([6u32, 12, 20, 30], move |n, _| {
+                {vgui::for_each([6u32, 12, 48, 96], move |n, _| {
                     let set_count = set_count.clone();
                     let count = count.clone();
                     let set_particles = set_particles_reset.clone();

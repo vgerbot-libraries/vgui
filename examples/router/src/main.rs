@@ -86,7 +86,7 @@ fn app() -> impl gpui::IntoElement {
     let r_path = router.clone();
 
     view! {
-        <div class="flex flex-col bg-[#1a1a2e] text-white h-full">
+        <div class="flex flex-col bg-[#1a1a2e] text-white w-full h-full">
             // Nav bar
             <div class="flex flex-row gap-2 p-3 bg-[#2d2d44]">
                 <button

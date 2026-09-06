@@ -40,7 +40,7 @@ fn app() -> impl gpui::IntoElement {
     let r_subscribe = set_subscribe.clone();
     let r_submitted = set_submitted.clone();
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 500px; height: 600px; overflow-y: auto; }}>
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 100%; height: 100%; overflow-y: auto; }}>
             <h2 class="text-lg font-bold">{"Form Example"}</h2>
             <form
                 on:submit={move |cx: &mut App| {

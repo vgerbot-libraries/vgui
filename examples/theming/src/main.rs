@@ -59,8 +59,8 @@ fn app() -> impl gpui::IntoElement {
             padding: var(--spacing);
             background: var(--bg);
             color: var(--text);
-            width: 480px;
-            height: 400px;
+            width: 100%;
+            height: 100%;
             font-size: 16px;
         }}>
             // Header row: title + toggle button

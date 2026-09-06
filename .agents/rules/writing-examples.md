@@ -75,7 +75,15 @@ use gpui_platform::application;
 use gpui_platform::single_threaded_web;
 
 fn app() -> impl gpui::IntoElement {
-    // ... example-specific UI ...
+    // The outermost node MUST fill the window/canvas. Use `w-full h-full`
+    // (or `width: 100%; height: 100%` inside a `css!` block) — never fixed
+    // px dimensions — so the app resizes with the window instead of being
+    // a fixed-size box.
+    view! {
+        <div class="w-full h-full ...">
+            // ... example-specific UI ...
+        </div>
+    }
 }
 
 fn run() {
@@ -140,6 +148,13 @@ pub fn start() {
   `window` listener only suppresses the browser default after gpui has
   processed it. On non-WASM targets this function is a no-op.
 - `gpui_platform::web_init()` — sets up panic hooks and logging for WASM.
+- **Outermost node fills the window.** The root element returned by `app()`
+  MUST use `w-full h-full` (Tailwind classes) or `width: 100%; height: 100%`
+  (inside a `css!` block). Do NOT set fixed `w-[Npx] h-[Npx]` / `width: Npx`
+  on the outermost node — the app must resize with the window/canvas. The
+  window bounds in `run()` only set the initial native window size; on WASM
+  the canvas is sized by the iframe, so a fixed-size root would either
+  overflow or leave dead space.
 
 ## 2. Building WASM for the book
 

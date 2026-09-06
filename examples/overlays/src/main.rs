@@ -19,7 +19,7 @@ fn app() -> impl gpui::IntoElement {
     let set_dialog_cancel = set_dialog_open.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 500px; height: 500px; }}>
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 100%; height: 100%; }}>
             <h2 class="text-lg font-bold">{"Overlays Example"}</h2>
 
             // ── Dialog ───────────────────────────────────────────────

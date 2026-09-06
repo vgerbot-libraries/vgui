@@ -123,6 +123,8 @@ fn app() -> impl gpui::IntoElement {
             gap: 16px;
             padding: 24px;
             background: #1a1a2e;
+            width: 100%;
+            height: 100%;
         }}>
             <h2 style={css! {
                 color: #fff;

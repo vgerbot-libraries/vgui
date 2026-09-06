@@ -13,7 +13,7 @@ fn app() -> impl gpui::IntoElement {
     let (active, set_active) = create_signal(false);
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 700px; height: 600px; overflow-y: auto; }}>
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] text-white" style={css!{ width: 100%; height: 100%; overflow-y: auto; }}>
             <h2 class="text-lg font-bold">{"Styling Showcase"}</h2>
 
             // ── css! macro ───────────────────────────────────────────

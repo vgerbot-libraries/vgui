@@ -13,7 +13,7 @@ use gpui_platform::single_threaded_web;
 
 fn app() -> impl gpui::IntoElement {
     view! {
-        <div class="flex flex-col gap-6 p-6 bg-[#1a1a2e] w-[520px] h-[640px] text-white overflow-y-auto">
+        <div class="flex flex-col gap-6 p-6 bg-[#1a1a2e] w-full h-full text-white overflow-y-auto">
             <h2 class="text-lg font-bold">{"Animations & Transitions"}</h2>
 
             // ── Built-in keyframe animations ───────────────────────────

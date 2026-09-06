@@ -37,7 +37,7 @@ fn app() -> impl gpui::IntoElement {
         move || count.get() * 2
     });
     view! {
-        <div class="flex flex-col gap-3 p-4 bg-[#505050] w-[500px] h-[500px] justify-center items-center text-white">
+        <div class="flex flex-col gap-3 p-4 bg-[#505050] w-full h-full justify-center items-center text-white">
             <span>{format!("Hello, {}!", count.get())}</span>
             <span>{format!("doubled {}", doubled.get())}</span>
             <Show when={count.get() > 0}>

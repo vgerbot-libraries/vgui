@@ -28,7 +28,7 @@ fn app() -> impl gpui::IntoElement {
     let sr2 = set_radio.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-[600px] h-[700px] text-white overflow-y-auto">
+        <div class="flex flex-col gap-4 p-6 bg-[#1a1a2e] w-full h-full text-white overflow-y-auto">
             <span class="text-lg font-bold">{"vgui <input> demo"}</span>
 
             // Text input with live mirror

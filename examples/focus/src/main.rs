@@ -26,7 +26,7 @@ fn app() -> impl gpui::IntoElement {
     let set_dialog_close_btn = set_dialog_open.clone();
 
     view! {
-        <div class="flex flex-col gap-4 p-6 bg-[#505050] w-[600px] h-[500px] text-white"
+        <div class="flex flex-col gap-4 p-6 bg-[#505050] w-full h-full text-white"
             on:resize={move |ev: &ResizeEvent, _w, _cx| { set_size.update(_cx, |_| (ev.width, ev.height)); }}
         >
             <span class="text-sm text-[#0f0]">{format!("{:.0} x {:.0}", size_sig.get().0, size_sig.get().1)}</span>

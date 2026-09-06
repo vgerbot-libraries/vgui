@@ -18,7 +18,7 @@ fn app() -> impl gpui::IntoElement {
     let close_dialog_btn = set_show_dialog.clone();
 
     view! {
-        <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-[600px] h-[700px] text-white overflow-y-auto">
+        <div class="flex flex-col gap-2 p-4 bg-[#1a1a2e] w-full h-full text-white overflow-y-auto">
             <h1>{"Heading 1"}</h1>
             <h2>{"Heading 2"}</h2>
             <h3>{"Heading 3"}</h3>

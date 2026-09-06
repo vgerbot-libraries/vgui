@@ -26,7 +26,7 @@ fn app() -> impl gpui::IntoElement {
     let bounds_ref_btn = bounds_ref.clone();
 
     view! {
-        <div class="flex flex-col gap-2 p-4 bg-[#505050] w-[400px] h-[500px] text-white">
+        <div class="flex flex-col gap-2 p-4 bg-[#505050] w-full h-full text-white">
             <h2 class="text-lg font-bold">{"Refs Demo"}</h2>
 
             // Buttons that call imperative methods on the refs.
