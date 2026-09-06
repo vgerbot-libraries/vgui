@@ -53,6 +53,7 @@
 - [useInterval](./examples/use-interval.md)
 - [Canvas Animation](./examples/canvas-animation.md)
 - [Keyboard Events](./examples/keyboard-events.md)
+- [Keyboard Shortcuts](./examples/keyboard-shortcuts.md)
 
 # Feature Comparison
 

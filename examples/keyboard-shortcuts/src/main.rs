@@ -213,7 +213,7 @@ fn app() -> impl gpui::IntoElement {
             // ── Shortcut reference ──────────────────────────────────
             <div class="flex flex-col gap-1 px-3 py-2 rounded bg-[#181825] border border-[#313244] text-xs font-mono">
                 <div class="text-[#6c7086] mb-1">{"Shortcuts (try these):"}</div>
-                {vgui::for_each(cmds, move |(i, cmd), _| {
+                {vgui::for_each(cmds, move |(_i, cmd), _| {
                     view! {
                         <div class="flex flex-row justify-between text-[#cdd6f4]">
                             <span>{cmd.name}</span>
