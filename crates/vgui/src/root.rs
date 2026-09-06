@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use gpui::{AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, WeakEntity, Window};
 
+use crate::event::KeyboardEvent;
 use crate::reactive::{enter_scope, exit_scope, set_viewport_width};
 
 pub struct Scope {
@@ -24,6 +25,14 @@ pub struct Scope {
     /// refilled on every render, then invoked by the window-bounds observer.
     pub(crate) resize_handlers:
         Vec<Rc<dyn Fn(&crate::event::ResizeEvent, &mut gpui::Window, &mut gpui::App)>>,
+    /// `use_key_down` handlers registered during the current render. Cleared
+    /// and refilled on every render, then invoked by the root `on_key_down`.
+    pub(crate) key_down_handlers:
+        Vec<Rc<dyn Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App)>>,
+    /// `use_key_up` handlers registered during the current render. Cleared
+    /// and refilled on every render, then invoked by the root `on_key_up`.
+    pub(crate) key_up_handlers:
+        Vec<Rc<dyn Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App)>>,
     /// Named child scopes (e.g. one per route). Persisted across renders so
     /// state created inside a child scope survives route switches; each child
     /// has its own independent slot sequence, so different branches can
@@ -83,6 +92,8 @@ pub(crate) fn dispose_scope(scope: &Rc<RefCell<Scope>>) {
     s.effects.clear();
     s.cleanups.clear();
     s.resize_handlers.clear();
+    s.key_down_handlers.clear();
+    s.key_up_handlers.clear();
     s.index = 0;
     s.initialized = false;
 }
@@ -101,15 +112,48 @@ fn collect_all_resize_handlers(
     result
 }
 
-/// Recursively resets per-render state (`index`, `resize_handlers`) on a
-/// scope and all its descendants. Called at the start of every render so that
-/// each persistent child scope begins with a clean slot sequence.
+/// Recursively collects `use_key_down` handlers from a scope and all
+/// descendants.
+pub(crate) fn collect_all_key_down_handlers(
+    scope: &Rc<RefCell<Scope>>,
+) -> Vec<Rc<dyn Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App)>> {
+    let s = scope.borrow();
+    let mut result: Vec<_> = s.key_down_handlers.iter().cloned().collect();
+    let children: Vec<_> = s.children.values().cloned().collect();
+    drop(s);
+    for child in children {
+        result.extend(collect_all_key_down_handlers(&child));
+    }
+    result
+}
+
+/// Recursively collects `use_key_up` handlers from a scope and all
+/// descendants.
+pub(crate) fn collect_all_key_up_handlers(
+    scope: &Rc<RefCell<Scope>>,
+) -> Vec<Rc<dyn Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App)>> {
+    let s = scope.borrow();
+    let mut result: Vec<_> = s.key_up_handlers.iter().cloned().collect();
+    let children: Vec<_> = s.children.values().cloned().collect();
+    drop(s);
+    for child in children {
+        result.extend(collect_all_key_up_handlers(&child));
+    }
+    result
+}
+
+/// Recursively resets per-render state (`index`, `resize_handlers`,
+/// `key_down_handlers`, `key_up_handlers`) on a scope and all its
+/// descendants. Called at the start of every render so that each persistent
+/// child scope begins with a clean slot sequence.
 fn reset_render_state(scope: &Rc<RefCell<Scope>>) {
     let children: Vec<_> = scope.borrow().children.values().cloned().collect();
     {
         let mut s = scope.borrow_mut();
         s.index = 0;
         s.resize_handlers.clear();
+        s.key_down_handlers.clear();
+        s.key_up_handlers.clear();
     }
     for child in children {
         reset_render_state(&child);
@@ -135,6 +179,8 @@ impl VguiRoot {
             effects: Vec::new(),
             cleanups: Vec::new(),
             resize_handlers: Vec::new(),
+            key_down_handlers: Vec::new(),
+            key_up_handlers: Vec::new(),
             index: 0,
             initialized: false,
             subscriptions: Vec::new(),
@@ -188,9 +234,9 @@ impl Render for VguiRoot {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Reset per-render state on the root scope and all descendants. Child
         // scopes are persistent (keyed by name), so their slots survive route
-        // switches, but their `index` and `resize_handlers` must be reset every
-        // render. Nested child scopes (from <Switch>/<Index>) are reset
-        // recursively.
+        // switches, but their `index`, `resize_handlers`, and key handlers must
+        // be reset every render. Nested child scopes (from <Switch>/<Index>)
+        // are reset recursively.
         reset_render_state(&self.scope);
         // Register the window-bounds observer once; it dispatches the current
         // render's resize handlers (root + all children) on viewport-size change.
@@ -207,13 +253,35 @@ impl Render for VguiRoot {
         set_viewport_width(f32::from(window.viewport_size().width));
         let el = (self.render)();
         exit_scope();
+        let scope_for_down = self.scope.clone();
+        let scope_for_up = self.scope.clone();
         gpui::div()
-            .on_key_down(|event: &gpui::KeyDownEvent, window: &mut Window, cx: &mut App| {
+            .on_key_down(move |event: &gpui::KeyDownEvent, window: &mut Window, cx: &mut App| {
                 if event.keystroke.key == "tab" {
                     if event.keystroke.modifiers.shift {
                         window.focus_prev(cx);
                     } else {
                         window.focus_next(cx);
+                    }
+                }
+                let ke = KeyboardEvent::from_keystroke(&event.keystroke, event.is_held);
+                let handlers = collect_all_key_down_handlers(&scope_for_down);
+                for h in handlers {
+                    h(&ke, window, cx);
+                    if ke.is_propagation_stopped() {
+                        cx.stop_propagation();
+                        break;
+                    }
+                }
+            })
+            .on_key_up(move |event: &gpui::KeyUpEvent, window: &mut Window, cx: &mut App| {
+                let ke = KeyboardEvent::from_keystroke(&event.keystroke, false);
+                let handlers = collect_all_key_up_handlers(&scope_for_up);
+                for h in handlers {
+                    h(&ke, window, cx);
+                    if ke.is_propagation_stopped() {
+                        cx.stop_propagation();
+                        break;
                     }
                 }
             })

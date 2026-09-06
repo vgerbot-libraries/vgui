@@ -7,9 +7,12 @@
 //! / `on:contextmenu` `view!` attributes, which hand user closures references to
 //! these pure-data structs.
 //!
-//! Propagation control stays on the gpui objects the handler still receives
-//! (`cx.stop_propagation()`, `window.prevent_default()`); these structs carry no
-//! methods and duplicate no dispatch machinery.
+//! [`KeyboardEvent`] carries a web-style [`KeyboardEvent::stop_propagation`]
+//! method that sets an internal flag; the macro-facing wrappers
+//! ([`__dom_key_down`], [`__dom_key_up`]) translate that flag into
+//! `cx.stop_propagation()` after the user closure returns.
+
+use std::cell::Cell;
 
 use gpui::{
     Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Size,
@@ -28,6 +31,10 @@ pub enum PointerType {
 }
 
 /// A web-style keyboard event (`on:keydown` / `on:keyup`).
+///
+/// Call [`stop_propagation`](Self::stop_propagation) to prevent the event
+/// from bubbling to parent elements and global `use_key_down` / `use_key_up`
+/// listeners.
 #[derive(Clone, Debug)]
 pub struct KeyboardEvent {
     /// Web `key`: the logical key value (`"a"`, `"A"`, `"Enter"`, `" "`,
@@ -47,6 +54,9 @@ pub struct KeyboardEvent {
     pub meta_key: bool,
     /// The typed character, passthrough of `Keystroke::key_char`.
     pub key_char: Option<String>,
+    /// Internal flag set by [`stop_propagation`](Self::stop_propagation).
+    /// Checked by the macro-facing wrappers and the global dispatch loop.
+    propagation_stopped: Cell<bool>,
 }
 
 /// A web-style pointer event (`on:pointerdown` / `on:pointerup` /
@@ -98,7 +108,33 @@ pub struct WheelEvent {
 // ── keyboard normalization ──────────────────────────────────────────
 
 impl KeyboardEvent {
-    pub(crate) fn from_keystroke(ks: &Keystroke, is_held: bool) -> Self {
+    /// Construct a `KeyboardEvent` from web-style fields. Useful for testing
+    /// and custom event dispatching.
+    pub fn new(
+        key: impl Into<String>,
+        code: impl Into<String>,
+        repeat: bool,
+        shift_key: bool,
+        ctrl_key: bool,
+        alt_key: bool,
+        meta_key: bool,
+        key_char: Option<String>,
+    ) -> Self {
+        Self {
+            key: key.into(),
+            code: code.into(),
+            repeat,
+            shift_key,
+            ctrl_key,
+            alt_key,
+            meta_key,
+            key_char,
+            propagation_stopped: Cell::new(false),
+        }
+    }
+
+    /// Map a gpui `Keystroke` to a web-style [`KeyboardEvent`].
+    pub fn from_keystroke(ks: &Keystroke, is_held: bool) -> Self {
         Self {
             key: web_key(ks),
             code: web_code(ks),
@@ -108,7 +144,21 @@ impl KeyboardEvent {
             alt_key: ks.modifiers.alt,
             meta_key: ks.modifiers.platform,
             key_char: ks.key_char.clone(),
+            propagation_stopped: Cell::new(false),
         }
+    }
+
+    /// Web-style `stopPropagation()`. Sets an internal flag that prevents the
+    /// event from bubbling to parent elements and global listeners. Subsequent
+    /// handlers on the same target are also skipped (matching
+    /// `stopImmediatePropagation` semantics).
+    pub fn stop_propagation(&self) {
+        self.propagation_stopped.set(true);
+    }
+
+    /// Returns `true` if [`stop_propagation`](Self::stop_propagation) was called.
+    pub fn is_propagation_stopped(&self) -> bool {
+        self.propagation_stopped.get()
     }
 }
 
@@ -330,6 +380,9 @@ pub fn __dom_key_down<H: Fn(&KeyboardEvent, &mut Window, &mut gpui::App) + 'stat
     move |e, w, cx| {
         let ke = KeyboardEvent::from_keystroke(&e.keystroke, e.is_held);
         h(&ke, w, cx);
+        if ke.is_propagation_stopped() {
+            cx.stop_propagation();
+        }
     }
 }
 
@@ -339,6 +392,9 @@ pub fn __dom_key_up<H: Fn(&KeyboardEvent, &mut Window, &mut gpui::App) + 'static
     move |e, w, cx| {
         let ke = KeyboardEvent::from_keystroke(&e.keystroke, false);
         h(&ke, w, cx);
+        if ke.is_propagation_stopped() {
+            cx.stop_propagation();
+        }
     }
 }
 
@@ -465,6 +521,31 @@ mod tests {
         assert!(ev.repeat);
         assert!(ev.shift_key && ev.ctrl_key && ev.alt_key && ev.meta_key);
         assert_eq!(ev.key_char, Some("A".to_string()));
+    }
+
+    #[test]
+    fn keyboard_event_stop_propagation_flag() {
+        let k = ks("escape", None, Modifiers::default());
+        let ev = KeyboardEvent::from_keystroke(&k, false);
+        assert!(!ev.is_propagation_stopped());
+        ev.stop_propagation();
+        assert!(ev.is_propagation_stopped());
+    }
+
+    #[test]
+    fn keyboard_event_new_constructor() {
+        let ev = KeyboardEvent::new(
+            "Enter", "Enter", true, false, true, false, false, None,
+        );
+        assert_eq!(ev.key, "Enter");
+        assert_eq!(ev.code, "Enter");
+        assert!(ev.repeat);
+        assert!(!ev.shift_key);
+        assert!(ev.ctrl_key);
+        assert!(!ev.alt_key);
+        assert!(!ev.meta_key);
+        assert!(ev.key_char.is_none());
+        assert!(!ev.is_propagation_stopped());
     }
 
     fn pt(x: f32, y: f32) -> Point<Pixels> {

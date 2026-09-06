@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use gpui::{App, AppContext, Entity, EntityId, IntoElement, ParentElement};
 
+use crate::event::KeyboardEvent;
 use crate::root::{Scope, Slot, VguiRoot};
 
 thread_local! {
@@ -117,6 +118,8 @@ pub fn enter_child_scope(key: &str) {
                     effects: Vec::new(),
                     cleanups: Vec::new(),
                     resize_handlers: Vec::new(),
+                    key_down_handlers: Vec::new(),
+                    key_up_handlers: Vec::new(),
                     children: std::collections::HashMap::new(),
                     parent: Some(parent),
                 }))
@@ -125,8 +128,9 @@ pub fn enter_child_scope(key: &str) {
     };
     {
         let mut child_scope = child.borrow_mut();
-        child_scope.index = 0;
         child_scope.resize_handlers.clear();
+        child_scope.key_down_handlers.clear();
+        child_scope.key_up_handlers.clear();
     }
     CURRENT.with(|c| {
         *c.borrow_mut() = Some(Current {
@@ -191,6 +195,34 @@ pub fn __register_resize_handler(
         cur.scope
             .borrow_mut()
             .resize_handlers
+            .push(Rc::new(handler));
+    }
+}
+
+/// Register a global `use_key_down` handler into the current render scope.
+/// Called by the `use_key_down` hook. No-op outside a real render scope.
+#[doc(hidden)]
+pub fn __register_key_down_handler(
+    handler: impl Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+) {
+    if let Some(cur) = try_current() {
+        cur.scope
+            .borrow_mut()
+            .key_down_handlers
+            .push(Rc::new(handler));
+    }
+}
+
+/// Register a global `use_key_up` handler into the current render scope.
+/// Called by the `use_key_up` hook. No-op outside a real render scope.
+#[doc(hidden)]
+pub fn __register_key_up_handler(
+    handler: impl Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+) {
+    if let Some(cur) = try_current() {
+        cur.scope
+            .borrow_mut()
+            .key_up_handlers
             .push(Rc::new(handler));
     }
 }
@@ -1079,6 +1111,48 @@ pub fn use_interval(
     on_cleanup(move || {
         *handle.borrow_mut() = None;
     });
+}
+
+// ---------------------------------------------------------------------------
+// `use_key_down` / `use_key_up` — global keyboard event hooks.
+//
+// These register a handler into the current render scope (root or child),
+// mirroring `on:resize`. The `VguiRoot` root `div` collects all handlers
+// across scopes on every render and dispatches them from its `on_key_down` /
+// `on_key_up` listeners. A handler may call `KeyboardEvent::stop_propagation`
+// to halt dispatch to subsequent global handlers and prevent gpui bubbling.
+// ---------------------------------------------------------------------------
+
+/// Global `keydown` hook — fires on every key press regardless of focus.
+///
+/// The handler receives a [`KeyboardEvent`] and may call
+/// [`KeyboardEvent::stop_propagation`] to prevent subsequent global handlers
+/// from running and to stop the event from bubbling in gpui.
+///
+/// Must be called inside a `VguiRoot` render scope. The handler is
+/// re-registered on every render, so closures capturing reactive state
+/// always see fresh values.
+///
+/// ```ignore
+/// use_key_down(move |e: &KeyboardEvent, _w, _cx| {
+///     if e.key == "Escape" {
+///         // handle escape globally
+///     }
+/// });
+/// ```
+pub fn use_key_down(
+    handler: impl Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+) {
+    __register_key_down_handler(handler);
+}
+
+/// Global `keyup` hook — fires on every key release regardless of focus.
+///
+/// See [`use_key_down`] for semantics.
+pub fn use_key_up(
+    handler: impl Fn(&KeyboardEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+) {
+    __register_key_up_handler(handler);
 }
 
 #[doc(hidden)]

@@ -53,7 +53,7 @@ pub use crate::input_widgets::{
 pub use crate::input_widgets::{__radiogroup_scope_enter, __radiogroup_scope_exit};
 pub use crate::label::{focus_label_target, __label_scope_enter, label_scope_exit, LabelTarget};
 pub use crate::context::{__provider_scope_enter, __provider_scope_exit};
-pub use crate::reactive::{create_effect, create_memo, create_signal, create_store, enter_child_scope, exit_child_scope, next_auto_id, on_cleanup, index_list, index_list_or, ReadSignal, WriteSignal, Store, SetStore, set_interval, use_interval, IntervalHandle};
+pub use crate::reactive::{create_effect, create_memo, create_signal, create_store, enter_child_scope, exit_child_scope, next_auto_id, on_cleanup, index_list, index_list_or, ReadSignal, WriteSignal, Store, SetStore, set_interval, use_interval, use_key_down, use_key_up, IntervalHandle};
 pub use crate::router::{create_router, build_path, match_pattern, RouteMatch, Router};
 pub use crate::breakpoint::Breakpoint;
 pub use crate::breakpoint::__apply_breakpoint_styles;
@@ -66,6 +66,7 @@ pub use crate::event::{
     __dom_pointer_move, __dom_pointer_up, __dom_wheel,
 };
 pub use crate::reactive::__register_resize_handler;
+pub use crate::reactive::{__register_key_down_handler, __register_key_up_handler};
 pub use crate::style::{ApplyStyle, Css, TwStyle};
 pub use crate::spread::Spread;
 pub use crate::animation::{
