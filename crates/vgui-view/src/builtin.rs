@@ -40,6 +40,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     if name == "canvas" {
         return emit_canvas(el);
     }
+    if name == "uniform_list" {
+        return emit_virtual_list(el);
+    }
     if name == "wbr" {
         return Ok(quote! { ::gpui::Empty });
     }
@@ -1954,6 +1957,71 @@ fn emit_canvas(el: &Element) -> syn::Result<TokenStream2> {
     let mut ctor = quote! {
         ::vgui::canvas_element(#paint_tokens)
     };
+    if let Some(style) = style {
+        let v = attr_tokens(&style.value);
+        ctor = quote! { ::vgui::ApplyStyle::apply_to(#v, #ctor) };
+    }
+    if let Some(class) = class {
+        let v = attr_tokens(&class.value);
+        ctor = quote! {{
+            let __tw = ::vgui::tw!(#v);
+            let ::vgui::TwStyle { base, hover: _, focus: _, active: _, sm: _, md: _, lg: _, xl: _, animation: _, transition: _ } = __tw;
+            let mut __el = #ctor;
+            (base)(__el.style());
+            __el
+        }};
+    }
+    Ok(quote! { ::gpui::IntoElement::into_any_element(#ctor) })
+}
+
+/// Emit a `<uniform_list>` element. Requires `count={usize}` and
+/// `render={|range, window, cx| ...}`; accepts optional `scroll_handle`,
+/// `style`, and `class`. No children, no events.
+fn emit_virtual_list(el: &Element) -> syn::Result<TokenStream2> {
+    let mut count = None;
+    let mut render = None;
+    let mut scroll_handle = None;
+    let mut style = None;
+    let mut class = None;
+    for attr in &el.attrs {
+        match &attr.kind {
+            AttrKind::Ident(id) if id.to_string() == "count" => {
+                count = Some(&attr.value);
+            }
+            AttrKind::Ident(id) if id.to_string() == "render" => {
+                render = Some(&attr.value);
+            }
+            AttrKind::Ident(id) if id.to_string() == "scroll_handle" => {
+                scroll_handle = Some(&attr.value);
+            }
+            AttrKind::Style => style = Some(attr),
+            AttrKind::Class => class = Some(attr),
+            _ => {
+                return Err(syn::Error::new(
+                    attr.span,
+                    "unsupported attribute on <uniform_list>; allowed: `count`, `render`, `scroll_handle`, `style`, `class`",
+                ));
+            }
+        }
+    }
+    if !el.children.is_empty() {
+        return Err(syn::Error::new(el.tag.span(), "<uniform_list> cannot have children"));
+    }
+    let count_value = count.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<uniform_list> requires a `count={usize}` attribute")
+    })?;
+    let render_value = render.ok_or_else(|| {
+        syn::Error::new(el.tag.span(), "<uniform_list> requires a `render={|range, window, cx| ...}` attribute")
+    })?;
+    let count_tokens = attr_tokens(count_value);
+    let render_tokens = attr_tokens(render_value);
+    let mut ctor = quote! {
+        ::gpui::uniform_list(::vgui::next_auto_id() as usize, #count_tokens, #render_tokens)
+    };
+    if let Some(sh) = scroll_handle {
+        let sh_tokens = attr_tokens(sh);
+        ctor = quote! { #ctor.track_scroll(&#sh_tokens) };
+    }
     if let Some(style) = style {
         let v = attr_tokens(&style.value);
         ctor = quote! { ::vgui::ApplyStyle::apply_to(#v, #ctor) };

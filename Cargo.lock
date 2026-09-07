@@ -5991,6 +5991,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-virtual-list"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vswhom"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

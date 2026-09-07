@@ -54,6 +54,7 @@
 - [Canvas Animation](./examples/canvas-animation.md)
 - [Keyboard Events](./examples/keyboard-events.md)
 - [Keyboard Shortcuts](./examples/keyboard-shortcuts.md)
+- [Virtual List](./examples/virtual-list.md)
 
 # Feature Comparison
 

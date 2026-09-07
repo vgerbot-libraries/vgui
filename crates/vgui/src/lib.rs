@@ -22,6 +22,7 @@ mod input_text;
 mod input_widgets;
 mod img;
 mod overlay;
+mod virtual_list;
 mod form;
 mod grid_areas;
 mod label;
@@ -39,6 +40,7 @@ mod shortcuts;
 pub mod theme;
 
 pub use crate::child::{click, into_child, IntoViewChild};
+pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, ScrollStrategy};
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, portal};
