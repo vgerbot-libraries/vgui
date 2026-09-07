@@ -471,6 +471,12 @@ pub fn __dom_contextmenu<H: Fn(&PointerEvent, &mut Window, &mut gpui::App) + 'st
     }
 }
 
+/// Whether a drag operation is currently active. Callable from any
+/// reactive scope (create_memo, create_effect, event handlers).
+pub fn has_active_drag() -> bool {
+    crate::reactive::with_root_cx(|cx| cx.has_active_drag())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

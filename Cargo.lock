@@ -5778,6 +5778,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-drag-drop"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-elements"
 version = "0.1.0"
 dependencies = [

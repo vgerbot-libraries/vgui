@@ -64,6 +64,9 @@ pub(crate) enum AttrKind {
     Spread,
     Role,
     Aria(Ident),
+    Drag,
+    DragPreview,
+    CanDrop,
 }
 
 #[derive(Clone)]

@@ -103,6 +103,7 @@ pub(crate) fn emit_interp(
     match prop {
         "opacity" => Ok(Some(quote! { s.opacity = Some(#expr as f32); })),
         "background" | "background-color" => Ok(Some(quote! { s.background = Some((#expr).into()); })),
+        "border-color" => Ok(Some(quote! { s.border_color = Some((#expr).into()); })),
         "color" => Ok(Some(quote! {
             s.text.color = Some((#expr).into());
         })),

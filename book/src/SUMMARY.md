@@ -56,6 +56,7 @@
 - [Keyboard Shortcuts](./examples/keyboard-shortcuts.md)
 - [Virtual List](./examples/virtual-list.md)
 - [Window Management](./examples/window-management.md)
+- [Drag & Drop](./examples/drag-drop.md)
 
 # Feature Comparison
 

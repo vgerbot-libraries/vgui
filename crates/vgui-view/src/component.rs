@@ -46,6 +46,9 @@ pub(crate) fn emit_component(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::For => fields.push(quote! { r#for: #value }),
             AttrKind::Ref => fields.push(quote! { r#ref: #value }),
             AttrKind::Animate => fields.push(quote! { animate: #value }),
+            AttrKind::Drag => fields.push(quote! { drag: #value }),
+            AttrKind::DragPreview => fields.push(quote! { drag_preview: #value }),
+            AttrKind::CanDrop => fields.push(quote! { can_drop: #value }),
             AttrKind::Role => fields.push(quote! { role: ::std::option::Option::Some(::vgui::__resolve_aria_role(#value)) }),
             AttrKind::Aria(name) => {
                 let n = name.to_string();

@@ -64,7 +64,8 @@ pub use crate::breakpoint::Breakpoint;
 pub use crate::breakpoint::__apply_breakpoint_styles;
 pub use crate::ref_handle::NodeRef;
 pub use crate::root::{mount, VguiRoot};
-pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent, WheelEvent};
+pub use crate::event::{KeyboardEvent, PointerEvent, PointerType, ResizeEvent, WheelEvent, has_active_drag};
+pub use gpui::{DragMoveEvent, ExternalPaths, CursorStyle};
 pub use crate::shortcuts::{
     use_shortcuts, Shortcuts, CommandOptions, ContextOptions, KeymapOptions, ShortcutContext,
     KeyEventType, ShortcutEvent, Interceptor, Shortcut, Keyboard,

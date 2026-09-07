@@ -235,6 +235,21 @@ pub(crate) fn parse_attr(tokens: &[TokenTree], i: &mut usize) -> syn::Result<Att
                         _ => return Err(syn::Error::new(span, "expected event name after `on:`")),
                     }
                 }
+                "drag" => {
+                    if *i < tokens.len() && is_punct(&tokens[*i], ':') {
+                        *i += 1;
+                        match tokens.get(*i) {
+                            Some(TokenTree::Ident(name)) if name.to_string() == "preview" => {
+                                *i += 1;
+                                AttrKind::DragPreview
+                            }
+                            _ => return Err(syn::Error::new(span, "expected `preview` after `drag:`")),
+                        }
+                    } else {
+                        AttrKind::Drag
+                    }
+                }
+                "can_drop" => AttrKind::CanDrop,
                 _ => AttrKind::Ident(id.clone()),
             }
         }

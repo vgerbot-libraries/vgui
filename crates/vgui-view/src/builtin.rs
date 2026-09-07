@@ -60,6 +60,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let mut ref_attr = None;
     let mut object_fit = None;
     let mut animate = None;
+    let mut drag = None;
+    let mut drag_preview = None;
+    let mut can_drop_attr = None;
     let mut events = Vec::new();
     let mut unknown = Vec::new();
     let mut spreads: Vec<TokenStream2> = Vec::new();
@@ -76,6 +79,9 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Class => class = Some(attr),
             AttrKind::Ref => ref_attr = Some(attr),
             AttrKind::Animate => animate = Some(attr),
+            AttrKind::Drag => drag = Some(attr),
+            AttrKind::DragPreview => drag_preview = Some(attr),
+            AttrKind::CanDrop => can_drop_attr = Some(attr),
             AttrKind::Tabindex => tabindex = Some(attr),
             AttrKind::On(ev) => events.push((ev.clone(), attr_tokens(&attr.value), attr.span)),
             AttrKind::Ident(id) => {
@@ -347,6 +353,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             || class_needs_id
             || role_attr.is_some()
             || !aria_attrs.is_empty()
+            || drag.is_some()
             || events
                 .iter()
                 .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
@@ -440,6 +447,21 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
     let __animate_expr: Option<TokenStream2> = animate.map(|a| attr_tokens(&a.value));
     for (ev, handler, span) in events {
         ctor = emit_event(ctor, &ev, handler, span)?;
+    }
+    if let Some(drag_attr) = drag {
+        let val = attr_tokens(&drag_attr.value);
+        if let Some(preview_attr) = drag_preview {
+            let preview = attr_tokens(&preview_attr.value);
+            ctor = quote! { #ctor.on_drag(#val, #preview) };
+        } else {
+            ctor = quote! { #ctor.on_drag(#val, |__item, _pos, _window, __cx| {
+                __cx.new(|_| __item.clone())
+            }) };
+        }
+    }
+    if let Some(cd) = can_drop_attr {
+        let pred = attr_tokens(&cd.value);
+        ctor = quote! { #ctor.can_drop(#pred) };
     }
     // Apply role attribute via gpui's .role() method
     if let Some(role_attr) = role_attr {
@@ -556,10 +578,12 @@ fn emit_event(
         // Window-level resize: register the handler into the render scope and
         // return the element unchanged (not an element event).
         "resize" => Ok(quote! { { ::vgui::__register_resize_handler(#handler); #ctor } }),
+        "drop" => Ok(quote! { #ctor.on_drop(#handler) }),
+        "drag_move" => Ok(quote! { #ctor.on_drag_move(#handler) }),
         other => Err(syn::Error::new(
             span,
             format!(
-                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, wheel, dblclick, contextmenu, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down"
+                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, wheel, dblclick, contextmenu, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down, drop, drag_move"
             ),
         )),
     }
@@ -853,6 +877,9 @@ fn emit_input(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Aria(_) => {
                 return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <input>; use a wrapper element"));
+            }
+            AttrKind::Drag | AttrKind::DragPreview | AttrKind::CanDrop => {
+                return Err(syn::Error::new(attr.span, "drag/drop attributes are not supported on <input>; use a wrapper element"));
             }
         }
     }
@@ -1342,6 +1369,9 @@ fn emit_select(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Aria(_) => {
                 return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <select>; use a wrapper element"));
             }
+            AttrKind::Drag | AttrKind::DragPreview | AttrKind::CanDrop => {
+                return Err(syn::Error::new(attr.span, "drag/drop attributes are not supported on <select>; use a wrapper element"));
+            }
         }
     }
 
@@ -1500,6 +1530,9 @@ fn emit_textarea(el: &Element) -> syn::Result<TokenStream2> {
             AttrKind::Aria(_) => {
                 return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <textarea>; use a wrapper element"));
             }
+            AttrKind::Drag | AttrKind::DragPreview | AttrKind::CanDrop => {
+                return Err(syn::Error::new(attr.span, "drag/drop attributes are not supported on <textarea>; use a wrapper element"));
+            }
         }
     }
 
@@ -1629,6 +1662,9 @@ fn emit_label(el: &Element) -> syn::Result<TokenStream2> {
             }
             AttrKind::Aria(_) => {
                 return Err(syn::Error::new(attr.span, "`aria:` attributes are not supported on <label>; use a wrapper element"));
+            }
+            AttrKind::Drag | AttrKind::DragPreview | AttrKind::CanDrop => {
+                return Err(syn::Error::new(attr.span, "drag/drop attributes are not supported on <label>; use a wrapper element"));
             }
         }
     }
