@@ -169,11 +169,17 @@ pub struct VguiRoot {
     /// Global keystroke interceptor subscription (registered once on first
     /// render, dispatches `use_key_down` handlers regardless of focus).
     key_sub: Option<gpui::Subscription>,
+    /// Handle to the gpui window this root lives in, captured from `mount`'s
+    /// `&mut Window` parameter. Enables imperative window control (title,
+    /// minimize, fullscreen, close, drag) from reactive scope via
+    /// `with_window`.
+    pub(crate) window_handle: Option<gpui::AnyWindowHandle>,
 }
-
 impl VguiRoot {
+
     pub fn new<R: IntoElement + 'static>(
         cx: &mut Context<Self>,
+        window_handle: gpui::AnyWindowHandle,
         mut render: impl FnMut() -> R + 'static,
     ) -> Self {
         let scope = Rc::new(RefCell::new(Scope {
@@ -197,6 +203,7 @@ impl VguiRoot {
             render: Box::new(move || render().into_any_element()),
             resize_sub: None,
             key_sub: None,
+            window_handle: Some(window_handle),
         }
     }
 
@@ -281,6 +288,9 @@ impl Render for VguiRoot {
         }
         enter_scope(self.scope.clone(), cx);
         set_viewport_width(f32::from(window.viewport_size().width));
+        if let Some(h) = self.window_handle {
+            crate::reactive::set_window_handle(h);
+        }
         let el = (self.render)();
         exit_scope();
         let scope_for_up = self.scope.clone();
@@ -301,8 +311,10 @@ impl Render for VguiRoot {
 }
 
 pub fn mount<R: IntoElement + 'static>(
+    window: &mut gpui::Window,
     cx: &mut App,
     render: impl FnMut() -> R + 'static,
 ) -> Entity<VguiRoot> {
-    cx.new(|cx| VguiRoot::new(cx, render))
+    let window_handle = window.window_handle();
+    cx.new(|cx| VguiRoot::new(cx, window_handle, render))
 }

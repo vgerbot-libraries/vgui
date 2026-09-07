@@ -36,6 +36,7 @@ mod style;
 mod spread;
 mod tw_dynamic;
 mod web;
+mod window;
 mod shortcuts;
 pub mod theme;
 
@@ -95,6 +96,13 @@ pub use crate::theme::{
     __var_absolute, __var_color, __var_definite, __var_font_family, __var_font_weight,
     __var_keyword, __var_length, __var_line_height, __var_number, __weight_from_name,
     __weight_from_number,
+};
+
+pub use crate::window::{
+    open_window, with_window, set_app_menus, on_window_closed, use_window_should_close,
+    AnyWindowHandle, Menu, MenuItem, ResizeEdge, TitlebarOptions,
+    WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowHandle,
+    WindowKind, WindowOptions,
 };
 
 /// Web (WASM) platform helper. Call from the `#[wasm_bindgen(start)]`

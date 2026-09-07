@@ -58,8 +58,8 @@ fn store_select_filters_unchanged_slices() {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 ..Default::default()
             },
-            |_, cx| {
-                vgui::mount(cx, move || {
+            |window, cx| {
+                vgui::mount(window, cx, move || {
                     let (store, set_store) = create_store(AppState::default());
                     let count_sig = store.select(|s| s.count);
                     let name_sig = store.select(|s| s.name.clone());
@@ -212,8 +212,8 @@ fn store_get_and_with_read_state() {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 ..Default::default()
             },
-            |_, cx| {
-                vgui::mount(cx, move || {
+            |window, cx| {
+                vgui::mount(window, cx, move || {
                     let (store, set_store) = create_store(AppState {
                         count: 7,
                         name: "init".to_string(),

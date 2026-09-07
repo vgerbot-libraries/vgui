@@ -26,6 +26,9 @@ thread_local! {
     /// Current viewport width in pixels, set during render for breakpoint
     /// resolution. `None` outside a render scope.
     static VIEWPORT_WIDTH: RefCell<Option<f32>> = const { RefCell::new(None) };
+    /// Current window handle, set during render for imperative window
+    /// control via `with_window`. `None` outside a render scope.
+    static WINDOW_HANDLE: RefCell<Option<gpui::AnyWindowHandle>> = const { RefCell::new(None) };
 }
 
 /// Fallback counter for auto-generated element ids when no reactive scope is
@@ -170,6 +173,14 @@ pub(crate) fn set_viewport_width(width: f32) {
 #[doc(hidden)]
 pub fn get_viewport_width() -> Option<f32> {
     VIEWPORT_WIDTH.with(|w| w.borrow().clone())
+}
+
+pub(crate) fn set_window_handle(handle: gpui::AnyWindowHandle) {
+    WINDOW_HANDLE.with(|h| *h.borrow_mut() = Some(handle));
+}
+
+pub(crate) fn get_window_handle() -> Option<gpui::AnyWindowHandle> {
+    WINDOW_HANDLE.with(|h| *h.borrow())
 }
 
 fn try_current() -> Option<Current> {

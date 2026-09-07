@@ -5734,6 +5734,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 name = "vgui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "gpui",
  "gpui_platform",
  "parking_lot",
@@ -5745,36 +5746,6 @@ dependencies = [
  "vgui-view",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "vgui-animation"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-canvas"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-canvas-animation"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -5807,32 +5778,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-dashboard"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-elements"
 version = "0.1.0"
 dependencies = [
  "gpui",
  "gpui_platform",
  "image",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-focus"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
  "vgui",
  "wasm-bindgen",
 ]
@@ -5878,37 +5829,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-overlays"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-refs"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-router"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-store"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -5962,16 +5883,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-use-interval"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-variants"
 version = "0.1.0"
 dependencies = [
@@ -5992,6 +5903,16 @@ dependencies = [
 
 [[package]]
 name = "vgui-virtual-list"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "vgui-window-management"
 version = "0.1.0"
 dependencies = [
  "gpui",

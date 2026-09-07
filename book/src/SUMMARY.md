@@ -55,6 +55,7 @@
 - [Keyboard Events](./examples/keyboard-events.md)
 - [Keyboard Shortcuts](./examples/keyboard-shortcuts.md)
 - [Virtual List](./examples/virtual-list.md)
+- [Window Management](./examples/window-management.md)
 
 # Feature Comparison
 

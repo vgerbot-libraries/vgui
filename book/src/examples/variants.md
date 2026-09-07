@@ -161,7 +161,7 @@ fn run() {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 ..Default::default()
             },
-            |_, cx| vgui::mount(cx, app),
+            |window, cx| vgui::mount(window, cx, app),
         )
         .unwrap();
     };

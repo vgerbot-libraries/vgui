@@ -83,7 +83,7 @@ The `vgui` crate's internal module structure:
 
 ### The render cycle
 
-1. **`vgui::mount(cx, app)`** creates a `VguiRoot` gpui entity. `VguiRoot`
+1. **`vgui::mount(window, cx, app)`** creates a `VguiRoot` gpui entity. `VguiRoot`
    holds a `Scope` (the reactive owner) and a `Box<dyn FnMut() -> AnyElement>`
    closure wrapping the user's `app()` function.
 

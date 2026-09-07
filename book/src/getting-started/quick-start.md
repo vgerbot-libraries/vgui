@@ -32,7 +32,7 @@ fn main() {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 ..Default::default()
             },
-            |_, cx| vgui::mount(cx, app),
+            |window, cx| vgui::mount(window, cx, app),
         )
         .unwrap();
     });
@@ -43,7 +43,7 @@ fn main() {
 
 1. **`Application::new().run(...)`** — starts the `gpui` event loop.
 2. **`cx.open_window(...)`** — opens a window with the given bounds.
-3. **`vgui::mount(cx, app)`** — creates a `VguiRoot` entity that owns the
+3. **`vgui::mount(window, cx, app)`** — creates a `VguiRoot` entity that owns the
    reactive scope and calls `app()` on every render.
 4. **`create_signal(0i32)`** — creates a reactive signal holding the count.
    Returns a `(ReadSignal, WriteSignal)` pair.
