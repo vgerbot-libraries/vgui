@@ -49,6 +49,7 @@
 - [Animation](./examples/animation.md)
 - [Canvas](./examples/canvas.md)
 - [Router](./examples/router.md)
+- [Dashboard](./examples/dashboard.md)
 - [Store](./examples/store.md)
 - [useInterval](./examples/use-interval.md)
 - [Canvas Animation](./examples/canvas-animation.md)

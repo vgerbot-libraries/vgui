@@ -3,6 +3,8 @@ resolver = "2"
 members = ["crates/shortcuts", "crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui",
 "examples/counter", "examples/todolist", "examples/styling", "examples/theming", "examples/variants",
 "examples/inputs", "examples/elements", "examples/forms", "examples/context", "examples/refs",
+"examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router",
+"examples/dashboard", "examples/store", "examples/use-interval", "examples/canvas-animation",
 "examples/keyboard-events", "examples/keyboard-shortcuts", "examples/virtual-list", "examples/window-management",
 "examples/drag-drop"]
 
