@@ -124,6 +124,9 @@ Events use the `on:event={handler}` syntax. Supported events:
 | `on:pointerdown`      | `Fn(&PointerEvent, &mut Window, &mut App)`                |
 | `on:pointerup`        | `Fn(&PointerEvent, &mut Window, &mut App)`                |
 | `on:pointermove`      | `Fn(&PointerEvent, &mut Window, &mut App)`                |
+| `on:mouseenter`       | `Fn(&mut Window, &mut App)`                               |
+| `on:mouseleave`       | `Fn(&mut Window, &mut App)`                               |
+| `on:hover`            | `Fn(bool, &mut Window, &mut App)`                         |
 | `on:resize`           | `Fn(&ResizeEvent, &mut Window, &mut App)`                 |
 | `on:scroll`           | `Fn(&ScrollWheelEvent, &mut Window, &mut App)`            |
 | `on:wheel`            | `Fn(&WheelEvent, &mut Window, &mut App)`                  |

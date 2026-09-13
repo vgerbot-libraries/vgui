@@ -198,3 +198,6 @@ view! {
 
 `<floating>` has no built-in dismissal. Add `on:mouse_down_out` to the content
 for click-outside behavior, as shown above.
+
+`floating_at(anchor, content)` places the same overlay below a bound
+`NodeRef` (previous-frame bounds). Unbound refs fall back to the origin.

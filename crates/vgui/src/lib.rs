@@ -44,7 +44,7 @@ pub use crate::child::{click, into_child, IntoViewChild};
 pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, ScrollStrategy};
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
-pub use crate::overlay::{dialog, floating, portal};
+pub use crate::overlay::{dialog, floating, floating_at, portal};
 pub use crate::control::{details, for_each, for_each_or, meter, progress, show, show_when};
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInput, TextInputProps,
@@ -73,7 +73,7 @@ pub use crate::shortcuts::{
 // Hidden macro-facing converters wrapping user closures into gpui listeners.
 pub use crate::img::__img_with_events;
 pub use crate::event::{
-    __dom_contextmenu, __dom_dblclick, __dom_key_down, __dom_key_up, __dom_pointer_down,
+    __dom_contextmenu, __dom_dblclick, __dom_hover, __dom_key_down, __dom_key_up, __dom_pointer_down,
     __dom_pointer_move, __dom_pointer_up, __dom_wheel,
 };
 pub use crate::reactive::__register_resize_handler;

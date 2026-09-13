@@ -540,8 +540,8 @@ pub fn canvas_element(paint: impl 'static + FnOnce(&mut Context2D)) -> Canvas<Bo
 /// Parse a CSS color string at runtime into an [`Hsla`].
 ///
 /// Supports `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`,
-/// `hsl()`, `hsla()`, named CSS colors, and `"transparent"`.  Unrecognized
-/// strings fall back to black.
+/// `hsl()`, `hsla()`, `oklch()`, named CSS colors, and `"transparent"`.
+/// Unrecognized strings fall back to black.
 pub fn color(s: &str) -> Hsla {
     let s = s.trim();
     if s.is_empty() {
@@ -562,6 +562,9 @@ pub fn color(s: &str) -> Hsla {
     }
     if let Some(rest) = lower.strip_prefix("hsl(").and_then(|r| r.strip_suffix(')')) {
         return parse_hsl(rest);
+    }
+    if let Some(rest) = lower.strip_prefix("oklch(").and_then(|r| r.strip_suffix(')')) {
+        return parse_oklch(rest);
     }
     named_color(&lower).unwrap_or_default()
 }
@@ -651,6 +654,81 @@ fn parse_hsla(s: &str) -> Hsla {
 
 fn hsla_from_components(h: f32, s: f32, l: f32, a: f32) -> Hsla {
     Hsla { h: (h % 360.0) / 360.0, s: s / 100.0, l: l / 100.0, a }
+}
+
+fn parse_oklch(s: &str) -> Hsla {
+    let mut nums = Vec::new();
+    let mut buf = String::new();
+    let mut pct = false;
+    let flush = |buf: &mut String, pct: &mut bool, nums: &mut Vec<f32>| {
+        if buf.is_empty() {
+            return;
+        }
+        if let Ok(n) = buf.parse::<f32>() {
+            nums.push(if *pct { n / 100.0 } else { n });
+        }
+        buf.clear();
+        *pct = false;
+    };
+    for ch in s.chars() {
+        match ch {
+            ',' | '/' | ' ' | '\t' => flush(&mut buf, &mut pct, &mut nums),
+            '%' => pct = true,
+            _ => buf.push(ch),
+        }
+    }
+    flush(&mut buf, &mut pct, &mut nums);
+    match nums.as_slice() {
+        [l, c, h] => oklch_to_hsla(*l, *c, *h, 1.0),
+        [l, c, h, a] => oklch_to_hsla(*l, *c, *h, *a),
+        _ => Hsla::default(),
+    }
+}
+
+fn linear_to_srgb(c: f32) -> f32 {
+    if c <= 0.0031308 {
+        12.92 * c
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+fn oklch_to_hsla(l: f32, c: f32, h_deg: f32, a: f32) -> Hsla {
+    let h_rad = h_deg * std::f32::consts::PI / 180.0;
+    let a_ok = c * h_rad.cos();
+    let b_ok = c * h_rad.sin();
+    let l_ = l + 0.3963377774 * a_ok + 0.2158037573 * b_ok;
+    let m_ = l - 0.1055613458 * a_ok - 0.0638541728 * b_ok;
+    let s_ = l - 0.0894841775 * a_ok - 1.2914855480 * b_ok;
+    let l3 = l_ * l_ * l_;
+    let m3 = m_ * m_ * m_;
+    let s3 = s_ * s_ * s_;
+    let r_lin = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+    let g_lin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+    let b_lin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+    let r = linear_to_srgb(r_lin).clamp(0.0, 1.0);
+    let g = linear_to_srgb(g_lin).clamp(0.0, 1.0);
+    let b = linear_to_srgb(b_lin).clamp(0.0, 1.0);
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let light = (max + min) / 2.0;
+    if (max - min).abs() < 1e-6 {
+        return Hsla { h: 0.0, s: 0.0, l: light, a: a.clamp(0.0, 1.0) };
+    }
+    let d = max - min;
+    let sat = if light > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
+    let hue = if (max - r).abs() < 1e-6 {
+        (g - b) / d + if g < b { 6.0 } else { 0.0 }
+    } else if (max - g).abs() < 1e-6 {
+        (b - r) / d + 2.0
+    } else {
+        (r - g) / d + 4.0
+    } / 6.0;
+    Hsla { h: hue, s: sat, l: light, a: a.clamp(0.0, 1.0) }
 }
 
 /// Look up a CSS named color.  Returns `None` for unknown names.

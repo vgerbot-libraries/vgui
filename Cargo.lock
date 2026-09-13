@@ -5919,6 +5919,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-shadcn"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "vgui",
+]
+
+[[package]]
+name = "vgui-shadcn-music-player"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "vgui-shadcn",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-store"
 version = "0.1.0"
 dependencies = [

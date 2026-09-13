@@ -332,6 +332,8 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
                 ev.to_string().as_str(),
                 "click"
                     | "hover"
+                    | "mouseenter"
+                    | "mouseleave"
                     | "keydown"
                     | "keyup"
                     | "pointerdown"
@@ -356,7 +358,7 @@ pub(crate) fn emit_builtin(el: &Element) -> syn::Result<TokenStream2> {
             || drag.is_some()
             || events
                 .iter()
-                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
+                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "mouseenter" | "mouseleave" | "dblclick")));
 
     if let Some(id_attr) = id {
         let v = if let Some(lit) = string_lit_static(&id_attr.value) {
@@ -572,6 +574,9 @@ fn emit_event(
         "pointerdown" => Ok(quote! { #ctor.on_any_mouse_down(::vgui::__dom_pointer_down(#handler)) }),
         "pointerup" => Ok(quote! { #ctor.capture_any_mouse_up(::vgui::__dom_pointer_up(#handler)) }),
         "pointermove" => Ok(quote! { #ctor.on_mouse_move(::vgui::__dom_pointer_move(#handler)) }),
+        "mouseenter" => Ok(quote! { #ctor.on_hover(::vgui::__dom_hover(move |hovered, w, cx| { if hovered { (#handler)(w, cx); } })) }),
+        "mouseleave" => Ok(quote! { #ctor.on_hover(::vgui::__dom_hover(move |hovered, w, cx| { if !hovered { (#handler)(w, cx); } })) }),
+        "hover" => Ok(quote! { #ctor.on_hover(::vgui::__dom_hover(#handler)) }),
         "dblclick" => Ok(quote! { #ctor.on_click(::vgui::__dom_dblclick(#handler)) }),
         "contextmenu" => Ok(quote! { #ctor.on_aux_click(::vgui::__dom_contextmenu(#handler)) }),
         "wheel" => Ok(quote! { #ctor.on_scroll_wheel(::vgui::__dom_wheel(#handler)) }),
@@ -583,7 +588,7 @@ fn emit_event(
         other => Err(syn::Error::new(
             span,
             format!(
-                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, resize, scroll, wheel, dblclick, contextmenu, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down, drop, drag_move"
+                "unsupported event `on:{other}`; supported: click, keydown, keyup, pointerdown, pointerup, pointermove, mouseenter, mouseleave, hover, resize, scroll, wheel, dblclick, contextmenu, modifiers_changed, mouse_down_out, mouse_up_out, any_mouse_down, drop, drag_move"
             ),
         )),
     }
@@ -671,7 +676,7 @@ fn chain_div_extras(
             || class_needs_id
             || events
                 .iter()
-                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "dblclick")));
+                .any(|(ev, _, _)| matches!(ev.to_string().as_str(), "click" | "hover" | "mouseenter" | "mouseleave" | "dblclick")));
 
     if let Some(id_attr) = id {
         let v = if let Some(lit) = string_lit_static(&id_attr.value) {

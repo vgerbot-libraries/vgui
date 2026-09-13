@@ -113,6 +113,11 @@ impl NodeRef {
         self.with_focus(|h| h.contains_focused(window, cx), "contains_focused")
     }
 
+    /// Whether this handle has been bound to an element by `view!`.
+    pub fn is_bound(&self) -> bool {
+        self.inner.borrow().scroll_handle.is_some()
+    }
+
     /// The painted bounds of the bound element from the previous frame.
     pub fn bounds(&self) -> Bounds<Pixels> {
         self.with_scroll(|h| h.bounds())

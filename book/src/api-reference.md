@@ -95,6 +95,7 @@ See [Context & Provider](./elements/context.md) for a full guide.
 | `portal(content, priority) -> AnyElement` | Portal floating layer at a given priority. |
 | `dialog(open, on_close, content) -> AnyElement` | Modal dialog with portal, click-outside, escape. |
 | `floating(position, content) -> AnyElement` | Positioned floating element.       |
+| `floating_at(anchor, content) -> AnyElement` | Floating element anchored below a `NodeRef`. |
 
 ### Input widgets
 

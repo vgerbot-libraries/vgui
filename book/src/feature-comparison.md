@@ -398,7 +398,7 @@ See [Router](./concepts/router.md) for details.
 | `animate-spin` | ❌ None (no rotation transform) |
 | `:focus-within` / `:focus-visible` / `:visited` / `:link` / `:target` / `:nth-child` etc. | ❌ None |
 | CSS Container Queries | ❌ None |
-| `focus` / `blur` / `mouseenter` / `mouseleave` / `load` / Drag / touch events | gpui pointer events cover some |
+| `focus` / `blur` / `load` / Drag / touch events | gpui pointer events cover some |
 | Grid `fr` / `minmax()` / `repeat()` / `auto-fit` / `auto-fill` / `grid-auto-*` | Numeric column counts |
 | `rowspan` visual effect | ❌ None |
 | `input type="image"` | ❌ None |

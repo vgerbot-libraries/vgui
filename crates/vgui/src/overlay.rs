@@ -163,3 +163,23 @@ pub fn floating(
     .priority(50)
     .into_any_element()
 }
+
+/// Render a floating element anchored below a [`crate::NodeRef`].
+///
+/// Uses the bound element's previous-frame bounds. If the ref is not yet
+/// bound (first frame), falls back to the origin.
+pub fn floating_at(
+    anchor: &crate::NodeRef,
+    content: impl gpui::IntoElement,
+) -> gpui::AnyElement {
+    let position = if anchor.is_bound() {
+        let bounds = anchor.bounds();
+        Point {
+            x: bounds.origin.x,
+            y: bounds.origin.y + bounds.size.height,
+        }
+    } else {
+        Point::default()
+    };
+    floating(position, content)
+}

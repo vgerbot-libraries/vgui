@@ -58,6 +58,7 @@
 - [Virtual List](./examples/virtual-list.md)
 - [Window Management](./examples/window-management.md)
 - [Drag & Drop](./examples/drag-drop.md)
+- [Shadcn Music Player](./examples/shadcn-music-player.md)
 
 # Feature Comparison
 

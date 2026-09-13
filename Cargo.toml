@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["crates/shortcuts", "crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui",
+members = ["crates/shortcuts", "crates/vgui-css", "crates/vgui-view", "crates/vgui-tailwind-core", "crates/vgui-tailwind", "crates/vgui", "crates/vgui-shadcn",
 "examples/counter", "examples/todolist", "examples/styling", "examples/theming", "examples/variants",
 "examples/inputs", "examples/elements", "examples/forms", "examples/context", "examples/refs",
 "examples/focus", "examples/overlays", "examples/animation", "examples/canvas", "examples/router",
 "examples/dashboard", "examples/store", "examples/use-interval", "examples/canvas-animation",
 "examples/keyboard-events", "examples/keyboard-shortcuts", "examples/virtual-list", "examples/window-management",
-"examples/drag-drop"]
+"examples/drag-drop", "examples/shadcn-music-player"]
 
 [workspace.package]
 version = "0.1.0"
@@ -26,6 +26,7 @@ vgui-view = { path = "crates/vgui-view" }
 vgui-tailwind-core = { path = "crates/vgui-tailwind-core" }
 vgui-tailwind = { path = "crates/vgui-tailwind" }
 vgui = { path = "crates/vgui" }
+vgui-shadcn = { path = "crates/vgui-shadcn" }
 shortcuts = { path = "crates/shortcuts" }
 syn = { version = "2", features = ["full", "extra-traits"] }
 quote = "1"

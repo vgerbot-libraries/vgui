@@ -441,6 +441,15 @@ pub fn __dom_pointer_move<H: Fn(&PointerEvent, &mut Window, &mut gpui::App) + 's
     move |e, w, cx| h(&PointerEvent::from_mouse_move(e), w, cx)
 }
 
+/// Wrap a hover-enter/leave handler for gpui `on_hover`.
+///
+/// `hovered` is `true` on enter (`mouseenter`) and `false` on leave (`mouseleave`).
+pub fn __dom_hover<H: Fn(bool, &mut Window, &mut gpui::App) + 'static>(
+    h: H,
+) -> impl Fn(&bool, &mut Window, &mut gpui::App) + 'static {
+    move |hovered, w, cx| h(*hovered, w, cx)
+}
+
 pub fn __dom_wheel<H: Fn(&WheelEvent, &mut Window, &mut gpui::App) + 'static>(
     h: H,
 ) -> impl Fn(&gpui::ScrollWheelEvent, &mut Window, &mut gpui::App) + 'static {

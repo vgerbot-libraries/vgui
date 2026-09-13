@@ -68,6 +68,8 @@ css! {
 | Hex `#rrggbbaa` | `#0000ff80`      | `gpui::rgba(0x0000ff, 0x80)` |
 | `rgb(r,g,b)`    | `rgb(30, 30, 30)`| `gpui::rgb(0x1e1e1e)`       |
 | `rgba(r,g,b,a)` | `rgba(0,0,255,0.5)` | `gpui::rgba(0x0000ff, 0x80)` |
+| `oklch(L C H)`  | `oklch(0.205 0 0)` | `gpui::hsla(...)`          |
+| `oklch(L C H / A)` | `oklch(1 0 0 / 10%)` | `gpui::hsla(...)` with alpha |
 | Named           | `red`            | `gpui::red()`               |
 
 Named colors: `black`, `white`, `red`, `green`, `blue`, `yellow`, `cyan`,
