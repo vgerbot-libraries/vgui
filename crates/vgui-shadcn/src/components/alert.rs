@@ -27,55 +27,37 @@ variants! {
     }
 }
 
-pub struct Alert {
-    pub variant: AlertVariant,
-    pub children: Vec<gpui::AnyElement>,
-}
-
-impl gpui::IntoElement for Alert {
-    type Element = gpui::AnyElement;
-    fn into_element(self) -> Self::Element {
-        let variants = AlertVariants::default().variant(self.variant);
-        let children = self.children;
-        view! {
-            <div style={variants}>
-                {for_each(children, |c, _| c)}
-            </div>
-        }
-        .into_any_element()
+#[vgui_component]
+pub fn alert(
+    variant: AlertVariant,
+    children: Vec<gpui::AnyElement>,
+) -> impl gpui::IntoElement {
+    let variants = AlertVariants::default().variant(variant);
+    view! {
+        <div style={variants}>
+            {for_each(children, |c, _| c)}
+        </div>
     }
 }
 
-pub struct AlertTitle {
-    pub children: Vec<gpui::AnyElement>,
-}
-
-impl gpui::IntoElement for AlertTitle {
-    type Element = gpui::AnyElement;
-    fn into_element(self) -> Self::Element {
-        let children = self.children;
-        view! {
-            <span style={css! { font-size: 14px; font-weight: 600; }}>
-                {for_each(children, |c, _| c)}
-            </span>
-        }
-        .into_any_element()
+#[vgui_component]
+pub fn alert_title(
+    children: Vec<gpui::AnyElement>,
+) -> impl gpui::IntoElement {
+    view! {
+        <span style={css! { font-size: 14px; font-weight: 600; }}>
+            {for_each(children, |c, _| c)}
+        </span>
     }
 }
 
-pub struct AlertDescription {
-    pub children: Vec<gpui::AnyElement>,
-}
-
-impl gpui::IntoElement for AlertDescription {
-    type Element = gpui::AnyElement;
-    fn into_element(self) -> Self::Element {
-        let children = self.children;
-        view! {
-            <span style={css! { font-size: 13px; color: var(--muted-foreground); }}>
-                {for_each(children, |c, _| c)}
-            </span>
-        }
-        .into_any_element()
+#[vgui_component]
+pub fn alert_description(
+    children: Vec<gpui::AnyElement>,
+) -> impl gpui::IntoElement {
+    view! {
+        <span style={css! { font-size: 13px; color: var(--muted-foreground); }}>
+            {for_each(children, |c, _| c)}
+        </span>
     }
 }

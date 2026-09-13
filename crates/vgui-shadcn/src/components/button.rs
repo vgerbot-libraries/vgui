@@ -55,58 +55,39 @@ variants! {
     }
 }
 
-pub struct Button {
-    pub variant: ButtonVariant,
-    pub size: ButtonSize,
-    pub on_click: Box<dyn Fn(&mut gpui::App) + 'static>,
-    pub children: Vec<gpui::AnyElement>,
-}
-
-impl gpui::IntoElement for Button {
-    type Element = gpui::AnyElement;
-    fn into_element(self) -> Self::Element {
-        let variants = ButtonVariants::default()
-            .variant(self.variant)
-            .size(self.size);
-        let on_click = self.on_click;
-        let children = self.children;
-        let hover = match self.variant {
-            ButtonVariant::Ghost | ButtonVariant::Outline => css! { background: var(--accent); },
-            ButtonVariant::Secondary => css! { opacity: 0.8; },
-            ButtonVariant::Link => css! { opacity: 0.8; },
-            _ => css! { opacity: 0.9; },
-        };
-        view! {
-            <button style={variants} hover={hover} on:click={click(move |cx| on_click(cx))}>
-                {for_each(children, |c, _| c)}
-            </button>
-        }
-        .into_any_element()
-    }
-}
-
+#[vgui_component]
 pub fn button(
     variant: ButtonVariant,
     size: ButtonSize,
-    label: impl Into<String>,
-    on_click: impl Fn(&mut gpui::App) + 'static,
-) -> Button {
-    Button {
-        variant,
-        size,
-        on_click: Box::new(on_click),
-        children: vec![label.into().into_any_element()],
+    on_click: Box<dyn Fn(&mut gpui::App) + 'static>,
+    children: Vec<gpui::AnyElement>,
+) -> impl gpui::IntoElement {
+    let variants = ButtonVariants::default()
+        .variant(variant)
+        .size(size);
+    let on_click = on_click;
+    let children = children;
+    let hover = match variant {
+        ButtonVariant::Ghost | ButtonVariant::Outline => css! { background: var(--accent); },
+        ButtonVariant::Secondary => css! { opacity: 0.8; },
+        ButtonVariant::Link => css! { opacity: 0.8; },
+        _ => css! { opacity: 0.9; },
+    };
+    view! {
+        <button style={variants} hover={hover} on:click={click(move |cx| on_click(cx))}>
+            {for_each(children, |c, _| c)}
+        </button>
     }
 }
 
-pub fn icon_button(
+#[vgui_component]
+pub fn IconButton(
     glyph: &'static str,
-    on_click: impl Fn(&mut gpui::App) + 'static,
-) -> Button {
-    Button {
-        variant: ButtonVariant::Ghost,
-        size: ButtonSize::Icon,
-        on_click: Box::new(on_click),
-        children: vec![glyph.to_string().into_any_element()],
+    on_click: Box<dyn Fn(&mut gpui::App) + 'static>,
+) -> impl gpui::IntoElement {
+    view! {
+        <Button variant={ButtonVariant::Ghost} size={ButtonSize::Icon} on:click={on_click}>
+            {glyph.to_string()}
+        </Button>
     }
 }

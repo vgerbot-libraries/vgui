@@ -10,14 +10,26 @@ mod control;
 mod component;
 mod builtin;
 mod provider;
+mod vgui_component;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Ident, Span, TokenStream as TokenStream2, TokenTree};
 use quote::quote;
+use syn::parse_macro_input;
 
 #[proc_macro]
 pub fn view(input: TokenStream) -> TokenStream {
     match expand_view(input.into()) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn vgui_component(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as vgui_component::ComponentAttrArgs);
+    let item = parse_macro_input!(item as syn::ItemFn);
+    match vgui_component::vgui_component_impl(args, item) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.to_compile_error().into(),
     }

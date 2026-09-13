@@ -10,6 +10,7 @@ pub use vgui_css::variants;
 pub use vgui_css::theme;
 pub use vgui_tailwind::tw;
 pub use vgui_view::view;
+pub use vgui_view::vgui_component;
 
 mod animation;
 mod aria;

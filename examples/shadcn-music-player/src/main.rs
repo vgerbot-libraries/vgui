@@ -144,48 +144,38 @@ fn app() -> impl gpui::IntoElement {
     let set_time_seek = set_time.clone();
     let set_volume_slider = set_volume.clone();
 
-    let nav = |label: &'static str, icon: &'static str, active: bool| {
-        sidebar_item(icon, label, active, |_| {})
-    };
-
     view! {
         <div class="w-full h-full flex flex-col" style={css! {
             background: var(--background);
             color: var(--foreground);
         }}>
             <div class="flex flex-row flex-1 overflow-hidden">
-                {Sidebar {
-                    children: vec![
-                        view! {
-                            <div class="flex flex-row items-center gap-2 pt-2 pr-1 pb-4 pl-1">
-                                <span class="text-base font-bold">{icons::MUSIC.to_string()}</span>
-                                <span class="text-base font-bold">{"Vgui Music"}</span>
-                            </div>
-                        }.into_any_element(),
-                        nav("Discover", icons::HOME, true).into_any_element(),
-                        nav("Library", icons::LIBRARY, false).into_any_element(),
-                        nav("Playlists", icons::LIST, false).into_any_element(),
-                        Separator { vertical: false }.into_any_element(),
-                        view! {
-                            <span class="text-xs py-2 px-3" style={css! { color: var(--muted-foreground); }}>
-                                {"PLAYLISTS"}
-                            </span>
-                        }.into_any_element(),
-                        nav("Night Shift", icons::DISC, false).into_any_element(),
-                        nav("Focus Mix", icons::DISC, false).into_any_element(),
-                        nav("Liked Songs", icons::HEART, false).into_any_element(),
-                    ],
-                }}
+                <Sidebar>
+                    <div class="flex flex-row items-center gap-2 pt-2 pr-1 pb-4 pl-1">
+                        <span class="text-base font-bold">{icons::MUSIC.to_string()}</span>
+                        <span class="text-base font-bold">{"Vgui Music"}</span>
+                    </div>
+                    <SidebarItem label="Discover" icon={icons::HOME} active={true} on:click={move |_cx: &mut gpui::App| {}} />
+                    <SidebarItem label="Library" icon={icons::LIBRARY} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                    <SidebarItem label="Playlists" icon={icons::LIST} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                    <Separator vertical={false} />
+                    <span class="text-xs py-2 px-3" style={css! { color: var(--muted-foreground); }}>
+                        {"PLAYLISTS"}
+                    </span>
+                    <SidebarItem label="Night Shift" icon={icons::DISC} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                    <SidebarItem label="Focus Mix" icon={icons::DISC} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                    <SidebarItem label="Liked Songs" icon={icons::HEART} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                </Sidebar>
 
                 <div class="flex-1 flex flex-col pt-4 pr-6 pb-4 pl-6 gap-4 overflow-hidden">
                     <div class="flex flex-row items-center gap-3">
-                        {icon_button(icons::MENU, move |cx| set_drawer.update(cx, |v| *v = !*v))}
-                        {TextField {
-                            value: search.get(),
-                            placeholder: "Search tracks".into(),
-                            on_input: Box::new(move |v, cx| set_search_input.set(cx, v)),
-                            class: Some("flex-1".into()),
-                        }}
+                        <IconButton glyph={icons::MENU} on:click={move |cx| set_drawer.update(cx, |v| *v = !*v)} />
+                        <TextField
+                            value={search.get()}
+                            placeholder="Search tracks"
+                            on_input={move |v, cx| set_search_input.set(cx, v)}
+                            class="flex-1"
+                        />
                     </div>
                     <span class="text-xl font-bold">{"Listen Now"}</span>
                     <div class="flex-1 overflow-hidden flex flex-col gap-1">
@@ -222,13 +212,13 @@ fn app() -> impl gpui::IntoElement {
                                                 set_playing.set(cx, true);
                                             })}
                                         >
-                                            {Avatar { initials: initials(&t.artist), size: 36.0 }}
+                                            <Avatar initials={initials(&t.artist)} size={36.0} />
                                             <div class="flex-1 flex flex-col">
                                                 <span class="text-sm font-medium">{t.title.clone()}</span>
                                                 <span class="text-xs" style={css! { color: var(--muted-foreground); }}>{format!("{} · {}", t.artist, t.album)}</span>
                                             </div>
                                             <span class="text-xs" style={css! { color: var(--muted-foreground); }}>{fmt_time(t.duration)}</span>
-                                            {icon_button(if is_liked { icons::HEART } else { icons::HEART_OUTLINE }, move |cx| {
+                                            <IconButton glyph={if is_liked { icons::HEART } else { icons::HEART_OUTLINE }} on:click={move |cx| {
                                                 set_liked.update(cx, |ids| {
                                                     if let Some(pos) = ids.iter().position(|x| *x == idx) {
                                                         ids.remove(pos);
@@ -236,7 +226,7 @@ fn app() -> impl gpui::IntoElement {
                                                         ids.push(idx);
                                                     }
                                                 });
-                                            })}
+                                            }} />
                                         </div>
                                     </div>
                                 }
@@ -250,54 +240,55 @@ fn app() -> impl gpui::IntoElement {
                 background: var(--card);
                 border-color: var(--border);
             }}>
-                {slider(time_now, 0.0, track.duration, move |v, cx| set_time_seek.set(cx, v))}
+                <Slider
+                    value={time_now}
+                    min={0.0}
+                    max={track.duration}
+                    step={1.0}
+                    on_change={move |v, cx| set_time_seek.set(cx, v)}
+                />
                 <div class="flex flex-row items-center gap-4">
                     <div class="flex flex-row items-center gap-3 flex-1">
-                        {Avatar { initials: initials(&track.artist), size: 44.0 }}
+                        <Avatar initials={initials(&track.artist)} size={44.0} />
                         <div class="flex flex-col">
                             <span class="text-sm font-semibold">{track.title.clone()}</span>
                             <span class="text-xs" style={css! { color: var(--muted-foreground); }}>{track.artist.clone()}</span>
                         </div>
                     </div>
                     <div class="flex flex-row items-center gap-2">
-                        {icon_button(icons::SHUFFLE, move |cx| set_shuffle_btn.update(cx, |v| *v = !*v))}
-                        {icon_button(icons::SKIP_BACK, move |cx| {
+                        <IconButton glyph={icons::SHUFFLE} on:click={move |cx| set_shuffle_btn.update(cx, |v| *v = !*v)} />
+                        <IconButton glyph={icons::SKIP_BACK} on:click={move |cx| {
                             set_idx_prev.update(cx, |i| *i = if *i == 0 { n - 1 } else { *i - 1 });
                             set_time_prev.set(cx, 0.0);
-                        })}
-                        {icon_button(if playing_now { icons::PAUSE } else { icons::PLAY }, move |cx| {
+                        }} />
+                        <IconButton glyph={if playing_now { icons::PAUSE } else { icons::PLAY }} on:click={move |cx| {
                             set_play.update(cx, |v| *v = !*v);
-                        })}
-                        {icon_button(icons::SKIP_FORWARD, move |cx| {
+                        }} />
+                        <IconButton glyph={icons::SKIP_FORWARD} on:click={move |cx| {
                             set_idx_next.update(cx, |i| *i = (*i + 1) % n);
                             set_time_next.set(cx, 0.0);
-                        })}
-                        {icon_button(icons::REPEAT, move |cx| set_repeat_btn.update(cx, |v| *v = !*v))}
+                        }} />
+                        <IconButton glyph={icons::REPEAT} on:click={move |cx| set_repeat_btn.update(cx, |v| *v = !*v)} />
                     </div>
                     <div class="flex flex-row items-center gap-2 flex-1 justify-end">
                         <span class="text-xs" style={css! { color: var(--muted-foreground); }}>
                             {format!("{} / {}", fmt_time(time_now), fmt_time(track.duration))}
                         </span>
                         <div ref={vol_ref.clone()}>
-                            {icon_button(if muted_now { icons::VOLUME_MUTE } else { icons::VOLUME }, move |cx| {
+                            <IconButton glyph={if muted_now { icons::VOLUME_MUTE } else { icons::VOLUME }} on:click={move |cx| {
                                 set_mute.update(cx, |v| *v = !*v);
                                 set_vol_open_btn.update(cx, |v| *v = !*v);
-                            })}
+                            }} />
                         </div>
-                        {Popover {
-                            open: vol_open.get(),
-                            anchor: vol_ref.clone(),
-                            children: vec![
-                                Slider {
-                                    value: if muted_now { 0.0 } else { volume_now },
-                                    min: 0.0,
-                                    max: 1.0,
-                                    step: 0.01,
-                                    on_change: Box::new(move |v, cx| set_volume_slider.set(cx, v)),
-                                }
-                                .into_any_element(),
-                            ],
-                        }}
+                        <Popover open={vol_open.get()} anchor={vol_ref.clone()}>
+                            <Slider
+                                value={if muted_now { 0.0 } else { volume_now }}
+                                min={0.0}
+                                max={1.0}
+                                step={0.01}
+                                on_change={move |v, cx| set_volume_slider.set(cx, v)}
+                            />
+                        </Popover>
                     </div>
                 </div>
                 <div class="flex flex-row gap-3 text-xs" style={css! { color: var(--muted-foreground); }}>
@@ -307,16 +298,15 @@ fn app() -> impl gpui::IntoElement {
                 </div>
             </div>
 
-            {Drawer {
-                open: drawer_open.get(),
-                on_close: Box::new(move |cx| set_drawer_close.set(cx, false)),
-                children: vec![
-                    view! { <span class="font-bold">{"Browse"}</span> }.into_any_element(),
-                    sidebar_item(icons::HOME, "Discover", true, |_| {}).into_any_element(),
-                    sidebar_item(icons::LIBRARY, "Library", false, |_| {}).into_any_element(),
-                    sidebar_item(icons::LIST, "Playlists", false, |_| {}).into_any_element(),
-                ],
-            }}
+            <Drawer
+                open={drawer_open.get()}
+                on_close={move |cx| set_drawer_close.set(cx, false)}
+            >
+                <span class="font-bold">{"Browse"}</span>
+                <SidebarItem label="Discover" icon={icons::HOME} active={true} on:click={move |_cx: &mut gpui::App| {}} />
+                <SidebarItem label="Library" icon={icons::LIBRARY} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+                <SidebarItem label="Playlists" icon={icons::LIST} active={false} on:click={move |_cx: &mut gpui::App| {}} />
+            </Drawer>
         </div>
     }
 }

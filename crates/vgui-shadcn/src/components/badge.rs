@@ -27,28 +27,15 @@ variants! {
     }
 }
 
-pub struct Badge {
-    pub variant: BadgeVariant,
-    pub children: Vec<gpui::AnyElement>,
-}
-
-impl gpui::IntoElement for Badge {
-    type Element = gpui::AnyElement;
-    fn into_element(self) -> Self::Element {
-        let variants = BadgeVariants::default().variant(self.variant);
-        let children = self.children;
-        view! {
-            <span style={variants}>
-                {for_each(children, |c, _| c)}
-            </span>
-        }
-        .into_any_element()
-    }
-}
-
-pub fn badge(variant: BadgeVariant, label: impl Into<String>) -> Badge {
-    Badge {
-        variant,
-        children: vec![label.into().into_any_element()],
+#[vgui_component]
+pub fn badge(
+    variant: BadgeVariant,
+    children: Vec<gpui::AnyElement>,
+) -> impl gpui::IntoElement {
+    let variants = BadgeVariants::default().variant(variant);
+    view! {
+        <span style={variants}>
+            {for_each(children, |c, _| c)}
+        </span>
     }
 }
