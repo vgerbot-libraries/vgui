@@ -1446,10 +1446,6 @@ impl Render for TextInput {
         }
 
         let mut text_style = window.text_style();
-        // The input has a white background; force the text color to black so
-        // it is always visible regardless of inherited color from ancestors
-        // (e.g. a parent with `text-white`).
-        text_style.color = gpui::black();
         let font_size = text_style.font_size.to_pixels(window.rem_size());
         let line_height = text_style
             .line_height
@@ -1539,7 +1535,6 @@ impl Render for TextInput {
             .track_focus(&self.focus_handle_field)
             .focusable()
             .cursor_text()
-            .text_color(gpui::black())
             .relative()
             .px_2()
             .py_1()

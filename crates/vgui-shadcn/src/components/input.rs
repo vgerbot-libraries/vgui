@@ -26,6 +26,14 @@ pub fn text_field(
                 type="text"
                 value={value}
                 placeholder={placeholder}
+                class="flex-1 w-full"
+                style={css! {
+                    border-width: 0;
+                    background: var(--background);
+                    color: var(--foreground);
+                    padding: 0;
+                    min-height: 0;
+                }}
                 on:input={input_cb(move |v, cx| on_input(v.to_string(), cx))}
             />
         </div>
