@@ -5984,6 +5984,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vgui-longbridge-pro"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "vgui",
+ "vgui-shadcn",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vgui-overlays"
 version = "0.1.0"
 dependencies = [
