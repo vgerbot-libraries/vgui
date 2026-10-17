@@ -26,6 +26,7 @@ mod img;
 mod overlay;
 mod virtual_list;
 mod i18n;
+pub mod a11y;
 mod form;
 mod grid_areas;
 mod history;
