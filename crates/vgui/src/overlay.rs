@@ -183,3 +183,98 @@ pub fn floating_at(
     };
     floating(position, content)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{
+        div, px, FocusHandle, InteractiveElement, IntoElement, KeyDownEvent, Keystroke,
+        Modifiers, ParentElement, StatefulInteractiveElement, Styled, TestAppContext,
+    };
+    use std::cell::{Cell, RefCell};
+    use std::rc::Rc;
+
+    /// Modal dialog focus management: opening moves focus off a background
+    /// element, Escape requests close, and closing restores focus to the
+    /// element focused before the dialog opened.
+    #[test]
+    fn dialog_moves_focus_in_and_restores_on_close() {
+        let mut app = TestAppContext::single();
+        let open = Rc::new(Cell::new(false));
+        let closed = Rc::new(Cell::new(false));
+        let outside_h: Rc<RefCell<Option<FocusHandle>>> = Rc::new(RefCell::new(None));
+
+        let (o, oh, c_close) = (open.clone(), outside_h.clone(), closed.clone());
+        let (_view, mut cx) = app.add_window_view(|window, cx| {
+            let outside = cx.focus_handle();
+            *oh.borrow_mut() = Some(outside.clone());
+            crate::VguiRoot::new(cx, window.window_handle(), move || {
+                let (outside, o, c_close) = (outside.clone(), o.clone(), c_close.clone());
+                div()
+                    .child(
+                        div()
+                            .id("background")
+                            .track_focus(&outside)
+                            .w(px(10.))
+                            .h(px(10.)),
+                    )
+                    .child(dialog(
+                        o.get(),
+                        move |_| c_close.set(true),
+                        div().id("dialog-body").w(px(10.)).h(px(10.)),
+                    ))
+                    .into_any_element()
+            })
+        });
+
+        let draw = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|window, cx| {
+                let _ = window.draw(cx);
+            });
+        };
+        draw(&mut cx);
+
+        let outside = outside_h.borrow().as_ref().unwrap().clone();
+
+        cx.update(|window, cx| {
+            outside.focus(window, cx);
+            assert!(outside.is_focused(window), "precondition: background focused");
+            open.set(true);
+        });
+        // Two passes plus a deferred-callback pump so the open transition's
+        // `cx.defer` focus move executes.
+        draw(&mut cx);
+        cx.update(|_, _| {});
+        draw(&mut cx);
+        cx.update(|window, _cx| {
+            assert!(
+                !outside.is_focused(window),
+                "opening the dialog must move focus off the background"
+            );
+        });
+
+        // Escape while open requests dismissal through on_close.
+        cx.simulate_event(KeyDownEvent {
+            keystroke: Keystroke {
+                modifiers: Modifiers::default(),
+                key: "escape".into(),
+                key_char: None,
+            },
+            is_held: false,
+            prefer_character_input: false,
+        });
+        assert!(closed.get(), "Escape must call on_close");
+
+        // Closing restores focus to the saved background element.
+        open.set(false);
+        draw(&mut cx);
+        cx.update(|_, _| {});
+        draw(&mut cx);
+        cx.update(|window, _cx| {
+            assert!(
+                outside.is_focused(window),
+                "closing must restore focus to the previously focused element"
+            );
+        });
+    }
+}
