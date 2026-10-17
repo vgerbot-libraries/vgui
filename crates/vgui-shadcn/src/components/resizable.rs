@@ -8,7 +8,7 @@
 
 use gpui::{
     px, AnyElement, App, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParentElement, StatefulInteractiveElement, Styled, Window,
+    MouseMoveEvent, MouseUpEvent, ParentElement, Styled, Window,
 };
 use vgui::{create_signal, next_auto_id};
 

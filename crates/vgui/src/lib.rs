@@ -25,6 +25,7 @@ mod input_widgets;
 mod img;
 mod overlay;
 mod virtual_list;
+mod i18n;
 mod form;
 mod grid_areas;
 mod history;
@@ -55,6 +56,7 @@ pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInput, TextInputProps,
 };
 pub use crate::form::{form_scope, __form_submit, __form_reset};
+pub use crate::i18n::{locale, register_messages, set_locale, translate, use_i18n, DEFAULT_LOCALE};
 pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, datalist, f64_change_cb, file_input, files_cb, radio,
     radiogroup, range_input, register_datalist, select, select_with_options, FileProps, RadioProps, RangeProps, SelectProps,
