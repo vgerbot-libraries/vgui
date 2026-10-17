@@ -11,6 +11,7 @@ pub use crate::{
     WindowKind, WindowOptions, ResizeEdge, WindowBackgroundAppearance, WindowDecorations,
     AnyWindowHandle, CanvasTextAlign,
     CheckboxProps, Context2D, FileProps, IntervalHandle, IntoTwStyle, RadioProps, RangeProps,
+    UndoHistory,
     ReadSignal, RouteMatch, Router, Breakpoint, SetStore, Store, TextKind, TextInputProps, Theme,
     TwClass, TwClassSource, WriteSignal, with_theme, Shortcuts, CommandOptions, ContextOptions,
     KeymapOptions, KeyEventType, ShortcutEvent, Shortcut, ScrollStrategy, UniformListScrollHandle,

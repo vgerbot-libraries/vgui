@@ -27,6 +27,7 @@ mod overlay;
 mod virtual_list;
 mod form;
 mod grid_areas;
+mod history;
 mod label;
 pub mod router;
 pub mod breakpoint;
@@ -47,6 +48,7 @@ pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, Scroll
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, floating_at, portal};
+pub use crate::history::UndoHistory;
 pub use crate::clipboard::{read_text, write_text};
 pub use crate::control::{details, for_each, for_each_or, meter, progress, show, show_when};
 pub use crate::input_text::{
