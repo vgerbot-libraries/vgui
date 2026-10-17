@@ -29,7 +29,7 @@ fn render_all_new_components() {
     .into_any_element();
 
     // pagination at a middle page exercises the ellipsis window
-    Pagination {
+    vgui_shadcn::components::pagination::Pagination {
         page: 5,
         page_count: 20,
         on_change: Box::new(|_: usize, _: &mut gpui::App| {}),
@@ -78,4 +78,31 @@ fn render_all_new_components() {
         children: vec![],
     }
     .into_any_element();
+}
+
+#[test]
+fn render_toast_viewport() {
+    use vgui_shadcn::components::{Toast, ToastVariant, ToastViewport};
+
+    vgui::__test_enter_render_scope();
+    apply_theme(false);
+
+    // default + destructive entries, the latter with a description
+    ToastViewport {
+        toasts: vec![
+            Toast::new(1, "Saved"),
+            Toast::new(2, "Failed").description("disk full").destructive(),
+        ],
+        on_dismiss: Box::new(|_: u64, _: &mut gpui::App| {}),
+    }
+    .into_any_element();
+
+    // empty stack also renders without error
+    ToastViewport {
+        toasts: vec![],
+        on_dismiss: Box::new(|_: u64, _: &mut gpui::App| {}),
+    }
+    .into_any_element();
+
+    let _ = ToastVariant::Default;
 }

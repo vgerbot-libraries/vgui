@@ -16,6 +16,7 @@ mod animation;
 mod aria;
 mod child;
 mod canvas;
+mod clipboard;
 mod event;
 mod context;
 mod control;
@@ -46,6 +47,7 @@ pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, Scroll
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, floating_at, portal};
+pub use crate::clipboard::{read_text, write_text};
 pub use crate::control::{details, for_each, for_each_or, meter, progress, show, show_when};
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInput, TextInputProps,
