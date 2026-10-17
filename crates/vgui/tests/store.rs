@@ -149,7 +149,12 @@ fn store_select_filters_unchanged_slices() {
                 res.lock().push((h.last_count, h.last_name.clone()));
             }
 
-            cx.update(|cx| cx.quit());
+            // Drop the external store handle before app teardown so no entity
+            // handle outlives the app (gpui leak-detection asserts on this).
+            cx.update(|cx| {
+                h_spawn.lock().set_store = None;
+                cx.quit();
+            });
         })
         .detach();
     };
@@ -286,8 +291,10 @@ fn store_get_and_with_read_state() {
                 let h = h_spawn.lock();
                 res.lock().push((h.last_count, h.last_name.clone()));
             }
-
-            cx.update(|cx| cx.quit());
+            cx.update(|cx| {
+                h_spawn.lock().set_store = None;
+                cx.quit();
+            });
         })
         .detach();
     };

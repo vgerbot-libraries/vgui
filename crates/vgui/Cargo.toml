@@ -25,6 +25,7 @@ test-support = ["gpui/test-support"]
 [dev-dependencies]
 trybuild = "1"
 gpui = { workspace = true, features = ["test-support"] }
+gpui-platform.workspace = true
 parking_lot = "0.12"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
