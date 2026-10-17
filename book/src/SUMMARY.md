@@ -59,6 +59,7 @@
 - [Window Management](./examples/window-management.md)
 - [Drag & Drop](./examples/drag-drop.md)
 - [Shadcn Music Player](./examples/shadcn-music-player.md)
+- [Longbridge Pro Trading Terminal](./examples/longbridge-pro.md)
 
 # Feature Comparison
 

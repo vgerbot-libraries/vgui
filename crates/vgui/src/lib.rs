@@ -16,6 +16,7 @@ mod animation;
 mod aria;
 mod child;
 mod canvas;
+mod clipboard;
 mod event;
 mod context;
 mod control;
@@ -24,8 +25,12 @@ mod input_widgets;
 mod img;
 mod overlay;
 mod virtual_list;
+mod i18n;
+pub mod a11y;
+pub mod speech;
 mod form;
 mod grid_areas;
+mod history;
 mod label;
 pub mod router;
 pub mod breakpoint;
@@ -41,16 +46,23 @@ mod window;
 mod shortcuts;
 pub mod theme;
 
+/// In-memory headless window and input simulation for interaction tests.
+#[cfg(all(not(target_family = "wasm"), any(test, feature = "test-support")))]
+pub mod headless;
+
 pub use crate::child::{click, into_child, IntoViewChild};
-pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, ScrollStrategy};
+pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, ScrollStrategy, VirtualListState};
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};
 pub use crate::context::{Context, use_context, use_context_or, provide_context, ProviderGuard};
 pub use crate::overlay::{dialog, floating, floating_at, portal};
+pub use crate::history::UndoHistory;
+pub use crate::clipboard::{read_text, write_text};
 pub use crate::control::{details, for_each, for_each_or, meter, progress, show, show_when};
 pub use crate::input_text::{
     input_cb, str_change_cb, text_area, text_input, TextAreaProps, TextKind, TextInput, TextInputProps,
 };
 pub use crate::form::{form_scope, __form_submit, __form_reset};
+pub use crate::i18n::{locale, register_messages, set_locale, translate, use_i18n, DEFAULT_LOCALE};
 pub use crate::input_widgets::{
     bool_change_cb, checkbox, CheckboxProps, datalist, f64_change_cb, file_input, files_cb, radio,
     radiogroup, range_input, register_datalist, select, select_with_options, FileProps, RadioProps, RangeProps, SelectProps,
