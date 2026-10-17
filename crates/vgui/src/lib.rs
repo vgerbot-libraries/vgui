@@ -44,6 +44,10 @@ mod window;
 mod shortcuts;
 pub mod theme;
 
+/// In-memory headless window and input simulation for interaction tests.
+#[cfg(all(not(target_family = "wasm"), any(test, feature = "test-support")))]
+pub mod headless;
+
 pub use crate::child::{click, into_child, IntoViewChild};
 pub use crate::virtual_list::{use_scroll_handle, UniformListScrollHandle, ScrollStrategy, VirtualListState};
 pub use crate::canvas::{Context2D, CanvasTextAlign, TextMetrics, canvas_element, color};

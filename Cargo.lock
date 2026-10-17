@@ -5831,7 +5831,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gpui",
- "gpui_platform",
  "parking_lot",
  "shortcuts",
  "trybuild",
