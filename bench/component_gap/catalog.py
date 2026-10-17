@@ -1,0 +1,215 @@
+"""Reference capability catalog for longbridge/gpui-kit.
+
+Frozen 2026-10-17 from gpui-kit main (crate `gpui-component` 0.7, "75+
+components and primitives"). Each entry is one user-facing component or
+framework capability a vgui application could reasonably expect from a
+GPUI-based UI kit.
+
+Detection against the local vgui source tree is evidence based:
+  - `strong` regex patterns  -> capability present (full)
+  - `weak`   regex patterns  -> partial / primitive-only implementation
+The scanner searches every *.rs file under the vgui crate roots, plus a few
+extra file-glob checks (e.g. bundled SVG icon assets). Adding a real vgui
+component under a canonical name flips its status automatically; the catalog
+is never hand-toggled.
+"""
+
+# Roots scanned, relative to the repository root.
+ROOTS = ["crates/vgui/src", "crates/vgui-shadcn/src"]
+
+# (id, category, gpui-kit name, description, [strong], [weak])
+ENTRIES = [
+    # --- Buttons ---
+    ("button", "button", "Button", "Standard button with variants/sizes",
+     [r"pub fn button\b"], []),
+    ("icon_button", "button", "Button::icon / IconButton", "Icon-only button",
+     [r"IconButton|fn icon_button"], []),
+    ("button_group", "button", "ButtonGroup", "Grouped/toggle button container",
+     [r"button_group|ButtonGroup|toggle_group|ToggleGroup"], []),
+    ("dropdown_button", "button", "DropdownButton", "Button that opens a menu",
+     [r"DropdownButton|dropdown_button"], []),
+    ("toggle", "button", "Toggle", "Two-state toggle button",
+     [r"struct Toggle\b|fn toggle\(|ToggleButton"], [r"Checkable"]),
+
+    # --- Form inputs ---
+    ("text_input", "form", "Input / TextInput", "Single-line text entry",
+     [r"pub fn text_input\b|pub fn text_field\b"], []),
+    ("text_area", "form", "Input multiline", "Multi-line text entry",
+     [r"pub fn text_area\b"], []),
+    ("number_input", "form", "NumberInput", "Numeric entry with steppers",
+     [r"struct NumberInput|fn number_input"], [r"TextKind::Number|pub fn stepper\b"]),
+    ("password_input", "form", "Input (password)", "Masked secret entry",
+     [r"TextKind::Password"], []),
+    ("search_input", "form", "Input (search)", "Search-styled entry",
+     [r"TextKind::Search"], []),
+    ("otp_input", "form", "OtpInput", "One-time-code segmented entry",
+     [r"OtpInput|otp_input"], []),
+    ("color_picker", "form", "ColorPicker", "Color picker with palette/eyedropper",
+     [r"supports_color_picker|picker_open|struct ColorPicker"], []),
+    ("date_picker", "form", "date_picker", "Calendar date picker popover",
+     [r"DatePicker|date_picker|fn date_picker"], [r"TextKind::Date|TextKind::DateTime"]),
+    ("time_field", "form", "time_field", "Time-of-day segmented field",
+     [r"TimeField|time_field|fn time_field"], [r"TextKind::Time"]),
+    ("calendar", "form", "calendar", "Month calendar grid for date selection",
+     [r"struct Calendar\b|fn calendar\s*\("], []),
+    ("checkbox", "form", "Checkbox", "Checkbox with tri-state support",
+     [r"pub fn checkbox\b"], []),
+    ("radio", "form", "Radio / RadioGroup", "Radio + radio group",
+     [r"pub fn radio\b|pub fn radiogroup\b|RadioGroup"], []),
+    ("switch", "form", "Switch", "Boolean toggle switch",
+     [r"pub fn switch\b"], []),
+    ("slider", "form", "Slider", "Range slider",
+     [r"pub fn slider\b|range_input"], []),
+    ("select", "form", "Select", "Single/multi select dropdown",
+     [r"pub fn select\b|pub fn select_with_options\b"], []),
+    ("combobox", "form", "Combobox", "Searchable free-text select",
+     [r"struct Combobox|fn combobox\s*\("], [r"register_datalist|pub fn datalist\b"]),
+    ("command", "form", "Command", "Command-palette fuzzy runner",
+     [r"CommandPalette|command_palette|pub mod command"], []),
+    ("form", "form", "Form / FormField", "Validation-aware form fields",
+     [r"FormField|fn form_field|validate_form"], [r"form_scope|__form_submit"]),
+    ("label", "form", "Label", "Field label with control association",
+     [r"register_label_target|LabelTarget|pub fn label\s*\(|struct Label\b"], []),
+
+    # --- Data display ---
+    ("badge", "data-display", "Badge", "Count/status badge",
+     [r"pub fn badge\b"], []),
+    ("tag", "data-display", "Tag", "Dismissable tag/chip",
+     [r"pub fn tag\b|\bTag\b"], []),
+    ("avatar", "data-display", "Avatar / AvatarGroup", "User avatar + group",
+     [r"pub fn avatar\b"], []),
+    ("tooltip", "data-display", "Tooltip", "Hover tooltip",
+     [r"pub fn tooltip\b"], []),
+    ("hover_card", "data-display", "HoverCard", "Rich hover preview card",
+     [r"HoverCard|hover_card"], []),
+    ("breadcrumb", "data-display", "Breadcrumb", "Navigation breadcrumb",
+     [r"Breadcrumb|breadcrumb"], []),
+    ("pagination", "data-display", "Pagination", "Page navigation controls",
+     [r"Pagination|pagination"], []),
+    ("rating", "data-display", "Rating", "Star rating",
+     [r"struct Rating\b|fn rating\s*\("], []),
+    ("carousel", "data-display", "Carousel", "Cycling content carousel",
+     [r"Carousel|carousel"], []),
+    ("description_list", "data-display", "DescriptionList", "Term/description list",
+     [r"DescriptionList|description_list"], []),
+    ("empty_state", "data-display", "Empty", "Empty-state placeholder",
+     [r"empty_state|EmptyState|pub fn empty\b"], []),
+    ("table", "data-display", "Table", "Virtualized data grid (sort/resize/select columns)",
+     [r"pub fn table\b|DataTable|TableDelegate|fn data_table"], [r"uniform_list"]),
+    ("tree", "data-display", "Tree", "Tree view with expand/collapse",
+     [r"pub fn tree\b|\bTreeDelegate\b"], []),
+    ("list", "data-display", "List / VirtualList", "Virtualized variable-height list",
+     [r"struct VirtualList\b|h_virtual_list|v_virtual_list|VirtualListState"], [r"uniform_list|UniformListScrollHandle"]),
+    ("kbd", "data-display", "Kbd", "Keyboard key hint",
+     [r"pub fn kbd\b"], []),
+    ("separator", "data-display", "Separator", "Horizontal/vertical divider",
+     [r"pub fn separator\b"], []),
+    ("skeleton", "data-display", "Skeleton", "Loading placeholder",
+     [r"pub fn skeleton\b"], []),
+    ("shimmer", "data-display", "Shimmer", "Animated shimmer loading surface",
+     [r"struct Shimmer\b|fn shimmer\s*\("], []),
+    ("spinner", "data-display", "Spinner", "Rotating activity indicator",
+     [r"struct Spinner\b|fn spinner\s*\("], []),
+    ("progress", "data-display", "Progress", "Progress bar/indicator",
+     [r"pub fn progress\b"], []),
+    ("group_box", "data-display", "GroupBox", "Titled bordered content group",
+     [r"GroupBox|group_box"], []),
+    ("icon", "data-display", "Icon (1830 Lucide SVGs)", "Bundled vector icon set",
+     [], []),  # handled by SVG-asset check in scanner
+
+    # --- Overlays / navigation ---
+    ("dialog", "overlay", "Dialog / AlertDialog", "Modal dialog with focus trap",
+     [r"pub fn dialog\b|dialog_component"], []),
+    ("sheet_drawer", "overlay", "Sheet / Drawer", "Edge-anchored panel",
+     [r"pub fn drawer\b|pub fn sheet\b"], []),
+    ("popover", "overlay", "Popover", "Anchored floating content",
+     [r"pub fn popover\b"], []),
+    ("floating_portal", "overlay", "Popup / Portal / positioner", "Anchored/portal positioning",
+     [r"pub fn portal\b|pub fn floating\b|positioner"], []),
+    ("menu", "overlay", "Menu / Dropdown / ContextMenu", "Dropdown and context menus",
+     [r"ContextMenu|context_menu|pub mod menu|DropdownMenu"], [r"haspopup|HasPopup::Menu"]),
+    ("menubar", "overlay", "MenuBar / native_menu", "Application menu bar",
+     [r"struct MenuBar|fn menu_bar|native_menu!|pub mod native_menu"], []),
+    ("notification", "overlay", "Notification / Toast / Message", "Toast/notification stack",
+     [r"Notification|Toast|toast|pub fn message\b|MessageScroller"], []),
+    ("sidebar", "overlay", "Sidebar", "Collapsible app sidebar",
+     [r"pub fn sidebar\b"], []),
+    ("toolbar", "overlay", "Toolbar", "Action toolbar container",
+     [r"struct Toolbar\b|fn toolbar\s*\("], []),
+    ("resizable", "overlay", "ResizablePanel(Group)", "Drag-resizable split panels",
+     [r"ResizablePanel|resizable_panel|h_resizable|v_resizable"], []),
+    ("dock", "overlay", "Dock", "Dockable tabs/nested splits/edge panels",
+     [r"struct Dock\b|DockArea|dock_area|PanelView|fn dock\s*\("], []),
+    ("nav_stack", "overlay", "NavStack", "Push/pop navigation stack",
+     [r"NavStack|nav_stack"], []),
+
+    # --- Rich content / editing ---
+    ("markdown", "rich-content", "text (Markdown)", "Native Markdown rendering",
+     [r"render_markdown|struct Markdown\b|fn markdown\s*\(|markdown::"], []),
+    ("code_editor", "rich-content", "highlighter", "Code editor: Tree-sitter + LSP, 200K lines",
+     [r"tree_sitter|treesitter|TreeSitter|lsp::|LanguageServer|code_editor"], []),
+    ("diff_viewer", "rich-content", "diff", "Source diff/conflict review viewer",
+     [r"DiffEditor|diff_viewer|pub mod diff|conflict_marker"], []),
+    ("chart", "rich-content", "chart", "Area/bar/line/pie/radar/sankey/candlestick charts",
+     [r"fn bar_chart|fn line_chart|fn pie_chart|ChartView"], []),
+    ("plot", "rich-content", "plot", "Scientific/math plots",
+     [r"\bPlot\b|pub mod plot"], []),
+    ("chat_bubble", "rich-content", "Bubble / Message(Scroller)", "Chat message bubbles/scroll",
+     [r"struct Bubble\b|fn bubble\s*\(|MessageScroller|struct Message\b"], []),
+    ("attachment", "rich-content", "Attachment", "File attachment display/upload card",
+     [r"struct Attachment\b|fn attachment\s*\(|AttachmentView"], []),
+    ("clipboard", "rich-content", "Clipboard", "Clipboard read/write helper",
+     [r"Clipboard::new|pub fn clipboard|write_text|read_text"], [r"Clipboard"]),
+
+    # --- App chrome / system ---
+    ("title_bar", "app", "TitleBar", "Custom window title bar",
+     [r"struct TitleBar|fn title_bar|TitleBarOptions"], []),
+    ("status_bar", "app", "StatusBar", "Bottom status bar",
+     [r"struct StatusBar\b|fn status_bar\s*\("], []),
+    ("window_border", "app", "WindowBorder", "Custom window chrome borders",
+     [r"WindowBorder|window_border"], []),
+    ("inspector", "app", "Inspector", "Runtime UI/component inspector",
+     [r"struct Inspector\b|fn inspector\s*\("], []),
+    ("setting", "app", "Setting", "Settings/preferences panels",
+     [r"SettingPanel|settings_panel|pub mod setting"], []),
+    ("questionnaire", "app", "Questionnaire", "Onboarding/questionnaire flow",
+     [r"Questionnaire|questionnaire"], []),
+    ("speech", "app", "Speech", "Speech synthesis/recognition",
+     [r"struct Speech\b|SpeechSynthesizer|fn speech\s*\("], []),
+    ("touch_selection", "app", "TouchSelection", "Mobile selection handles",
+     [r"touch_selection|TouchSelection"], []),
+
+    # --- Framework capabilities ---
+    ("theming", "framework", "theme tokens", "Semantic theming/design tokens",
+     [r"pub struct Theme|set_theme|with_theme"], []),
+    ("animation_motion", "framework", "animation / motion", "Animation/transition/transform engine",
+     [r"apply_animation|TwAnimation|TransitionProperties"], [r"apply_transition|TwTransition|Easing"]),
+    ("focus_trap", "framework", "focus_trap", "Modal focus trapping/restore",
+     [r"focus trap|FocusTrap|focus_trap|cycle within dialog"], []),
+    ("a11y", "framework", "AccessKit layer", "AccessKit roles/states/actions integration",
+     [r"accesskit::Action|NodeBuilder|accesskit::Live|AccessibleNode"], [r"gpui::accesskit|__resolve_aria_role|accesskit::Role"]),
+    ("i18n", "framework", "rust-i18n locale", "Localization/locale switching",
+     [r"rust_i18n|set_locale\s*\(|i18n!"], []),
+    ("undo_history", "framework", "undo_history", "Undo/redo edit history",
+     [r"undo_history|UndoHistory|undo_redo"], []),
+    ("wasm", "framework", "wasm32 web target", "WebAssembly web build",
+     [], []),  # detected via build_wasm.sh
+    ("ui_testing", "framework", "headless UI tests", "Headless window + input integration tests",
+     [r"TestApp|TestWindow|fake_window|headless"], [r"__test_enter_render_scope"]),
+]
+
+# Capabilities vgui has that gpui-kit does not center in its catalog.
+# Reported for qualitative context; excluded from gap scoring.
+VGUI_EXTRA = [
+    ("router", "Declarative URL-style router (vgui::router)"),
+    ("signals", "SolidJS-style signals/memos/effects reactivity"),
+    ("view_macro", "JSX-like view!/css!/tw! declarative macros + Tailwind engine"),
+    ("breakpoints", "Responsive breakpoint helpers"),
+    ("canvas", "2D canvas drawing surface"),
+    ("card", "Card / card_header"),
+    ("stat_card", "Statistic summary card (hoc)"),
+    ("page_header", "Page header (hoc)"),
+    ("mode_toggle", "Theme-mode toggle (hoc)"),
+    ("mobile_picker", "Mobile picker control"),
+    ("mobile_stepper", "Mobile numeric stepper"),
+]

@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
+# Component-capability gap benchmark: vgui vs longbridge/gpui-kit.
+#
+# Deterministic static capability audit. A frozen reference catalog of
+# gpui-kit's user-facing components/framework capabilities (82 entries,
+# captured 2026-10-17 from gpui-component 0.7) is matched against evidence in
+# the local vgui crate sources. Each capability is classified:
+#   full    - a real implementation exists
+#   partial - only a primitive / narrower equivalent exists
+#   absent  - no equivalent
+#
+# Primary metric: component_coverage_pct = 100 * (full + 0.5*partial) / N.
+# Higher is better; 100 = full parity with the gpui-kit catalog.
+#
+# No network, no clock, no randomness: same sources -> same output.
 set -euo pipefail
-
-# Keyboard event system benchmark harness.
-#
-# Compiles the bench_keyboard example in release mode and runs it.
-# The benchmark exercises KeyboardEvent construction, stop_propagation,
-# handler dispatch, and the public new() constructor.
-#
-# Prints METRIC lines parsed by the autoresearch framework.
 
 cd "$(dirname "$0")"
 
-# Build the benchmark binary in release mode for stable timings.
-cargo build --release --example bench_keyboard -p vgui 2>&1
-
-# Run the benchmark.
-./target/release/examples/bench_keyboard
+python3 bench/component_gap/compare.py
