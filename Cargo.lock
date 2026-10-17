@@ -5831,6 +5831,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gpui",
+ "gpui_platform",
  "js-sys",
  "parking_lot",
  "shortcuts",
