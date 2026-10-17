@@ -54,6 +54,7 @@ pub mod touch_selection;
 pub mod toolbar;
 pub mod tooltip;
 pub mod tree;
+pub mod virtual_list;
 pub mod window_chrome;
 
 pub use alert::*;
@@ -112,5 +113,6 @@ pub use toggle::*;
 pub use toolbar::*;
 pub use tooltip::*;
 pub use tree::*;
+pub use virtual_list::*;
 pub use window_chrome::*;
 
