@@ -1,0 +1,13 @@
+{
+  "nav.docs": "文档",
+  "nav.components": "组件",
+  "nav.resources": "资源",
+  "nav.apiDoc": "API 文档",
+  "nav.releases": "发布记录",
+  "nav.issues": "问题反馈",
+  "nav.version": "版本",
+  "nav.latest": "最新版",
+  "nav.current": "当前版本",
+  "nav.primary": "主导航",
+  "nav.external": "在新标签页中打开"
+}

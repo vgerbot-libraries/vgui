@@ -1,0 +1,192 @@
+---
+import { basePath, localizedPath } from '../utils/paths';
+import { issuesUrl, releasesUrl, repositoryUrl, versions } from '../config/site';
+
+interface Props {
+  mobile?: boolean;
+}
+
+const { mobile = false } = Astro.props;
+const t = Astro.locals.t;
+const locale = Astro.locals.starlightRoute.locale;
+const docsHref = localizedPath(locale, 'docs/');
+const componentsHref = localizedPath(locale, 'components/');
+const pathname = Astro.url.pathname;
+const idPrefix = mobile ? 'mobile' : 'desktop';
+const currentVersion = versions.find((version) => version.current) ?? versions[0];
+
+const isCurrentSection = (href: string) => pathname.startsWith(href);
+const resources = [
+  { label: t('nav.apiDoc'), href: basePath('api/vgui/'), external: false },
+  { label: t('nav.releases'), href: releasesUrl, external: true },
+  { label: t('nav.issues'), href: issuesUrl, external: true },
+];
+---
+
+<nav
+  class:list={['header-nav', mobile ? 'mobile-header-nav' : 'desktop-header-nav']}
+  aria-label={t('nav.primary')}
+>
+  <a
+    class:list={['nav-link', { active: isCurrentSection(docsHref) }]}
+    href={docsHref}
+    aria-current={isCurrentSection(docsHref) ? 'location' : undefined}
+  >
+    {t('nav.docs')}
+  </a>
+  <a
+    class:list={['nav-link', { active: isCurrentSection(componentsHref) }]}
+    href={componentsHref}
+    aria-current={isCurrentSection(componentsHref) ? 'location' : undefined}
+  >
+    {t('nav.components')}
+  </a>
+
+  <details class="nav-disclosure" data-disclosure>
+    <summary
+      class="nav-link disclosure-trigger"
+      id={`${idPrefix}-resources-trigger`}
+      aria-controls={`${idPrefix}-resources-panel`}
+      aria-expanded="false"
+    >
+      <span>{t('nav.resources')}</span>
+      <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </summary>
+    <div class="disclosure-panel resources-panel" id={`${idPrefix}-resources-panel`}>
+      <ul class="disclosure-list">
+        {
+          resources.map((resource) => (
+            <li>
+              <a
+                href={resource.href}
+                target={resource.external ? '_blank' : undefined}
+                rel={resource.external ? 'noopener noreferrer' : undefined}
+              >
+                <span>{resource.label}</span>
+                {
+                  resource.external && (
+                    <>
+                      <svg class="external-icon" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M6 3H3v10h10v-3M9 3h4v4M13 3 7 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                      </svg>
+                      <span class="sr-only">({t('nav.external')})</span>
+                    </>
+                  )
+                }
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </details>
+
+  {
+    currentVersion && (
+      <details class="nav-disclosure version-disclosure" data-disclosure>
+        <summary
+          class="nav-link disclosure-trigger version-trigger"
+          id={`${idPrefix}-version-trigger`}
+          aria-controls={`${idPrefix}-version-panel`}
+          aria-expanded="false"
+          aria-label={`${t('nav.version')}: ${currentVersion.label}`}
+        >
+          <span>{currentVersion.label}</span>
+          <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </summary>
+        <div class="disclosure-panel version-panel" id={`${idPrefix}-version-panel`}>
+          <p class="disclosure-label">{t('nav.version')}</p>
+          <ul class="disclosure-list">
+            {
+              versions.map((version) => (
+                <li>
+                  {version.href ? (
+                    <a href={version.href}>
+                      <span>{version.label}</span>
+                    </a>
+                  ) : (
+                    <span class="version-item" aria-current={version.current ? 'true' : undefined}>
+                      <span class="version-name">
+                        {version.current && (
+                          <svg class="check-icon" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="m3 8 3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                          </svg>
+                        )}
+                        {version.label}
+                      </span>
+                      {version.current && <span class="latest-badge">{t('nav.latest')}</span>}
+                      <span class="sr-only">{version.current ? ` (${t('nav.current')})` : ''}</span>
+                    </span>
+                  )}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </details>
+    )
+  }
+
+  {
+    mobile && (
+      <a class="nav-link mobile-github" href={repositoryUrl} target="_blank" rel="noopener noreferrer">
+        <span>GitHub</span>
+        <svg class="external-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M6 3H3v10h10v-3M9 3h4v4M13 3 7 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span class="sr-only">({t('nav.external')})</span>
+      </a>
+    )
+  }
+</nav>
+
+<script>
+  const disclosures = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-disclosure]'));
+
+  const closeDisclosure = (details: HTMLDetailsElement) => {
+    details.open = false;
+  };
+
+  disclosures.forEach((details) => {
+    const trigger = details.querySelector<HTMLElement>('summary');
+    trigger?.setAttribute('aria-expanded', String(details.open));
+
+    details.addEventListener('toggle', () => {
+      trigger?.setAttribute('aria-expanded', String(details.open));
+      if (details.open) {
+        disclosures.forEach((other) => {
+          if (other !== details) closeDisclosure(other);
+        });
+      }
+    });
+
+    details.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && details.open) {
+        event.preventDefault();
+        closeDisclosure(details);
+        trigger?.focus();
+      }
+    });
+
+    details.addEventListener('focusout', (event) => {
+      const nextTarget = event.relatedTarget;
+      if (nextTarget instanceof Node && !details.contains(nextTarget)) {
+        // Let the pointer click finish before collapsing a static mobile panel.
+        setTimeout(() => {
+          if (!details.contains(document.activeElement)) closeDisclosure(details);
+        });
+      }
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Node)) return;
+    disclosures.forEach((details) => {
+      if (details.open && !details.contains(event.target as Node)) closeDisclosure(details);
+    });
+  });
+</script>

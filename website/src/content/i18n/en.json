@@ -1,0 +1,13 @@
+{
+  "nav.docs": "Docs",
+  "nav.components": "Components",
+  "nav.resources": "Resources",
+  "nav.apiDoc": "API Doc",
+  "nav.releases": "Releases",
+  "nav.issues": "Issues",
+  "nav.version": "Version",
+  "nav.latest": "Latest",
+  "nav.current": "Current version",
+  "nav.primary": "Primary navigation",
+  "nav.external": "opens in a new tab"
+}
