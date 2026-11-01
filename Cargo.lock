@@ -5845,56 +5845,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-animation"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-canvas"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-canvas-animation"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-context"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-counter"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-css"
 version = "0.1.0"
 dependencies = [
@@ -5904,164 +5854,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "vgui-dashboard"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-drag-drop"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-elements"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "image",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-focus"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-forms"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-inputs"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-keyboard-events"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-keyboard-shortcuts"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-longbridge-pro"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "vgui-shadcn",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-overlays"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-refs"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-router"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-shadcn"
 version = "0.1.0"
 dependencies = [
  "gpui",
  "vgui",
-]
-
-[[package]]
-name = "vgui-shadcn-music-player"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "vgui-shadcn",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-store"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-styling"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -6079,72 +5876,12 @@ name = "vgui-tailwind-core"
 version = "0.1.0"
 
 [[package]]
-name = "vgui-theming"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-todolist"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-use-interval"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-variants"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "vgui-view"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "vgui-virtual-list"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "vgui-window-management"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui_platform",
- "vgui",
- "wasm-bindgen",
 ]
 
 [[package]]
