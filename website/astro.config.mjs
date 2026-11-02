@@ -26,9 +26,40 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Docs',
-          translations: { 'zh-CN': '文档' },
-          link: '/docs/',
+          label: 'Start Here',
+          translations: { 'zh-CN': '从这里开始' },
+          items: [
+            {
+              label: 'Introduction',
+              translations: { 'zh-CN': '简介' },
+              link: '/docs/',
+            },
+            {
+              label: 'Installation',
+              translations: { 'zh-CN': '安装' },
+              link: '/docs/installation/',
+            },
+            {
+              label: 'Quick Start',
+              translations: { 'zh-CN': '快速开始' },
+              link: '/docs/quick-start/',
+            },
+            {
+              label: 'Your First Reactive View',
+              translations: { 'zh-CN': '第一个响应式视图' },
+              link: '/docs/first-reactive-view/',
+            },
+            {
+              label: 'Native & Web',
+              translations: { 'zh-CN': '原生与 Web' },
+              link: '/docs/native-and-web/',
+            },
+            {
+              label: 'Compatibility & Troubleshooting',
+              translations: { 'zh-CN': '兼容性与故障排查' },
+              link: '/docs/compatibility-troubleshooting/',
+            },
+          ],
         },
         {
           label: 'Components',

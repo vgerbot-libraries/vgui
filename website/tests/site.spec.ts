@@ -1,6 +1,18 @@
 import { expect, test } from '@playwright/test';
 
-const routes = ['', 'docs/', 'components/', 'zh-cn/', 'zh-cn/docs/', 'zh-cn/components/'];
+const docsRoutes = [
+  'docs/',
+  'docs/installation/',
+  'docs/quick-start/',
+  'docs/first-reactive-view/',
+  'docs/native-and-web/',
+  'docs/compatibility-troubleshooting/',
+];
+const localizedDocsRoutes = [
+  ...docsRoutes,
+  ...docsRoutes.map((route) => `zh-cn/${route}`),
+];
+const routes = ['', 'components/', 'zh-cn/', 'zh-cn/components/', ...localizedDocsRoutes];
 
 test('all localized routes and base-aware navigation links are generated', async ({ page }) => {
   for (const route of routes) {
@@ -45,6 +57,83 @@ test('all localized routes and base-aware navigation links are generated', async
     'aria-current',
     'location',
   );
+});
+
+test('Start Here sidebar exposes only completed bilingual documentation', async ({ page }) => {
+  const englishLinks = [
+    ['Introduction', '/vgui/docs/'],
+    ['Installation', '/vgui/docs/installation/'],
+    ['Quick Start', '/vgui/docs/quick-start/'],
+    ['Your First Reactive View', '/vgui/docs/first-reactive-view/'],
+    ['Native & Web', '/vgui/docs/native-and-web/'],
+    ['Compatibility & Troubleshooting', '/vgui/docs/compatibility-troubleshooting/'],
+  ];
+  const chineseLinks = [
+    ['简介', '/vgui/zh-cn/docs/'],
+    ['安装', '/vgui/zh-cn/docs/installation/'],
+    ['快速开始', '/vgui/zh-cn/docs/quick-start/'],
+    ['第一个响应式视图', '/vgui/zh-cn/docs/first-reactive-view/'],
+    ['原生与 Web', '/vgui/zh-cn/docs/native-and-web/'],
+    ['兼容性与故障排查', '/vgui/zh-cn/docs/compatibility-troubleshooting/'],
+  ];
+
+  for (const [route, group, links, docsLabel] of [
+    ['docs/quick-start/', 'Start Here', englishLinks, 'Docs'],
+    ['zh-cn/docs/quick-start/', '从这里开始', chineseLinks, '文档'],
+  ] as const) {
+    await page.goto(route);
+    const sidebar = page.locator('#starlight__sidebar');
+    await expect(sidebar.getByText(group, { exact: true })).toBeVisible();
+    for (const [label, href] of links) {
+      await expect(sidebar.getByRole('link', { name: label, exact: true })).toHaveAttribute(
+        'href',
+        href,
+      );
+    }
+    await expect(sidebar.getByText('Guides', { exact: true })).toHaveCount(0);
+    await expect(sidebar.getByText('Reference', { exact: true })).toHaveCount(0);
+    await expect(
+      page.locator('.desktop-header-nav').getByRole('link', { name: docsLabel, exact: true }),
+    ).toHaveAttribute('aria-current', 'location');
+  }
+
+  for (const route of localizedDocsRoutes) {
+    await page.goto(route);
+    await expect(page.locator('.empty-state')).toHaveCount(0);
+  }
+});
+
+test('Quick Start includes a complete runnable counter', async ({ page }) => {
+  await page.goto('docs/quick-start/');
+  const content = page.locator('main');
+  await expect(content.locator('pre[data-language="toml"]')).toHaveCount(1);
+  await expect(content.locator('pre[data-language="rust"]')).toHaveCount(1);
+  await expect(content).toContainText('fn main()');
+  await expect(content).toContainText('open_window');
+  await expect(content).toContainText('vgui::mount');
+  await expect(content).toContainText('cargo +nightly run');
+});
+
+test('documentation body links resolve', async ({ page, request }) => {
+  const urls = new Set<string>();
+  for (const route of localizedDocsRoutes) {
+    await page.goto(route);
+    const hrefs = await page
+      .locator('main a[href]')
+      .evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).href));
+    for (const href of hrefs) {
+      const url = new URL(href);
+      if (url.origin === new URL(page.url()).origin && url.pathname.startsWith('/vgui/')) {
+        url.hash = '';
+        urls.add(url.toString());
+      }
+    }
+  }
+
+  for (const url of urls) {
+    const response = await request.get(url);
+    expect(response.status(), url).toBeLessThan(400);
+  }
 });
 
 test('header remains within the viewport at intermediate and wide sizes', async ({ page }) => {
@@ -126,18 +215,20 @@ test('mobile drawer exposes every navigation destination without horizontal over
 });
 
 test('language switching preserves the current section in both directions', async ({ page }) => {
-  for (const route of ['', 'docs/', 'components/']) {
+  for (const route of ['', 'components/', ...docsRoutes]) {
     await page.goto(route);
     await page.locator('.desktop-preferences starlight-lang-select select').selectOption({
       label: '简体中文',
     });
-    await expect(page).toHaveURL(new RegExp(`/vgui/zh-cn/${route.replace('/', '\\/')}$`));
+    await page.waitForURL((url) => url.pathname === `/vgui/zh-cn/${route}`);
+    expect(new URL(page.url()).pathname).toBe(`/vgui/zh-cn/${route}`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
 
     await page.locator('.desktop-preferences starlight-lang-select select').selectOption({
       label: 'English',
     });
-    await expect(page).toHaveURL(new RegExp(`/vgui/${route.replace('/', '\\/')}$`));
+    await page.waitForURL((url) => url.pathname === `/vgui/${route}`);
+    expect(new URL(page.url()).pathname).toBe(`/vgui/${route}`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   }
 });
@@ -173,7 +264,7 @@ test('Pagefind searches English and Chinese pages but not Rustdoc', async ({ pag
     /\/vgui\//,
   );
 
-  await input.fill('WindowContext');
+  await input.fill('SharedString');
   await expect(page.locator('.pagefind-ui__result')).toHaveCount(0);
 
   await page.keyboard.press('Escape');
@@ -181,7 +272,7 @@ test('Pagefind searches English and Chinese pages but not Rustdoc', async ({ pag
   await page.locator('site-search button[data-open-modal]').click();
   const chineseInput = page.locator('.pagefind-ui__search-input');
   await expect(chineseInput).toBeVisible();
-  await chineseInput.fill('学习路径');
+  await chineseInput.fill('故障排查');
   await expect(page.locator('.pagefind-ui__result-link').first()).toBeVisible();
   await expect(page.locator('.pagefind-ui__result-link').first()).toHaveAttribute(
     'href',

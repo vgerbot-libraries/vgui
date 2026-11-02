@@ -1,6 +1,6 @@
 # vgui documentation site
 
-Astro + Starlight site for vgui. The first milestone intentionally contains only the site shell and minimal bilingual landing pages.
+Astro + Starlight site for vgui, with bilingual Start Here guides and API documentation.
 
 ## Commands
 
