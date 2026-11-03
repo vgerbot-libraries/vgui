@@ -7,10 +7,10 @@ vgui is an experimental, declarative GUI framework for Rust built on [GPUI](http
 
 ## What vgui provides
 
-- **Declarative views:** the `view!` macro supports elements, attributes, interpolation, fragments, components, and control flow such as `Show` and `For`.
-- **Reactive state:** signals, memos, and effects track dependencies and update application state without a browser DOM.
-- **Rust styling tools:** use `css!`, Tailwind-style classes, dynamic classes, themes, and component variants where supported.
-- **Desktop and input primitives:** build on GPUI windows, events, text input, focus, overlays, and accessibility integrations.
+- **Declarative views:** the [`view!` macro](./view-macro/) supports elements, attributes, interpolation, fragments, components, and [control flow](./control-flow/) such as `Show` and `For`.
+- **Reactive state:** [signals, memos, effects, and stores](./reactivity/) track dependencies and update application state without a browser DOM.
+- **Rust styling tools:** use [`css!`, Tailwind-style classes, dynamic classes, themes, and component variants](./overview/) where supported.
+- **Desktop and input primitives:** build on GPUI windows, [elements and events](./built-in-elements-and-events/), [text input and forms](./inputs-and-forms/), focus, overlays, and accessibility integrations.
 
 vgui is not a web framework or a browser DOM compatibility layer. Its markup compiles to GPUI elements, and its supported HTML-like syntax, CSS properties, and Tailwind utilities are subsets with their own behavior.
 
@@ -29,5 +29,11 @@ Follow these pages in order to build a small counter application:
 3. [Your First Reactive View](./first-reactive-view/) explains the counter's state and update flow.
 4. [Native & Web](./native-and-web/) describes the two targets and their current verification boundaries.
 5. [Compatibility & Troubleshooting](./compatibility-troubleshooting/) helps diagnose toolchain, dependency, and window problems.
+
+## Keep exploring
+
+- Understand the [rendering architecture](./architecture/) and learn to author [custom components](./custom-components/).
+- Work through the [examples](./examples/counter/) for state, lists, events, and inputs.
+- Browse the [`vgui-shadcn` component catalog](../components/) for higher-level building blocks.
 
 For complete Rust types and function signatures, use the [API documentation](../api/vgui/). Guides explain tasks; Rustdoc remains the API reference.

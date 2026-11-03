@@ -1,11 +1,74 @@
 ---
 title: 组件
-description: vgui 与 vgui-shadcn 组件文档。
-tableOfContents: false
+description: 安装 vgui-shadcn、应用主题，并浏览当前公开的组件模块。
 ---
 
-<div class="empty-state">
-  <span class="empty-state-mark" aria-hidden="true">02</span>
-  <h2>组件目录正在完善。</h2>
-  <p>后续将在这里补充组件指南、示例、API 参考和无障碍说明。</p>
-</div>
+`vgui-shadcn` 为 vgui 应用提供 shadcn 风格组件。crate 根模块公开 `components`、`hoc`、`icons`、`mobile`、`prelude` 和 `theme`；下方组件目录以 `components/mod.rs` 中当前公开的模块为准。
+
+## 安装与导入
+
+先完成[安装](../docs/installation/)中的前置要求，并保留[快速开始](../docs/quick-start/)使用的 GPUI 依赖。在 `vgui` 旁添加 `vgui-shadcn`：
+
+```toml
+[dependencies]
+vgui = { git = "https://github.com/vgerbot-libraries/vgui" }
+vgui-shadcn = { git = "https://github.com/vgerbot-libraries/vgui" }
+```
+
+在渲染组件的模块中导入两个 prelude：
+
+```rust
+use vgui::prelude::*;
+use vgui_shadcn::prelude::*;
+```
+
+vgui-shadcn 的 prelude 会重新导出 crate 的组件、HOC 和 mobile 导出项、`icons` 模块，以及 `apply_theme`、`light_theme` 和 `dark_theme`。公开的组件模块也仍可通过 `vgui_shadcn::components` 访问。目前 `dialog` 是 glob 重新导出的一个例外；请直接从 `vgui_shadcn::components::dialog` 导入其中的项目。
+
+## 应用主题
+
+在渲染闭包中调用 `apply_theme`。传入 `false` 使用浅色 token，传入 `true` 使用深色 token：
+
+```rust
+fn themed_view() -> impl gpui::IntoElement {
+    apply_theme(false);
+
+    view! {
+        <div class="p-4">{"Themed content"}</div>
+    }
+}
+```
+
+运行时切换主题时，应在同一个渲染闭包中读取信号，使变化触发重新渲染：`apply_theme(dark.get())`。主题提供颜色和 `--radius`；组件样式不依赖浏览器样式表。
+
+## 两类 API
+
+- **PascalCase 宏组件**由 `#[vgui_component]` 函数生成。例如，`button` 生成 `Button`，`text_field` 生成 `TextField`，`description_list` 生成 `DescriptionList`。它们既可以作为 `view!` 中的标签使用，也可以作为结构体表达式使用；子元素向量需要时调用 `.into_any_element()`。
+- **函数与 builder API**是普通的 Rust 函数和结构体。例如，`select(ShadcnSelectProps::new(...))` 渲染选择器，而 `table(DataTable::new(...))` 同时返回元素和响应式状态 store。选项结构体使用 `.sortable()`、`.searchable(true)` 等链式方法。
+
+应查看各组件的实际签名，不要假设所有模块都支持标签、子元素或相同的回调类型。
+
+## 组件目录
+
+以下列出的是模块名称，并不表示其 API 或行为与任何上游库等价。各系列链接提供有针对性的示例。
+
+### [操作与表单控件](actions-and-form-controls/)
+
+`attachment`、`button`、`button_group`、`calendar`、`code_editor`、`combobox`、`command_palette`、`date_picker`、`dropdown_button`、`form_field`、`input`、`number_input`、`otp_input`、`questionnaire`、`rating`、`select`、`setting`、`slider`、`switch`、`time_field`、`toggle`、`touch_selection`
+
+### [数据展示](data-display/)
+
+`avatar`、`badge`、`bubble`、`card`、`carousel`、`chart`、`description_list`、`diff`、`icon`、`inspector`、`kbd`、`markdown`、`plot`、`table`、`tag`、`tree`、`virtual_list`
+
+### [导航与布局](navigation-and-layout/)
+
+`breadcrumb`、`collapsible`、`dock`、`group_box`、`menu`、`menu_bar`、`nav_stack`、`pagination`、`resizable`、`separator`、`sidebar`、`tabs`、`toolbar`、`window_chrome`
+
+### [浮层与反馈](overlays-and-feedback/)
+
+`alert`、`dialog`、`drawer`、`hover_card`、`notification`、`popover`、`progress`、`shimmer`、`skeleton`、`spinner`、`tooltip`
+
+## 当前限制
+
+本 crate 采用 shadcn 风格，但并不是完整的上游 shadcn 移植。无障碍行为由各组件分别实现；本目录不代表整个组件库通过无障碍一致性验证，这些页面也不声明浏览器支持。
+
+`GAPS.md` 记录了渲染和框架方面的缺口。依赖 transform 的放大效果、跑马灯、旋转 spinner 和水印不可用；fixed/sticky 定位、背景图和 HTML audio 也没有直接等价能力。依赖 JavaScript 的 Recharts、TanStack Table、Tabulator 和 HOC data table 均未移植。个别组件会在源码明确说明的情况下采用更简单的布局或行为。

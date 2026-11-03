@@ -7,14 +7,37 @@ const docsRoutes = [
   'docs/first-reactive-view/',
   'docs/native-and-web/',
   'docs/compatibility-troubleshooting/',
+  'docs/architecture/',
+  'docs/view-macro/',
+  'docs/reactivity/',
+  'docs/control-flow/',
+  'docs/custom-components/',
+  'docs/overview/',
+  'docs/tailwind-and-variants/',
+  'docs/theming-and-animation/',
+  'docs/built-in-elements-and-events/',
+  'docs/inputs-and-forms/',
+  'docs/refs-and-context/',
+  'docs/examples/counter/',
+  'docs/examples/store-and-lists/',
+  'docs/examples/events-and-inputs/',
 ];
-const localizedDocsRoutes = [
-  ...docsRoutes,
-  ...docsRoutes.map((route) => `zh-cn/${route}`),
+const componentRoutes = [
+  'components/',
+  'components/actions-and-form-controls/',
+  'components/data-display/',
+  'components/navigation-and-layout/',
+  'components/overlays-and-feedback/',
 ];
-const routes = ['', 'components/', 'zh-cn/', 'zh-cn/components/', ...localizedDocsRoutes];
+const contentRoutes = [...docsRoutes, ...componentRoutes];
+const localizedContentRoutes = [
+  ...contentRoutes,
+  ...contentRoutes.map((route) => `zh-cn/${route}`),
+];
+const routes = ['', 'zh-cn/', ...localizedContentRoutes];
 
 test('all localized routes and base-aware navigation links are generated', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const route of routes) {
     const response = await page.goto(route);
     expect(response?.status(), route).toBe(200);
@@ -59,45 +82,94 @@ test('all localized routes and base-aware navigation links are generated', async
   );
 });
 
-test('Start Here sidebar exposes only completed bilingual documentation', async ({ page }) => {
-  const englishLinks = [
-    ['Introduction', '/vgui/docs/'],
-    ['Installation', '/vgui/docs/installation/'],
-    ['Quick Start', '/vgui/docs/quick-start/'],
-    ['Your First Reactive View', '/vgui/docs/first-reactive-view/'],
-    ['Native & Web', '/vgui/docs/native-and-web/'],
-    ['Compatibility & Troubleshooting', '/vgui/docs/compatibility-troubleshooting/'],
-  ];
-  const chineseLinks = [
-    ['简介', '/vgui/zh-cn/docs/'],
-    ['安装', '/vgui/zh-cn/docs/installation/'],
-    ['快速开始', '/vgui/zh-cn/docs/quick-start/'],
-    ['第一个响应式视图', '/vgui/zh-cn/docs/first-reactive-view/'],
-    ['原生与 Web', '/vgui/zh-cn/docs/native-and-web/'],
-    ['兼容性与故障排查', '/vgui/zh-cn/docs/compatibility-troubleshooting/'],
-  ];
+test('sidebar exposes all completed bilingual documentation', async ({ page }) => {
+  test.setTimeout(120_000);
+  const groups = [
+    {
+      labels: ['Start Here', '从这里开始'],
+      links: [
+        ['Introduction', '简介', 'docs/'],
+        ['Installation', '安装', 'docs/installation/'],
+        ['Quick Start', '快速开始', 'docs/quick-start/'],
+        ['Your First Reactive View', '第一个响应式视图', 'docs/first-reactive-view/'],
+        ['Native & Web', '原生与 Web', 'docs/native-and-web/'],
+        [
+          'Compatibility & Troubleshooting',
+          '兼容性与故障排查',
+          'docs/compatibility-troubleshooting/',
+        ],
+      ],
+    },
+    {
+      labels: ['Core Concepts', '核心概念'],
+      links: [
+        ['Architecture', '架构', 'docs/architecture/'],
+        ['The view! Macro', 'view! 宏', 'docs/view-macro/'],
+        ['Reactivity', '响应式状态', 'docs/reactivity/'],
+        ['Control Flow', '控制流', 'docs/control-flow/'],
+        ['Custom Components', '自定义组件', 'docs/custom-components/'],
+      ],
+    },
+    {
+      labels: ['Styling', '样式'],
+      links: [
+        ['Overview', '概述', 'docs/overview/'],
+        ['Tailwind & Variants', 'Tailwind 与 Variants', 'docs/tailwind-and-variants/'],
+        ['Theming & Animation', '主题与动画', 'docs/theming-and-animation/'],
+      ],
+    },
+    {
+      labels: ['Elements & State', '元素与状态'],
+      links: [
+        ['Built-in Elements & Events', '内置元素与事件', 'docs/built-in-elements-and-events/'],
+        ['Inputs & Forms', '输入与表单', 'docs/inputs-and-forms/'],
+        ['Refs & Context', 'Refs 与 Context', 'docs/refs-and-context/'],
+      ],
+    },
+    {
+      labels: ['Examples', '示例'],
+      links: [
+        ['Counter', '计数器', 'docs/examples/counter/'],
+        ['Store & Lists', 'Store 与列表', 'docs/examples/store-and-lists/'],
+        ['Events & Inputs', '事件与输入', 'docs/examples/events-and-inputs/'],
+      ],
+    },
+    {
+      labels: ['Components', '组件'],
+      links: [
+        ['Overview', '组件概览', 'components/'],
+        ['Actions & Form Controls', '操作与表单控件', 'components/actions-and-form-controls/'],
+        ['Data Display', '数据展示', 'components/data-display/'],
+        ['Navigation & Layout', '导航与布局', 'components/navigation-and-layout/'],
+        ['Overlays & Feedback', '浮层与反馈', 'components/overlays-and-feedback/'],
+      ],
+    },
+  ] as const;
 
-  for (const [route, group, links, docsLabel] of [
-    ['docs/quick-start/', 'Start Here', englishLinks, 'Docs'],
-    ['zh-cn/docs/quick-start/', '从这里开始', chineseLinks, '文档'],
+  for (const [route, chinese, docsLabel] of [
+    ['docs/quick-start/', false, 'Docs'],
+    ['zh-cn/docs/quick-start/', true, '文档'],
   ] as const) {
     await page.goto(route);
     const sidebar = page.locator('#starlight__sidebar');
-    await expect(sidebar.getByText(group, { exact: true })).toBeVisible();
-    for (const [label, href] of links) {
-      await expect(sidebar.getByRole('link', { name: label, exact: true })).toHaveAttribute(
-        'href',
-        href,
-      );
+    for (const group of groups) {
+      const groupLabel = sidebar
+        .locator('summary')
+        .getByText(group.labels[chinese ? 1 : 0], { exact: true });
+      await expect(groupLabel).toBeVisible();
+      const groupContainer = groupLabel.locator('xpath=ancestor::details[1]');
+      for (const link of group.links) {
+        await expect(
+          groupContainer.getByRole('link', { name: link[chinese ? 1 : 0], exact: true }),
+        ).toHaveAttribute('href', `/vgui/${chinese ? 'zh-cn/' : ''}${link[2]}`);
+      }
     }
-    await expect(sidebar.getByText('Guides', { exact: true })).toHaveCount(0);
-    await expect(sidebar.getByText('Reference', { exact: true })).toHaveCount(0);
     await expect(
       page.locator('.desktop-header-nav').getByRole('link', { name: docsLabel, exact: true }),
     ).toHaveAttribute('aria-current', 'location');
   }
 
-  for (const route of localizedDocsRoutes) {
+  for (const route of localizedContentRoutes) {
     await page.goto(route);
     await expect(page.locator('.empty-state')).toHaveCount(0);
   }
@@ -115,8 +187,9 @@ test('Quick Start includes a complete runnable counter', async ({ page }) => {
 });
 
 test('documentation body links resolve', async ({ page, request }) => {
+  test.setTimeout(120_000);
   const urls = new Set<string>();
-  for (const route of localizedDocsRoutes) {
+  for (const route of localizedContentRoutes) {
     await page.goto(route);
     const hrefs = await page
       .locator('main a[href]')
@@ -215,7 +288,8 @@ test('mobile drawer exposes every navigation destination without horizontal over
 });
 
 test('language switching preserves the current section in both directions', async ({ page }) => {
-  for (const route of ['', 'components/', ...docsRoutes]) {
+  test.setTimeout(120_000);
+  for (const route of ['', ...contentRoutes]) {
     await page.goto(route);
     await page.locator('.desktop-preferences starlight-lang-select select').selectOption({
       label: '简体中文',
@@ -265,7 +339,8 @@ test('Pagefind searches English and Chinese pages but not Rustdoc', async ({ pag
   );
 
   await input.fill('SharedString');
-  await expect(page.locator('.pagefind-ui__result')).toHaveCount(0);
+  await expect(page.locator('.pagefind-ui__result-link').first()).toBeVisible();
+  await expect(page.locator('.pagefind-ui__result-link[href*="/api/"]')).toHaveCount(0);
 
   await page.keyboard.press('Escape');
   await page.goto('zh-cn/');
@@ -294,6 +369,7 @@ test('Rustdoc is deployed with working assets and source links', async ({ page, 
 });
 
 test('production pages emit no console errors or missing local resources', async ({ page }) => {
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {

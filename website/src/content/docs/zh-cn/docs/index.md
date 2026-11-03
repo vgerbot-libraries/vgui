@@ -7,10 +7,10 @@ vgui 是一个基于 [GPUI](https://github.com/zed-industries/zed) 的实验性 
 
 ## vgui 提供什么
 
-- **声明式视图：**`view!` 宏支持元素、属性、插值、片段、组件，以及 `Show`、`For` 等控制流。
-- **响应式状态：**signal、memo 和 effect 跟踪依赖并更新应用状态，不依赖浏览器 DOM。
-- **Rust 样式工具：**在支持的范围内使用 `css!`、Tailwind 风格 class、动态 class、主题和组件变体。
-- **桌面与输入基础设施：**基于 GPUI 的窗口、事件、文本输入、焦点、浮层和无障碍集成构建界面。
+- **声明式视图：**[`view!` 宏](./view-macro/)支持元素、属性、插值、片段、组件，以及 `Show`、`For` 等[控制流](./control-flow/)。
+- **响应式状态：**[signal、memo、effect 和 store](./reactivity/) 跟踪依赖并更新应用状态，不依赖浏览器 DOM。
+- **Rust 样式工具：**在支持的范围内使用 [`css!`、Tailwind 风格 class、动态 class、主题和组件变体](./overview/)。
+- **桌面与输入基础设施：**基于 GPUI 的窗口、[元素和事件](./built-in-elements-and-events/)、[文本输入和表单](./inputs-and-forms/)、焦点、浮层和无障碍集成构建界面。
 
 vgui 不是 Web 框架，也不是浏览器 DOM 兼容层。它的标记会编译为 GPUI 元素；所支持的类 HTML 语法、CSS 属性和 Tailwind 工具类都是有特定行为的子集。
 
@@ -29,5 +29,11 @@ vgui 不是 Web 框架，也不是浏览器 DOM 兼容层。它的标记会编�
 3. [第一个响应式视图](./first-reactive-view/)：理解计数器的状态和更新流程。
 4. [原生与 Web](./native-and-web/)：了解两种目标及当前验证边界。
 5. [兼容性与故障排查](./compatibility-troubleshooting/)：诊断工具链、依赖和窗口问题。
+
+## 继续探索
+
+- 了解[渲染架构](./architecture/)，并学习编写[自定义组件](./custom-components/)。
+- 通过[示例](./examples/counter/)学习状态、列表、事件和输入。
+- 浏览 [`vgui-shadcn` 组件目录](../components/)，使用更高层的界面构建块。
 
 完整的 Rust 类型与函数签名请查阅 [API 文档](../../api/vgui/)。指南负责讲解任务，Rustdoc 仍是 API 参考。
