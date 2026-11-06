@@ -7,9 +7,9 @@
     "node": ">=22.23.4"
   },
   "scripts": {
-    "dev": "node scripts/build-wasm.mjs && astro dev",
+    "dev": "node scripts/build-wasm.mjs && astro dev --force",
     "check": "astro check",
-    "build": "node scripts/build-wasm.mjs && npm run check && astro build && node scripts/add-rustdoc.mjs",
+    "build": "node scripts/build-wasm.mjs && npm run check && astro build --force && node scripts/add-rustdoc.mjs",
     "preview": "astro preview",
     "test:e2e": "playwright test"
   },

@@ -189,6 +189,13 @@ export default defineConfig({
           ],
         },
       ],
+      expressiveCode: {
+        themes: ['dracula'],
+        styleOverrides: {
+          borderColor: 'var(--sl-color-gray-5)',
+          codeBackground: '#21222c',
+        },
+      },
       customCss: ['./src/styles/custom.css'],
       components: {
         Header: './src/components/Header.astro',

@@ -326,6 +326,30 @@ test('theme choices take effect and explicit preferences survive reloads', async
   await expect(theme).toHaveValue('auto');
 });
 
+test('all documentation code blocks use the Dracula theme', async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const route of localizedContentRoutes) {
+    await page.goto(route);
+    const codeBlock = page.locator('.expressive-code').first();
+    if ((await codeBlock.count()) === 0) continue;
+
+    await expect(codeBlock, route).toHaveCSS('--ec-codeBg', '#21222c');
+    await expect(codeBlock, route).toHaveCSS('--ec-codeFg', '#f8f8f2');
+    await expect(codeBlock.locator('code'), route).toHaveCSS('color', 'rgb(248, 248, 242)');
+  }
+
+  await page.goto('docs/installation/');
+  await expect(
+    page.locator('.expressive-code .code span[style^="--0"]').first(),
+  ).toHaveCSS('color', 'rgb(80, 250, 123)');
+
+  await page.goto('docs/quick-start/');
+  await expect(page.locator('.live-rust-example .expressive-code')).toHaveCSS(
+    '--ec-codeBg',
+    '#21222c',
+  );
+});
+
 test('Pagefind searches English and Chinese pages but not Rustdoc', async ({ page }) => {
   await page.goto('');
   await page.locator('site-search button[data-open-modal]').click();
