@@ -3,3 +3,5 @@ node_modules/
 dist/
 playwright-report/
 test-results/
+public/wasm/counter/*.js
+public/wasm/counter/*.wasm

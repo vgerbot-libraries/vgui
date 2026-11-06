@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"python3 - <<'PY'\\nfrom pathlib import Path\\nimport re\\nroot = Path('/home/jianxin_yang/Workspaces/Github/vgui/website/src/content/docs')\\nnames = ['overview', 'tailwind-and-variants', 'the...",
+  "error": "Exit code 1\noverview: 4 Rust blocks, 5 sections\n  frontmatter: PASS\n  rust blocks identical: PASS\n  section counts match: PASS\n  no legacy markers: PASS\ntailwind-and-variants: 7 Rust blocks, 6 sections\n  frontmatter: PASS\n  rust blocks identical: PASS\n  section counts match: PASS\n  no legacy markers: FAIL\ntheming-and-animation: 8 Rust blocks, 7 sections\n  frontmatter: PASS\n  rust blocks identical: PASS\n  section counts match: PASS\n  no legacy markers: PASS",
+  "timestamp": "2026-11-02T14:39:34.604Z",
+  "retry_count": 1
+}

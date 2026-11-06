@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "jobId": "8cbbb3a0-4bc9-4965-9fed-2ad41a758b6d",
+  "sessionId": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+  "scopeKey": "c384767465d573a7c7c39f7f72be90457bc7c422282dbf4a1dd1755df569a66d",
+  "revision": 14,
+  "createdAt": "2026-11-01T11:30:02.155Z",
+  "updatedAt": "2026-11-01T14:43:33.390Z",
+  "producerGraceExpiresAt": "2026-11-01T11:30:32.157Z",
+  "bestEffortDeadlineAt": "2026-11-01T11:31:23.157Z",
+  "producers": {
+    "core": {
+      "state": "no-op",
+      "intentKey": "7ea82c43e0b103b8f99c1beba1951658a0546db4246ec99d64fba47e27de65c9",
+      "payloadDigest": "7ea82c43e0b103b8f99c1beba1951658a0546db4246ec99d64fba47e27de65c9",
+      "sealedAt": "2026-11-01T14:43:33.390Z",
+      "sealedBy": "recovery"
+    },
+    "wiki": {
+      "state": "no-op",
+      "sealedAt": "2026-11-01T11:30:02.200Z",
+      "sealedBy": "wiki-producer"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "3780c9167fd4e032129d2efb51752b59c20744475ec0c9e9cf1d728ff5086d46",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "lastOutcomeCode": "required-deadline-expired"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "72b9919038a335163ef8c227b2a35ffdfab035be51238c6b4ba47af430267a34",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-11-01T11:30:02.200Z"
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "3c00c2856cf715c2f4ca42dd08fd4439245122eb440661e71adc076a9e4ce50d",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 9000,
+      "lastOutcomeCode": "required-core-producer-unavailable"
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "0e9851f194c9c86e65f2e303dbe0736ef8aa15064d9ef96acae16ccf791b4d34",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 9000,
+      "lastOutcomeCode": "required-core-producer-unavailable"
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "050ee68852281960d4918157ed76e7d2744fb848ad337730f4c9fbe84f87f801",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 9000,
+      "lastOutcomeCode": "required-core-producer-unavailable"
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "f4369a6649e931890c786bbf6099470b178a029ed536f395c441fac11900de12",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 2000,
+      "lastOutcomeCode": "best-effort-core-producer-unavailable"
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "21fb4074ddeeb79084564a61e66242e2afe3b5d302d251fd834c942c9d002366",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 2000,
+      "lastOutcomeCode": "best-effort-core-producer-unavailable"
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "expired",
+      "attempts": 0,
+      "idempotencyKey": "bef9ca1d3bfe6ec707919ee6d6267b3555ffc8664ad5ad2ca76d88863696d14f",
+      "payload": {
+        "transcriptPath": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+        "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+        "reason": "clear",
+        "input": {
+          "session_id": "6e7b8c88-9040-4f11-8aa0-06d7f787c392",
+          "transcript_path": "/home/jianxin_yang/.claude/projects/-home-jianxin-yang-Workspaces-Github-vgui/6e7b8c88-9040-4f11-8aa0-06d7f787c392.jsonl",
+          "cwd": "/home/jianxin_yang/Workspaces/Github/vgui",
+          "prompt_id": "5a548489-ea77-417f-be6a-c0e8bbf663a2",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "terminalization": {
+          "reason": "foreground-cleanup-exhausted",
+          "attempts": 0,
+          "outcomeCode": "required-deadline-expired"
+        }
+      },
+      "budgetMs": 2000,
+      "lastOutcomeCode": "best-effort-core-producer-unavailable"
+    }
+  },
+  "owner": null,
+  "phase": "complete",
+  "completion": {
+    "completedAt": "2026-11-01T14:43:33.390Z",
+    "terminalDigest": "f6fff2caf8b5e2523f76b3e5fff4cf739374e3f49cadb0ac7b9a58453e49c64e",
+    "terminalRevision": 14
+  }
+}

@@ -40,6 +40,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Check quick-start example
         run: cargo check -p vgui --example counter --locked
+      - name: Install wasm-bindgen CLI
+        run: cargo install wasm-bindgen-cli --version 0.2.127 --locked
       - name: Install website dependencies
         run: npm ci --prefix website
       - name: Install Chromium

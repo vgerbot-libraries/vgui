@@ -6,7 +6,8 @@ function trimSlashes(value: string): string {
 export function basePath(path = ''): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   const suffix = trimSlashes(path);
-  return `${base}/${suffix}${suffix ? '/' : ''}`;
+  const trailingSlash = suffix && !suffix.split('/').pop()?.includes('.') ? '/' : '';
+  return `${base}/${suffix}${trailingSlash}`;
 }
 
 /** Build an internal URL for the active Starlight locale. */

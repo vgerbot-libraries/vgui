@@ -15,6 +15,14 @@ npm run test:e2e  # Browser smoke tests; requires a build and Chromium
 
 Install the test browser once with `npx playwright install chromium`.
 
+`npm run build` compiles the counter example for `wasm32-unknown-unknown` and generates its browser bindings. Install the CLI version used by the workspace lockfile:
+
+```sh
+cargo install wasm-bindgen-cli --version 0.2.127 --locked
+```
+
+The Quick Start and counter example pages display the same maintained Rust source beside an interactive, precompiled WASM build. The source is read-only; changing it requires a local website rebuild. The iframe uses the explicit `/vgui/wasm/counter/index.html` static host URL because directory-index handling differs between preview and static-file servers.
+
 Pagefind and the on-site API documentation are production-build features. `npm run dev` does not generate either one. Run `npm run build && npm run preview` to verify search and `/vgui/api/vgui/`.
 
 The Rustdoc step runs `cargo doc --workspace --no-deps --locked` from the repository root, then copies `target/doc` to `dist/api`. Copying happens after Astro's Pagefind pass so generated Rustdoc pages do not replace or pollute the documentation search index.

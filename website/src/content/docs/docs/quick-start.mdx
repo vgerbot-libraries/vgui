@@ -1,0 +1,66 @@
+---
+title: Quick Start
+description: Create a complete native and WebAssembly vgui counter application from an empty directory.
+---
+
+import LiveRustExample from '../../../components/LiveRustExample.astro';
+
+This guide creates a counter with one button and entry points for native and WebAssembly. The example includes every import and initialization step, so you can copy it into a new project without additional framework setup.
+
+Complete the [Installation](../installation/) prerequisites before starting.
+
+## 1. Create a project
+
+```bash
+cargo new vgui-counter --bin
+cd vgui-counter
+```
+
+## 2. Add the dependencies
+
+Replace `Cargo.toml` with the following manifest. vgui and GPUI currently use Git dependencies:
+
+```toml
+[package]
+name = "vgui-counter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vgui = { git = "https://github.com/vgerbot-libraries/vgui" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-platform = { git = "https://github.com/zed-industries/zed", package = "gpui_platform" }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = "0.2"
+```
+
+The `gpui-platform` dependency supplies the native and browser application entry points. `wasm-bindgen` exposes the browser start function. Keep the generated `Cargo.lock` so later builds use the same resolved revisions until you update them.
+
+## 3. Create the application
+
+Replace `src/main.rs` with this complete program. The live preview runs the same maintained counter compiled to WebAssembly:
+
+<LiveRustExample />
+
+The source is read-only; the preview does not compile Rust in the browser.
+
+## 4. Run it
+
+```bash
+cargo +nightly run
+```
+
+The first build may take a while because Cargo also compiles GPUI and its native dependencies. Run the command in a desktop session; a headless build environment is not enough to display a window.
+
+## How the pieces fit together
+
+- `application()` creates the native GPUI application and `run` starts its event loop. On WebAssembly, `single_threaded_web()` and `run_embedded` provide the browser lifecycle.
+- `open_window` configures the native window and gives vgui the window and application contexts; the browser canvas supplies the WebAssembly viewport.
+- `vgui::mount` installs `app` as the root view rendered inside that window.
+- `create_signal` creates the count, `count.get()` displays it, and the click handler uses `set_count.update` to increment it.
+- The `class` strings contain vgui-supported Tailwind-style utilities; they do not require a browser stylesheet.
+
+The same program is compiled for native and WebAssembly in the documentation workflow, and the preview's canvas rendering and Increment interaction are covered by browser tests. Native window interaction requires a desktop session and is not covered by those tests.
+
+Next, read [Your First Reactive View](../first-reactive-view/) to understand how state reads, writes, and rendering fit together.

@@ -1,0 +1,7 @@
+{
+  "tool_name": "WebFetch",
+  "tool_input_preview": "{\"url\":\"https://gpui-kit.com/zh-CN/docs/design-guides\",\"prompt\":\"Extract the complete Design Guides page content. Preserve every section's principles, concrete values/rules, UI copy guidelines, theme/...",
+  "error": "Fetch did not complete within the 300s deadline",
+  "timestamp": "2026-10-31T13:22:18.071Z",
+  "retry_count": 1
+}

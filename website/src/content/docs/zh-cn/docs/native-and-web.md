@@ -1,17 +1,17 @@
 ---
 title: 原生与 Web
-description: 了解 vgui 的原生和 WebAssembly 目标，以及当前浏览器验证的边界。
+description: 了解 vgui 的原生和 WebAssembly 目标、实时计数器预览及浏览器验证。
 ---
 
-vgui 包含原生 GPUI 集成和 WebAssembly 专用支持代码，但两者不能互换入口。原生编译检查也不能证明浏览器 demo 已正确渲染或处理输入。
+vgui 提供原生 GPUI 集成和 WebAssembly 专用支持，两者使用不同的入口。维护中的计数器展示了双端实现，原生与浏览器行为仍需要分别验证。
 
 ## 当前能力与验证范围
 
 | 路径 | 已具备的内容 | 不能据此推断的内容 |
 | --- | --- | --- |
-| 原生计数器 | 快速开始使用 `gpui_platform::application()`，并在文档工作流中进行编译检查。 | 仅编译不会测试可见窗口或按钮交互。 |
-| WebAssembly target | 工具链可以安装 `wasm32-unknown-unknown`，vgui 也有仅用于 WASM 的依赖和浏览器键盘辅助代码。 | 安装 target 或存在 WASM 代码，不等于完整应用已通过浏览器验证。 |
-| 浏览器 demo | 浏览器渲染、canvas 承载、输入和应用生命周期需要独立的平台入口及资源设置。 | 当前文档没有已验证的双端计数器教程或已发布的 live demo。 |
+| 原生计数器 | 维护中的双端计数器使用 `gpui_platform::application()`，可通过 `cargo run -p vgui --example counter` 运行。 | 文档不声称已验证原生窗口显示或按钮交互。 |
+| WebAssembly target | 同一个计数器使用 `single_threaded_web()`、`run_embedded`、`web_init()` 和浏览器键盘事件拦截。网站构建会生成其预编译 WASM 资源。 | 仅构建 WASM 不会执行浏览器渲染或输入验证。 |
+| 浏览器 demo | [计数器页面](../examples/counter/)并排展示真实的只读源码与实时预编译 WASM 预览。网站浏览器测试覆盖 canvas 渲染和 Increment 交互。 | 这不能验证原生 UI 交互或所有浏览器平台集成。 |
 
 ## 原生应用
 
@@ -33,12 +33,12 @@ vgui 包含原生 GPUI 集成和 WebAssembly 专用支持代码，但两者不�
 - **键盘行为：**Tab 导航、空格滚动等浏览器默认行为可能与 canvas 输入冲突。vgui 提供 `intercept_keyboard_events()`，为浏览器 canvas 安装冒泡阶段的键盘监听器；在原生目标上该函数不执行操作。
 - **输入与平台行为：**文本输入、IME、剪贴板、无障碍及其他操作系统集成都需要单独的浏览器验证。
 
-键盘辅助函数只是浏览器集成的一部分，不是完整的 WASM 启动或部署方法。
+计数器的 WASM `start()` 将 `web_init()`、键盘事件拦截和 `run_embedded` 组合为预览所使用的完整启动路径。
 
 ## 验证边界
 
-P0 文档只验证计数器的原生编译。它不提供未经验证的 `wasm-bindgen` 命令序列，也不复用仓库中指向已删除示例包的旧 WASM 脚本。
+计数器页面展示维护中的源码，并加载由网站构建生成的预编译 WASM 资源。网站浏览器测试覆盖 canvas 渲染和 Increment 点击交互。这些检查不验证原生窗口显示或原生按钮交互。
 
-请将原生编译、原生交互、WASM 编译、浏览器渲染和浏览器交互视为相互独立的检查。未来的浏览器快速开始应包含完整源码，并记录实际测试过的浏览器和交互行为。
+请将原生编译、原生交互、WASM 编译、浏览器渲染和浏览器交互视为相互独立的检查。计数器的浏览器覆盖本身不能验证文本输入、IME、剪贴板、无障碍或其他集成。
 
 构建或显示问题请继续阅读[兼容性与故障排查](../compatibility-troubleshooting/)。

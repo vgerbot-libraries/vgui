@@ -1,0 +1,51 @@
+---
+title: Counter
+description: Explore the maintained dual-target vgui counter, its live WASM preview, and signal-driven update cycle.
+---
+
+import LiveRustExample from '../../../../components/LiveRustExample.astro';
+
+This page presents the maintained `crates/vgui/examples/counter.rs` source alongside a real preview of its precompiled WebAssembly build. Native and WASM targets share the same `app` and signal-driven counter.
+
+## Source and live preview
+
+<LiveRustExample />
+
+The source is read-only. The preview does not compile Rust in the browser; to run edited code, rebuild the native example or regenerate the website's WASM assets locally.
+
+## Follow the reactive update
+
+1. `create_signal(0i32)` returns the `count` read handle and `set_count` write handle.
+2. `count.get()` reads the current integer while constructing the label. In the reactive render scope, that read establishes the view's dependency on the signal.
+3. `click` adapts the closure to a GPUI click listener. The closure calls `set_count.update` with the application context and increments the integer in place.
+4. A changed signal notifies its dependents and requests a render of the mounted root view. The next render reads the new count and constructs the updated label.
+
+The signal is created inside the mounted reactive view, not in an entry point. Repeated renders reuse its positional state instead of resetting the count to zero. Keep reactive primitive creation order and types stable across renders.
+
+Writing an equal `PartialEq` value does not trigger a signal notification. That differs from the store behavior described in [Store and Lists](../store-and-lists/).
+
+## Native and WASM entry points
+
+The shared `run` function creates `application()` on native targets and `single_threaded_web()` on WASM. Its `launch` closure opens a window and mounts `app` with `vgui::mount`. Native `main` calls `gpui_app.run(launch)`. The WASM `#[wasm_bindgen(start)]` function calls `web_init()`, installs keyboard interception, and uses `run_embedded`; `std::mem::forget` retains the returned application handle because WASM startup is non-blocking.
+
+Run the native counter from the repository root:
+
+```sh
+cargo run -p vgui --example counter
+```
+
+Generate the precompiled WASM assets and build the website from the repository root:
+
+```sh
+npm run build --prefix website
+```
+
+## Styling
+
+The `class` attributes use vgui-supported Tailwind-style utilities that style GPUI elements. The root's `w-full h-full` classes let it fill the native window or browser canvas instead of imposing fixed dimensions. These classes do not require a browser stylesheet, and the markup does not create browser DOM nodes.
+
+## Verification and next steps
+
+The website browser test covers canvas rendering and clicking Increment in the precompiled preview. Native compilation and native UI interaction are separate checks; this documentation does not claim that native window interaction was verified.
+
+Continue with [Your First Reactive View](../../first-reactive-view/) for dependency tracking, memos, effects, and update troubleshooting. See [Native & Web](../../native-and-web/) for the native and browser verification requirements.

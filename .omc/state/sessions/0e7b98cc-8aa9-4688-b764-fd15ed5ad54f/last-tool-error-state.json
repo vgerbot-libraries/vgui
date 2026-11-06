@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"ps -p 3000736 -o pid,ppid,stat,lstart,cmd && curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:4321/vgui/\",\"description\":\"Inspect existing development server and di...",
+  "error": "Exit code 7\n    PID    PPID STAT                  STARTED CMD\n3000736 3000725 S+   日 11月  1 22:46:54 2026 sh -c astro dev\ncurl: (7) Failed to connect to 127.0.0.1 port 4321 after 0 ms: Could not connect to server\n000",
+  "timestamp": "2026-11-01T14:50:37.940Z",
+  "retry_count": 1
+}

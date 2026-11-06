@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>vgui counter</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #2e2e2e; }
+      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+      #error { display: none; margin: 1rem; color: #fff; font: 14px/1.5 system-ui, sans-serif; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <pre id="error" role="alert"></pre>
+    <script type="module">
+      const showError = (error) => {
+        const element = document.querySelector('#error');
+        element.textContent = `Unable to start the vgui WASM example.\n${error}`;
+        element.style.display = 'block';
+        document.documentElement.dataset.vguiReady = 'error';
+      };
+
+      try {
+        const { default: init } = await import('./counter.js');
+        await init();
+        const canvas = await new Promise((resolve, reject) => {
+          const deadline = performance.now() + 30_000;
+          const findCanvas = () => {
+            const canvas = document.querySelector('canvas');
+            if (canvas) return resolve(canvas);
+            if (performance.now() >= deadline) return reject(new Error('Canvas initialization timed out.'));
+            requestAnimationFrame(findCanvas);
+          };
+          findCanvas();
+        });
+        document.documentElement.dataset.vguiReady = 'true';
+        canvas.setAttribute('aria-label', 'vgui counter. Activate the Increment button to increase the count.');
+      } catch (error) {
+        showError(error);
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>

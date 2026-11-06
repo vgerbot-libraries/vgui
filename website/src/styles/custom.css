@@ -1,15 +1,27 @@
 :root {
-  --sl-color-accent-low: #431f12;
-  --sl-color-accent: #fb923c;
-  --sl-color-accent-high: #ffedd5;
+  --sl-content-width: auto;
+  --vgui-right-sidebar-width: 14rem;
   --vgui-header-bg: color-mix(in oklab, var(--sl-color-bg) 92%, transparent);
   --vgui-nav-hover: var(--sl-color-gray-6);
 }
 
-:root[data-theme='light'] {
-  --sl-color-accent-low: #ffedd5;
-  --sl-color-accent: #c2410c;
-  --sl-color-accent-high: #431407;
+.content-panel.sl-container {
+  margin-inline: 0;
+}
+
+@media (min-width: 72rem) {
+  [data-has-toc] .right-sidebar-container {
+    width: var(--vgui-right-sidebar-width);
+  }
+
+  [data-has-sidebar][data-has-toc] .main-pane {
+    width: calc(100% - var(--vgui-right-sidebar-width));
+  }
+
+  .right-sidebar-panel .sl-container {
+    width: calc(var(--vgui-right-sidebar-width) - 2 * var(--sl-sidebar-pad-x));
+    max-width: none;
+  }
 }
 
 /* Header */

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"backup=$(mktemp) && cp Cargo.toml \\\"$backup\\\" && trap 'cp \\\"$backup\\\" Cargo.toml; rm -f \\\"$backup\\\"' EXIT && python3 - <<'PY'\\nfrom pathlib import Path\\np = Path('Cargo.toml')\\ns = p.read_...",
+  "error": "Exit code 101\nwarning: field `self_closing` is never read\n  --> crates/vgui-view/src/lib.rs:51:16\n   |\n47 | pub(crate) struct Element {\n   |                   ------- field in this struct\n...\n51 |     pub(crate) self_closing: bool,\n   |                ^^^^^^^^^^^^\n   |\n   = note: `Element` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `vgui-view` (lib) gener...",
+  "timestamp": "2026-11-01T01:46:45.262Z",
+  "retry_count": 1
+}

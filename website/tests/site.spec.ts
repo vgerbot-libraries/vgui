@@ -368,6 +368,45 @@ test('Rustdoc is deployed with working assets and source links', async ({ page, 
   expect(sourceResponse.status()).toBe(200);
 });
 
+test('quick start and counter example render interactive WASM', async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const route of ['docs/quick-start/', 'docs/examples/counter/']) {
+    await page.goto(route);
+
+    const example = page.locator('.live-rust-example');
+    await expect(example.locator('.expressive-code')).toContainText('single_threaded_web');
+    await expect(example.locator('iframe')).toHaveAttribute(
+      'src',
+      '/vgui/wasm/counter/index.html',
+    );
+    const frame = page.frameLocator('.live-rust-frame iframe');
+    const canvas = frame.locator('canvas');
+    await expect(frame.locator('html')).toHaveAttribute('data-vgui-ready', 'true', {
+      timeout: 90_000,
+    });
+    await expect(canvas).toBeVisible();
+
+    await canvas.scrollIntoViewIfNeeded();
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const before = await canvas.screenshot();
+    const x = bounds!.x + bounds!.width / 2;
+    const y = bounds!.y + bounds!.height / 2 + 16;
+    await page.mouse.move(x, y, { steps: 8 });
+    const hovered = await canvas.screenshot();
+    await page.mouse.click(x, y, { delay: 100 });
+    await expect
+      .poll(async () => hovered.equals(await canvas.screenshot()), { timeout: 15_000 })
+      .toBe(false);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(example).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+      true,
+    );
+  }
+});
+
 test('production pages emit no console errors or missing local resources', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];

@@ -7,6 +7,7 @@ export default defineConfig({
   output: 'static',
   integrations: [
     starlight({
+      plugins: [],
       title: {
         en: 'vgui',
         'zh-CN': 'vgui',

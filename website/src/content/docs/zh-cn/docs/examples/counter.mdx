@@ -1,0 +1,56 @@
+---
+title: 计数器
+description: 了解维护中的双端 vgui 计数器、实时 WASM 预览及 signal 驱动的更新流程。
+---
+
+import LiveRustExample from '../../../../../components/LiveRustExample.astro';
+
+本页并排展示维护中的 `crates/vgui/examples/counter.rs` 源码及其预编译 WebAssembly 构建的真实预览。原生和 WASM 目标共用同一个 `app` 和由 signal 驱动的计数器。
+
+## 源码与实时预览
+
+<LiveRustExample
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="可交互的 vgui 计数器"
+/>
+
+源码为只读。预览不会在浏览器中编译 Rust；如需运行修改后的代码，请在本地重新构建原生示例或重新生成网站的 WASM 资源。
+
+## 跟踪响应式更新
+
+1. `create_signal(0i32)` 返回 `count` 读取句柄和 `set_count` 写入句柄。
+2. 构造标签时，`count.get()` 读取当前整数。在响应式渲染作用域中，这次读取会建立视图对 signal 的依赖。
+3. `click` 将闭包适配为 GPUI 点击监听器。闭包通过应用上下文调用 `set_count.update`，原地递增整数。
+4. signal 的值变化后，vgui 会通知依赖方并请求重新渲染已挂载的根视图。下一次渲染读取新的计数并构造更新后的标签。
+
+signal 在已挂载的响应式视图中创建，而不是在入口函数中创建。重复渲染会复用它的位置式状态，不会把计数重置为零。请在多次渲染之间保持响应式原语的创建顺序和类型稳定。
+
+写入经 `PartialEq` 比较后相等的值不会触发 signal 通知。这与[Store 与列表](../store-and-lists/)中介绍的 store 行为不同。
+
+## 原生与 WASM 入口
+
+共用的 `run` 函数在原生目标上创建 `application()`，在 WASM 上创建 `single_threaded_web()`。其中的 `launch` 闭包负责打开窗口，并通过 `vgui::mount` 挂载 `app`。原生 `main` 调用 `gpui_app.run(launch)`；WASM 的 `#[wasm_bindgen(start)]` 函数调用 `web_init()`、安装键盘事件拦截，并使用 `run_embedded`。由于 WASM 启动是非阻塞的，`std::mem::forget` 会保留返回的应用句柄。
+
+在仓库根目录运行原生计数器：
+
+```sh
+cargo run -p vgui --example counter
+```
+
+在仓库根目录生成预编译 WASM 资源并构建网站：
+
+```sh
+npm run build --prefix website
+```
+
+## 样式
+
+`class` 属性使用 vgui 支持的 Tailwind 风格工具类为 GPUI 元素设置样式。根元素的 `w-full h-full` 使其填满原生窗口或浏览器 canvas，而不是使用固定尺寸。这些类不需要浏览器样式表，标记也不会创建浏览器 DOM 节点。
+
+## 验证与后续阅读
+
+网站浏览器测试覆盖预编译预览中的 canvas 渲染和 Increment 点击交互。原生编译与原生 UI 交互是独立的检查；本文不声称已验证原生窗口交互。
+
+接下来阅读[第一个响应式视图](../../first-reactive-view/)，了解依赖跟踪、memo、effect 和更新问题排查。原生与浏览器各自需要哪些验证，请参阅[原生与 Web](../../native-and-web/)。
