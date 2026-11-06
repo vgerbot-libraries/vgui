@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightThemeDracula from 'starlight-theme-dracula';
 
 export default defineConfig({
   site: 'https://vgerbot-libraries.github.io',
@@ -7,7 +8,7 @@ export default defineConfig({
   output: 'static',
   integrations: [
     starlight({
-      plugins: [],
+      plugins: [starlightThemeDracula()],
       title: {
         en: 'vgui',
         'zh-CN': 'vgui',
