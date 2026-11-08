@@ -6,9 +6,9 @@ pub fn switch(
     on_change: Box<dyn Fn(bool, &mut gpui::App) + 'static>,
 ) -> impl gpui::IntoElement {
     let track = if checked {
-        css! { background: var(--primary); }
+        css! { background: var(--primary); border-radius: 999px; }
     } else {
-        css! { background: var(--input); }
+        css! { background: var(--input); border-radius: 999px; }
     };
     let inner = if checked {
         css! {
