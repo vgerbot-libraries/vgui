@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"type curl; printenv HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy NO_PROXY no_proxy\",\"timeout\":10000,\"description\":\"Identify curl command and proxy variables\"}",
-  "error": "Exit code 1\ncurl is /usr/bin/curl\nhttp://127.0.0.1:7890\nhttp://127.0.0.1:7890\nsocks5://127.0.0.1:7890",
-  "timestamp": "2026-11-01T10:13:59.280Z",
-  "retry_count": 1
-}

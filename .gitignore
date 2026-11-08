@@ -37,3 +37,6 @@ book/src/wasm/
 # Reference clone of vgerbot-libraries/shortcuts (TS source for cross-checking)
 /temp
 !.agents/skills/.skills_store_lock.json
+
+# OMC local state and sessions
+.omc/
