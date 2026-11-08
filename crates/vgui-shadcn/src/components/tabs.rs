@@ -2,9 +2,7 @@ use vgui::for_each;
 use vgui::prelude::*;
 
 #[vgui_component]
-pub fn tabs(
-    children: Vec<gpui::AnyElement>,
-) -> impl gpui::IntoElement {
+pub fn tabs(children: Vec<gpui::AnyElement>) -> impl gpui::IntoElement {
     view! {
         <div style={css! {
             display: flex;
@@ -18,19 +16,21 @@ pub fn tabs(
 }
 
 #[vgui_component]
-pub fn tabs_list(
-    children: Vec<gpui::AnyElement>,
-) -> impl gpui::IntoElement {
+pub fn tabs_list(children: Vec<gpui::AnyElement>) -> impl gpui::IntoElement {
+    let mut triggers = gpui::div().flex().flex_row().gap_1();
+    for child in children {
+        triggers = triggers.child(child);
+    }
+
     view! {
         <div style={css! {
             display: flex;
             flex-direction: row;
-            gap: 4px;
             background: var(--muted);
             border-radius: var(--radius);
             padding: 4px;
         }}>
-            {for_each(children, |c, _| c)}
+            {triggers}
         </div>
     }
 }

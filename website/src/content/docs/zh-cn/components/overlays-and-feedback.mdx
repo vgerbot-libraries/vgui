@@ -3,7 +3,9 @@ title: 浮层与反馈
 description: 使用当前 vgui-shadcn API 控制对话框和锚定弹出层，并渲染警告与确定性进度条。
 ---
 
-本指南介绍 `vgui-shadcn` 已实现的两个浮层组件和两个反馈组件。代码片段用于 vgui 响应式渲染闭包，不是完整应用。它们假定已有以下 import，并已在该闭包中调用 `apply_theme(false)`。
+import LiveRustExample from '../../../../components/LiveRustExample.astro';
+
+本指南介绍 `vgui-shadcn` 已实现的两个浮层组件和两个反馈组件。每个示例都是完整的双端应用，同时展示同源源码与实时 WASM 预览。示例共享以下组件 import，并应用浅色主题。
 
 ```rust
 use gpui::IntoElement;
@@ -19,44 +21,13 @@ use vgui_shadcn::prelude::*;
 
 `DialogComponent` 由 `open` 控制。其 `on_close` 回调请求状态变更；所属视图必须将 `open` 设置为 `false`。子元素是任意 `AnyElement` 值，因此“取消”等操作需要显式组合。
 
-```rust
-let (open, set_open) = create_signal(false);
-let trigger = {
-    let set_open = set_open.clone();
-    view! {
-        <button on:click={click(move |cx| set_open.set(cx, true))}>
-            {"Delete item"}
-        </button>
-    }
-};
-let dialog = DialogComponent {
-    open: open.get(),
-    on_close: Box::new({
-        let set_open = set_open.clone();
-        move |cx| set_open.set(cx, false)
-    }),
-    children: vec![
-        DialogTitle {
-            children: vec![view! { <span>{"Delete item?"}</span> }.into_any_element()],
-        }
-        .into_any_element(),
-        DialogDescription {
-            children: vec![
-                view! { <span>{"This action cannot be undone."}</span> }.into_any_element(),
-            ],
-        }
-        .into_any_element(),
-        view! {
-            <button on:click={click(move |cx| set_open.set(cx, false))}>
-                {"Cancel"}
-            </button>
-        }
-        .into_any_element(),
-    ],
-};
-
-view! { <div>{trigger}{dialog}</div> }
-```
+<LiveRustExample
+  example="dialog"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="受控对话框示例"
+/>
 
 底层 vgui 对话框提供全屏背景层，阻止鼠标事件到达背景内容。按 Escape 或在内容外按下鼠标会调用 `on_close`。核心焦点处理会在打开时将焦点移入对话框，让 Tab 和 Shift+Tab 在其中循环，并在关闭后恢复之前的焦点；原生 headless 测试覆盖了这些核心行为。`DialogTitle` 和 `DialogDescription` 是带样式的 span，其本身不会建立完整的 ARIA 标签关联。
 
@@ -64,32 +35,13 @@ view! { <div>{trigger}{dialog}</div> }
 
 `Popover` 在 `NodeRef` 锚点下方的浮动层中渲染子元素。使用 `ref={anchor.clone()}` 将同一个 ref 绑定到触发器，并通过应用状态控制可见性。
 
-```rust
-let (open, set_open) = create_signal(false);
-let anchor = NodeRef::new();
-let trigger = {
-    let set_open = set_open.clone();
-    view! {
-        <button
-            ref={anchor.clone()}
-            on:click={click(move |cx| {
-                set_open.update(cx, |is_open| *is_open = !*is_open)
-            })}
-        >
-            {"Project settings"}
-        </button>
-    }
-};
-let popover = Popover {
-    open: open.get(),
-    anchor,
-    children: vec![
-        view! { <div>{"Choose the settings to display."}</div> }.into_any_element(),
-    ],
-};
-
-view! { <div>{trigger}{popover}</div> }
-```
+<LiveRustExample
+  example="popover"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="锚定弹出层示例"
+/>
 
 定位使用锚点上一帧的边界。必要时，浮动层会向窗口内吸附，并保留 8 px 边距；锚点尚未绑定时，回退位置是窗口原点。此 API 没有位置方向选项。`Popover` 也不会添加点击外部关闭、Escape 处理或焦点陷阱，因此需要根据应用需求自行实现并验证交互。
 
@@ -97,26 +49,13 @@ view! { <div>{trigger}{popover}</div> }
 
 `Alert` 是静态容器，提供 `AlertVariant::Default` 和 `AlertVariant::Destructive` 样式。可在 `children` 中组合 `AlertTitle`、`AlertDescription` 或其他元素。
 
-```rust
-let alert = Alert {
-    variant: AlertVariant::Destructive,
-    children: vec![
-        AlertTitle {
-            children: vec![view! { <span>{"Save failed"}</span> }.into_any_element()],
-        }
-        .into_any_element(),
-        AlertDescription {
-            children: vec![
-                view! { <span>{"Check available storage and try again."}</span> }
-                    .into_any_element(),
-            ],
-        }
-        .into_any_element(),
-    ],
-};
-
-view! { <div>{alert}</div> }
-```
+<LiveRustExample
+  example="alert"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="破坏性警告示例"
+/>
 
 破坏性变体会改变边框和前景颜色，但不会添加图标、关闭操作或自动播报。源代码没有设置 ARIA alert 角色或 live region 行为。应用所需的关闭操作和语义必须另行组合并验证。
 
@@ -124,24 +63,13 @@ view! { <div>{alert}</div> }
 
 `Progress` 是由 `value` 和 `max` 定义的确定性进度条，两者均为 `f64`。工作推进时，通过应用状态更新源值。
 
-```rust
-let (value, set_value) = create_signal(35.0f64);
-let progress = Progress {
-    value: value.get(),
-    max: 100.0,
-};
-
-view! {
-    <div>
-        {progress}
-        <button on:click={click(move |cx| {
-            set_value.update(cx, |value| *value = (*value + 10.0).min(100.0))
-        })}>
-            {"Advance"}
-        </button>
-    </div>
-}
-```
+<LiveRustExample
+  example="progress"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="确定性进度条示例"
+/>
 
 填充比例为 `(value / max).clamp(0.0, 1.0)`，因此超出范围的值不会溢出轨道。`max` 小于或等于零时渲染空进度条。此实现没有不确定模式、内置文本标签或自动的 progressbar 数值语义。
 

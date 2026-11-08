@@ -3,31 +3,21 @@ title: 操作与表单控件
 description: 使用 Button、TextField、Switch 和 Select builder API 构建受控控件。
 ---
 
-以下示例都是可直接用于 vgui 应用的完整渲染函数。请按照[快速开始](../../docs/quick-start/)挂载它们。每个函数都应用浅色主题；信号驱动的主题切换请参阅[组件概览](../)。
+import LiveRustExample from '../../../../components/LiveRustExample.astro';
+
+以下示例都是完整的双端 Rust 应用。源码面板读取的 example 与旁边实时 WASM 预览所编译的 example 是同一份文件。每个示例都应用浅色主题；信号驱动的主题切换请参阅[组件概览](../)。
 
 ## Button
 
 `Button` 接收 variant、size、`on:click` 回调和子元素。下面的示例持有点击次数，并通过信号更新它：
 
-```rust
-use vgui::prelude::*;
-use vgui_shadcn::prelude::*;
-
-fn click_button() -> impl gpui::IntoElement {
-    apply_theme(false);
-    let (clicks, set_clicks) = create_signal(0_u32);
-
-    view! {
-        <Button
-            variant={ButtonVariant::Default}
-            size={ButtonSize::Default}
-            on:click={move |cx| set_clicks.update(cx, |count| *count += 1)}
-        >
-            {format!("Clicked {} times", clicks.get())}
-        </Button>
-    }
-}
-```
+<LiveRustExample
+  example="click_button"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="可交互的 Button 点击计数器"
+/>
 
 - `ButtonVariant`：`Default`、`Destructive`、`Outline`、`Secondary`、`Ghost` 和 `Link`。
 - `ButtonSize`：`Default`、`Sm`、`Lg` 和 `Icon`。
@@ -38,38 +28,13 @@ fn click_button() -> impl gpui::IntoElement {
 
 公开模块名为 `input`，但其中的宏组件是 `TextField`。下面两个控件都是受控组件：回调将新值写回信号，渲染时读取这些信号。
 
-```rust
-use vgui::prelude::*;
-use vgui_shadcn::prelude::*;
-
-fn profile_form() -> impl gpui::IntoElement {
-    apply_theme(false);
-    let (name, set_name) = create_signal(String::new());
-    let (notifications, set_notifications) = create_signal(false);
-
-    view! {
-        <div class="flex flex-col gap-3 p-4">
-            {TextField {
-                value: name.get(),
-                placeholder: "Display name".to_string(),
-                on_input: Box::new(move |value, cx| set_name.set(cx, value)),
-                class: None,
-            }}
-            <div class="flex flex-row items-center gap-2">
-                {Switch {
-                    checked: notifications.get(),
-                    on_change: Box::new(move |checked, cx| {
-                        set_notifications.set(cx, checked)
-                    }),
-                }}
-                <span>
-                    {if notifications.get() { "Notifications on" } else { "Notifications off" }}
-                </span>
-            </div>
-        </div>
-    }
-}
-```
+<LiveRustExample
+  example="profile_form"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="受控文本框与开关示例"
+/>
 
 `TextField` 要求提供 `value`、`placeholder` 和 `on_input`；`class` 是外层容器的可选附加类。其输入类型固定为 text，`on_input` 接收新的 `String` 和 `&mut gpui::App`。
 
@@ -79,33 +44,13 @@ fn profile_form() -> impl gpui::IntoElement {
 
 Select 使用函数加 builder，而不是 PascalCase 标签。`ShadcnSelectProps::new` 接收选项、受控的 `Option<V>` 值和 `Rc` 变化回调。值类型必须实现 `Clone + PartialEq + 'static`。
 
-```rust
-use std::rc::Rc;
-use vgui::prelude::*;
-use vgui_shadcn::prelude::*;
-
-fn language_select() -> gpui::AnyElement {
-    apply_theme(false);
-    let (language, set_language) = create_signal(Some("rust".to_string()));
-
-    let props = ShadcnSelectProps::new(
-        vec![
-            SelectItem::new("Rust", "rust".to_string()),
-            SelectItem::new("TypeScript", "typescript".to_string()),
-            SelectItem::new("Python", "python".to_string()).disabled(true),
-        ],
-        language.get(),
-        Rc::new(move |value, cx| set_language.set(cx, value)),
-    )
-    .placeholder("Choose a language")
-    .searchable(true)
-    .clearable(true)
-    .accessibility_label("Programming language")
-    .size(SelectSize::Md);
-
-    select(props)
-}
-```
+<LiveRustExample
+  example="language_select"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="可搜索和清空的语言选择器"
+/>
 
 ### Builder 选项
 

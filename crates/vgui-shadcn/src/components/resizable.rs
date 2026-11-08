@@ -7,8 +7,8 @@
 //! ([`h_resizable`]) and a vertical ([`v_resizable`]) split are provided.
 
 use gpui::{
-    px, AnyElement, App, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParentElement, Styled, Window,
+    AnyElement, App, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, ParentElement, Styled, Window, px,
 };
 use vgui::{create_signal, next_auto_id};
 
@@ -49,12 +49,13 @@ fn split(
 
     let max_pane = (total - MIN_PANE).max(MIN_PANE);
 
-    // The root spans the whole split and owns down/move/up (like gpui's
-    // range input, whose large track captures the drag). A press begins a
-    // resize only when it lands on the handle strip; subsequent moves resize
-    // by pointer delta regardless of whether the cursor stays on the strip.
-    let down_pane = pane.clone();
+    // The handle normally starts the drag, avoiding window-to-local coordinate
+    // conversion. The root fallback preserves hit testing in headless GPUI;
+    // after the handle has anchored an event, the bubbling fallback is a no-op.
     let down_anchor = set_anchor.clone();
+    let fallback_anchor = anchor.clone();
+    let fallback_pane = pane.clone();
+    let fallback_set_anchor = set_anchor.clone();
     let root_anchor = anchor.clone();
     let root_pane = pane.clone();
     let move_pane = set_pane.clone();
@@ -77,10 +78,12 @@ fn split(
         .on_mouse_down(
             MouseButton::Left,
             move |ev: &MouseDownEvent, _w: &mut Window, cx: &mut App| {
+                if fallback_anchor.get().is_some() {
+                    return;
+                }
                 let p = axis(ev.position);
-                // Begin only on the handle strip around the current divider.
-                if (p - down_pane.get()).abs() <= HANDLE {
-                    down_anchor.set(cx, Some(p));
+                if (p - fallback_pane.get()).abs() <= HANDLE {
+                    fallback_set_anchor.set(cx, Some(p));
                 }
             },
         )
@@ -88,7 +91,9 @@ fn split(
             if ev.pressed_button != Some(MouseButton::Left) {
                 return;
             }
-            let Some(last) = root_anchor.get() else { return };
+            let Some(last) = root_anchor.get() else {
+                return;
+            };
             let p = axis(ev.position);
             let next = (root_pane.get() + (p - last)).clamp(MIN_PANE, max_pane);
             move_pane.set(cx, next);
@@ -115,8 +120,16 @@ fn split(
     };
     root = root.child(first_box.child(first));
 
-    // Visual divider (pointer logic lives on the root strip).
-    let mut handle = gpui::div().flex_shrink_0();
+    // The visual divider also starts the drag; movement remains on the root.
+    let mut handle = gpui::div()
+        .id(("resizable-handle", next_auto_id()))
+        .flex_shrink_0()
+        .on_mouse_down(
+            MouseButton::Left,
+            move |ev: &MouseDownEvent, _w: &mut Window, cx: &mut App| {
+                down_anchor.set(cx, Some(axis(ev.position)));
+            },
+        );
     handle = if horizontal {
         handle.w(px(HANDLE)).h_full().cursor_col_resize()
     } else {

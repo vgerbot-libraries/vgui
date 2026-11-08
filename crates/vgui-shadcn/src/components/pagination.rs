@@ -1,4 +1,3 @@
-use vgui::for_each;
 use vgui::prelude::*;
 
 use crate::icons;
@@ -76,6 +75,37 @@ pub fn pagination(
     let on_change_tail = on_change.clone();
     let at_start = page <= 1;
     let at_end = page >= page_count;
+    let mut page_entries = gpui::div().flex().flex_row().items_center().gap_1();
+    for (label, target) in entries {
+        let on_change = on_change.clone();
+        let entry = if let Some(target) = target {
+            let active = target == page;
+            view! {
+                <button
+                    style={page_button_style(active)}
+                    on:click={click(move |cx| on_change(target, cx))}
+                >
+                    {label}
+                </button>
+            }
+            .into_any_element()
+        } else {
+            view! {
+                <span style={css! {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 32px;
+                    min-width: 32px;
+                    color: var(--muted-foreground);
+                }}>
+                    {label}
+                </span>
+            }
+            .into_any_element()
+        };
+        page_entries = page_entries.child(entry);
+    }
 
     view! {
         <nav style={css! {
@@ -94,33 +124,7 @@ pub fn pagination(
             >
                 {icons::CHEVRON_LEFT}
             </button>
-            {for_each(entries.into_iter().enumerate(), move |(_, (label, target)), _| {
-                let on_change = on_change.clone();
-                if let Some(target) = target {
-                    let active = target == page;
-                    view! {
-                        <button
-                            style={page_button_style(active)}
-                            on:click={click(move |cx| on_change(target, cx))}
-                        >
-                            {label}
-                        </button>
-                    }.into_any_element()
-                } else {
-                    view! {
-                        <span style={css! {
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            height: 32px;
-                            min-width: 32px;
-                            color: var(--muted-foreground);
-                        }}>
-                            {label}
-                        </span>
-                    }.into_any_element()
-                }
-            })}
+            {page_entries}
             <button
                 style={page_button_style(false)}
                 hover={if at_end { css! { opacity: 1; } } else { css! { background: var(--accent); } }}
@@ -157,15 +161,7 @@ mod tests {
         // Page 5 of 20 -> 1 … 4 5 6 … 20
         assert_eq!(
             targets(5, 20),
-            vec![
-                Some(1),
-                None,
-                Some(4),
-                Some(5),
-                Some(6),
-                None,
-                Some(20)
-            ]
+            vec![Some(1), None, Some(4), Some(5), Some(6), None, Some(20)]
         );
     }
 

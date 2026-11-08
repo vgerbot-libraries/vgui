@@ -1,0 +1,88 @@
+#![cfg_attr(target_family = "wasm", no_main)]
+
+use gpui::{App, Bounds, WindowBounds, WindowOptions, px, size};
+#[cfg(not(target_family = "wasm"))]
+use gpui_platform::application;
+#[cfg(target_family = "wasm")]
+use gpui_platform::single_threaded_web;
+use vgui::prelude::*;
+use vgui_shadcn::prelude::*;
+
+fn tabs() -> impl gpui::IntoElement {
+    apply_theme(false);
+    let (active, set_active) = create_signal("account");
+    let account = TabsTrigger {
+        active: active.get() == "account",
+        on_click: Box::new({
+            let set_active = set_active.clone();
+            move |cx| set_active.set(cx, "account")
+        }),
+        children: vec![view! { <span>{"Account"}</span> }.into_any_element()],
+    };
+    let password = TabsTrigger {
+        active: active.get() == "password",
+        on_click: Box::new(move |cx| set_active.set(cx, "password")),
+        children: vec![view! { <span>{"Password"}</span> }.into_any_element()],
+    };
+    let panel = if active.get() == "account" {
+        view! { <span>{"Account settings"}</span> }.into_any_element()
+    } else {
+        view! { <span>{"Password settings"}</span> }.into_any_element()
+    };
+    let tabs = Tabs {
+        children: vec![
+            TabsList {
+                children: vec![account.into_any_element(), password.into_any_element()],
+            }
+            .into_any_element(),
+            panel,
+        ],
+    };
+
+    view! { <div>{tabs}</div> }
+}
+
+fn app() -> impl gpui::IntoElement {
+    view! {
+        <div class="w-full h-full flex items-center justify-center p-4">
+            {tabs()}
+        </div>
+    }
+}
+
+fn run() {
+    #[cfg(not(target_family = "wasm"))]
+    let gpui_app = application();
+    #[cfg(target_family = "wasm")]
+    let gpui_app = single_threaded_web();
+
+    let launch = |cx: &mut App| {
+        let bounds = Bounds::centered(None, size(px(500.), px(300.)), cx);
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                ..Default::default()
+            },
+            |window, cx| vgui::mount(window, cx, app),
+        )
+        .unwrap();
+    };
+
+    #[cfg(not(target_family = "wasm"))]
+    gpui_app.run(launch);
+    #[cfg(target_family = "wasm")]
+    std::mem::forget(gpui_app.run_embedded(launch));
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn main() {
+    run();
+}
+
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    gpui_platform::web_init();
+    vgui::intercept_keyboard_events();
+    run();
+}

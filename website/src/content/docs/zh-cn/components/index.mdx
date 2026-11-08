@@ -3,6 +3,8 @@ title: 组件
 description: 安装 vgui-shadcn、应用主题，并浏览当前公开的组件模块。
 ---
 
+import LiveRustExample from '../../../../components/LiveRustExample.astro';
+
 `vgui-shadcn` 为 vgui 应用提供 shadcn 风格组件。crate 根模块公开 `components`、`hoc`、`icons`、`mobile`、`prelude` 和 `theme`；下方组件目录以 `components/mod.rs` 中当前公开的模块为准。
 
 ## 安装与导入
@@ -28,15 +30,13 @@ vgui-shadcn 的 prelude 会重新导出 crate 的组件、HOC 和 mobile 导出�
 
 在渲染闭包中调用 `apply_theme`。传入 `false` 使用浅色 token，传入 `true` 使用深色 token：
 
-```rust
-fn themed_view() -> impl gpui::IntoElement {
-    apply_theme(false);
-
-    view! {
-        <div class="p-4">{"Themed content"}</div>
-    }
-}
-```
+<LiveRustExample
+  example="themed_view"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="浅色主题的 vgui 内容"
+/>
 
 运行时切换主题时，应在同一个渲染闭包中读取信号，使变化触发重新渲染：`apply_theme(dark.get())`。主题提供颜色和 `--radius`；组件样式不依赖浏览器样式表。
 
@@ -69,6 +69,6 @@ fn themed_view() -> impl gpui::IntoElement {
 
 ## 当前限制
 
-本 crate 采用 shadcn 风格，但并不是完整的上游 shadcn 移植。无障碍行为由各组件分别实现；本目录不代表整个组件库通过无障碍一致性验证，这些页面也不声明浏览器支持。
+本 crate 采用 shadcn 风格，但并不是完整的上游 shadcn 移植。无障碍行为由各组件分别实现；本目录不代表整个组件库通过无障碍一致性验证，实时预览也不代表支持所有浏览器或平台。
 
 `GAPS.md` 记录了渲染和框架方面的缺口。依赖 transform 的放大效果、跑马灯、旋转 spinner 和水印不可用；fixed/sticky 定位、背景图和 HTML audio 也没有直接等价能力。依赖 JavaScript 的 Recharts、TanStack Table、Tabulator 和 HOC data table 均未移植。个别组件会在源码明确说明的情况下采用更简单的布局或行为。

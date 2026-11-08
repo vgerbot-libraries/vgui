@@ -3,6 +3,8 @@ title: Components
 description: Install vgui-shadcn, apply its theme, and explore the current component modules.
 ---
 
+import LiveRustExample from '../../../components/LiveRustExample.astro';
+
 `vgui-shadcn` provides shadcn-style components for vgui applications. Its crate root exposes `components`, `hoc`, `icons`, `mobile`, `prelude`, and `theme`; the component catalog below reflects the public modules in `components/mod.rs`.
 
 ## Installation and imports
@@ -28,15 +30,10 @@ The vgui-shadcn prelude re-exports the crate's component, HOC, and mobile export
 
 Call `apply_theme` from a render closure. Pass `false` for the light token set or `true` for the dark token set:
 
-```rust
-fn themed_view() -> impl gpui::IntoElement {
-    apply_theme(false);
-
-    view! {
-        <div class="p-4">{"Themed content"}</div>
-    }
-}
-```
+<LiveRustExample
+  example="themed_view"
+  previewTitle="Light-themed vgui content"
+/>
 
 When switching themes at runtime, read the signal in that same render closure so the change re-renders it: `apply_theme(dark.get())`. The theme supplies colors and `--radius`; component styles do not require a browser stylesheet.
 
@@ -69,6 +66,6 @@ These are module names, not claims of API or behavioral equivalence with an upst
 
 ## Current limitations
 
-The crate is shadcn-style, not a complete upstream shadcn port. Accessibility behavior is implemented component by component; the catalog is not a suite-wide accessibility conformance claim, and these pages do not claim browser support.
+The crate is shadcn-style, not a complete upstream shadcn port. Accessibility behavior is implemented component by component; the catalog is not a suite-wide accessibility conformance claim, and the live previews do not establish support for every browser or platform.
 
 `GAPS.md` records rendering and framework gaps. Transform-dependent magnification, marquees, rotating spinners, and watermarks are not available; fixed/sticky positioning, background images, and HTML audio also have no direct equivalent. JavaScript-backed Recharts, TanStack Table, Tabulator, and the HOC data table are not ported. Individual components may use simpler layouts or behavior where the source documents an alternative.

@@ -9,7 +9,7 @@ vgui is a SolidJS-inspired reactive GUI on **gpui**. It is **not** the DOM, Reac
 
 Read current APIs from `book/src/` and `crates/vgui/src/prelude.rs`. Do not invent HTML/CSS/JS APIs.
 
-Also follow `.agents/rules/writing-examples.md`, `cross-platform.md`, and `final-state-only.md`.
+Also follow `.agents/rules/writing-examples.md`, `writing-component-docs.md`, `cross-platform.md`, and `final-state-only.md`.
 
 ## Default app shape
 

@@ -1,0 +1,55 @@
+---
+title: 数据展示
+description: 使用 Card、Badge、DescriptionList 和 DataTable 函数 API 展示结构化内容。
+---
+
+import LiveRustExample from '../../../../components/LiveRustExample.astro';
+
+以下示例都是完整的双端 Rust 应用。源码面板读取的 example 与旁边实时 WASM 预览所编译的 example 是同一份文件。每个示例都应用浅色主题；主题设置请参阅[组件概览](../)。
+
+## Card 与 Badge
+
+`Card` 接收任意子元素。`CardHeader` 提供标题和描述，`Badge` 使用四种 variant 之一标记内容：
+
+<LiveRustExample
+  example="project_card"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="Card 与 Badge 示例"
+/>
+
+`Card` 提供主题化容器、内边距、边框和纵向间距，但没有定义独立的 body 或 footer 组件。`CardHeader` 总会渲染 `title` 和 `description` 两个字符串。`BadgeVariant` 支持 `Default`、`Secondary`、`Outline` 和 `Destructive`，徽章子元素类型为 `Vec<gpui::AnyElement>`。
+
+## DescriptionList
+
+`DescriptionList` 渲染可选标题和 `(term, detail)` 行。每个 detail 都是 `AnyElement`，因此既可以包含文本，也可以包含其他组件：
+
+<LiveRustExample
+  example="package_details"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="DescriptionList 示例"
+/>
+
+将 `title` 设为 `None` 可省略标题。term 列固定为 160 px；每一行都有底边框，包括最后一行。此组件用于结构化的只读详情，不提供表单双向绑定。
+
+## DataTable
+
+`table` 是函数 API。`DataTable::new` 接收固定宽度的列和字符串单元格行，函数返回 `(gpui::AnyElement, Store<TableState>)`：
+
+<LiveRustExample
+  example="team_table"
+  codeLabel="Rust 源码"
+  previewLabel="实时 WASM 预览"
+  loadingLabel="正在加载 WebAssembly…"
+  previewTitle="可排序和选择的 DataTable 示例"
+/>
+
+- `TableColumn::new(title, width)` 创建不可排序的列；链式调用 `.sortable()` 可启用点击表头排序。
+- 点击可排序表头会按升序、降序、不排序循环。排序按单元格字符串的字典序比较，不会按数字或日期解析。
+- 点击表体行会切换其选中状态。可以同时选中多行；即使排序后，`TableState.selected` 仍保存原始输入顺序中的行索引。
+- 通过返回的 store 读取 `sort_col`、`sort_asc` 和 `selected`。列宽是固定像素值，单元格是字符串，而不是任意子元素。
+
+这是 crate 自带的表格实现，不是 TanStack Table 或 Tabulator 集成。返回[组件目录](../)查看其他展示模块。

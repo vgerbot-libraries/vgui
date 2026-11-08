@@ -1,9 +1,16 @@
 ---
 import { Code } from '@astrojs/starlight/components';
 import { basePath } from '../utils/paths';
-import source from '../../../crates/vgui/examples/counter.rs?raw';
+import counterSource from '../../../crates/vgui/examples/counter.rs?raw';
+
+const componentSources = import.meta.glob('../../../crates/vgui-shadcn/examples/*.rs', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
 
 interface Props {
+  example?: string;
   codeLabel?: string;
   previewLabel?: string;
   loadingLabel?: string;
@@ -11,25 +18,42 @@ interface Props {
 }
 
 const {
+  example = 'counter',
   codeLabel = 'Rust source',
   previewLabel = 'Live WASM preview',
   loadingLabel = 'Loading WebAssembly…',
-  previewTitle = 'Interactive vgui counter',
+  previewTitle,
 } = Astro.props;
+
+const sourcePath = `../../../crates/vgui-shadcn/examples/${example}.rs`;
+const source = example === 'counter' ? counterSource : componentSources[sourcePath];
+if (!source) {
+  throw new Error(`No Rust source found for live example "${example}".`);
+}
+
+const previewSrc =
+  example === 'counter'
+    ? basePath('wasm/counter/index.html')
+    : `${basePath('wasm/index.html')}?example=${encodeURIComponent(example)}`;
+const resolvedPreviewTitle =
+  previewTitle ??
+  (example === 'counter'
+    ? 'Interactive vgui counter'
+    : `Interactive vgui ${example.replaceAll('_', ' ')} example`);
 ---
 
-<div class="live-rust-example not-content">
+<div class="live-rust-example not-content" data-example={example}>
   <section class="live-rust-source" aria-label={codeLabel}>
     <div class="live-rust-code">
-      <Code code={source} lang="rust" title="counter.rs" />
+      <Code code={source} lang="rust" title={`${example}.rs`} />
     </div>
   </section>
   <section class="live-rust-preview" aria-label={previewLabel}>
     <div class="live-rust-frame">
       <span class="live-rust-loading" aria-hidden="true">{loadingLabel}</span>
       <iframe
-        src={basePath('wasm/counter/index.html')}
-        title={previewTitle}
+        src={previewSrc}
+        title={resolvedPreviewTitle}
         loading="lazy"
         sandbox="allow-scripts allow-same-origin"
       ></iframe>
@@ -50,8 +74,7 @@ const {
     min-width: 0;
   }
 
-
-.live-rust-code {
+  .live-rust-code {
     height: 32rem;
     overflow: hidden;
     border: 1px solid var(--sl-color-hairline);

@@ -15,13 +15,17 @@ npm run test:e2e  # Browser smoke tests; requires a build and Chromium
 
 Install the test browser once with `npx playwright install chromium`.
 
-`npm run build` compiles the counter example for `wasm32-unknown-unknown` and generates its browser bindings. Install the CLI version used by the workspace lockfile:
+`npm run build` compiles the counter and every component example for `wasm32-unknown-unknown`, then generates their browser bindings. Install the CLI version used by the workspace lockfile:
 
 ```sh
 cargo install wasm-bindgen-cli --version 0.2.127 --locked
 ```
 
-The Quick Start and counter example pages display the same maintained Rust source beside an interactive, precompiled WASM build. The source is read-only; changing it requires a local website rebuild. The iframe uses the explicit `/vgui/wasm/counter/index.html` static host URL because directory-index handling differs between preview and static-file servers.
+The Quick Start, counter example, and component guides display maintained Rust source beside precompiled WASM builds. `LiveRustExample.astro` reads that exact source through Vite raw imports; changing an example requires a local website rebuild to update both the displayed code and preview. The source is read-only in the documentation.
+
+Component examples live in `crates/vgui-shadcn/examples/<name>.rs`. To add one, create a dual-target native/WASM application, register its package and name in `scripts/build-wasm.mjs`, and reference it with `<LiveRustExample example="<name>" />` in both locales. Use the same example name and order in English and Chinese, localizing only the labels and title. The build writes generated JavaScript and WebAssembly to `public/wasm/<name>/`; these files are ignored.
+
+Component previews share the explicit `/vgui/wasm/index.html?example=<name>` static host, which validates the name and dynamically imports its bindings. The original counter remains at `/vgui/wasm/counter/index.html` for compatibility. Explicit `index.html` URLs avoid directory-index differences between preview and static-file servers.
 
 Pagefind and the on-site API documentation are production-build features. `npm run dev` does not generate either one. Run `npm run build && npm run preview` to verify search and `/vgui/api/vgui/`.
 
