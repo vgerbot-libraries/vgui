@@ -1014,6 +1014,7 @@ where
         .track_scroll(&scroll)
         .w_full()
         .max_h(menu_max_h)
+        .with_sizing_behavior(gpui::ListSizingBehavior::Infer)
         .into_any_element()
     };
 

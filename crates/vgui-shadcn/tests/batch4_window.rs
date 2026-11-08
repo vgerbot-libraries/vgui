@@ -1,5 +1,5 @@
 //! Headless interaction tests for batch-4 widgets: nav_stack push/pop,
-//! carousel wrap, combobox selection, command-palette hotkey/run, and a
+//! carousel wrap, combobox/select selection, command-palette hotkey/run, and a
 //! construct/draw smoke test for the text-entry widgets (otp_input,
 //! time_field).
 //!
@@ -178,6 +178,46 @@ fn combobox_filters_and_picks() {
     click(&mut cx, 30., 56., MouseButton::Left);
     draw(&mut cx);
     assert_eq!(*picked.borrow(), "Alpha", "picking first option fills value");
+}
+
+#[test]
+fn searchable_select_lays_out_options_for_mouse_selection() {
+    apply_theme(false);
+    let mut app = TestAppContext::single();
+    let picked = Rc::new(Cell::new(None));
+
+    let (_view, mut cx) = app.add_window_view({
+        let picked = picked.clone();
+        move |window, cx| {
+            vgui::VguiRoot::new(cx, window.window_handle(), move || {
+                let props = ShadcnSelectProps::new(
+                    vec![
+                        SelectItem::new("Alpha", 1u8),
+                        SelectItem::new("Beta", 2u8),
+                        SelectItem::new("Gamma", 3u8),
+                    ],
+                    None,
+                    Rc::new({
+                        let picked = picked.clone();
+                        move |value, _cx| picked.set(value)
+                    }),
+                )
+                .searchable(true);
+                let select_widget = select(props);
+                vgui::view! { <div>{select_widget}</div> }
+            })
+        }
+    });
+    draw(&mut cx);
+    click(&mut cx, 20., 16., MouseButton::Left);
+    draw(&mut cx);
+    click(&mut cx, 20., 158., MouseButton::Left);
+    draw(&mut cx);
+    assert_eq!(
+        picked.get(),
+        Some(3),
+        "all searchable select options should be laid out and clickable"
+    );
 }
 
 #[test]
